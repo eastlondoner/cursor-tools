@@ -109,7 +109,9 @@ cursor-tools doc "Generate documentation" --output=docs/README.md
 
 ## Cursor Integration
 
-`cursor-tools` sets up Cursor by changing `.cursorrules` on installation. This provides command suggestions and context-aware help.
+`cursor-tools` sets up Cursor by updating your project rules during installation. For new installations, we use the recommended `.cursor/rules/cursor-tools.mdc` path. For existing installations, we maintain compatibility with the legacy `.cursorrules` file. If both files exist, we prefer the new path and show a warning.
+
+The project rules provide command suggestions and context-aware help for the Cursor Composer.
 
 Use Cursor agent in "yolo mode."
 

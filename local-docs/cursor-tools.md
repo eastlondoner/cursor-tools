@@ -265,15 +265,15 @@ If no authentication is available, the command will use unauthenticated access, 
 -   **`repomix`:** Used by the `repo` and `doc` commands to pack the repository context.
 -   Node.js built-in modules: `fs`, `path`, `os`, `child_process`, `url`.
 
-## .cursorrules File
+## Cursor Integration
 
-The `.cursorrules` file is updated by the `install` command to provide instructions to the Cursor AI.  It includes:
+`cursor-tools` sets up Cursor by updating your project rules during installation. For new installations, we use the recommended `.cursor/rules/cursor-tools.mdc` path. For existing installations, we maintain compatibility with the legacy `.cursorrules` file. If both files exist, we prefer the new path and show a warning.
 
--   A list of available `cursor-tools` commands.
--   Explanations of when to use each command.
--   Instructions on how to run the commands (both installed and in development).
--   Notes about configuration and API keys.
--   A version number (`cursor-tools-version`) to track updates.  The `checkCursorRules` function in `src/cursorrules.ts` checks this version and warns the user if an update is needed.
-
+The project rules provide:
+- A list of available `cursor-tools` commands
+- Explanations of when to use each command
+- Instructions on how to run the commands (both installed and in development)
+- Notes about configuration and API keys
+- A version number (`cursor-tools-version`) to track updates. The `checkCursorRules` function in `src/cursorrules.ts` checks this version and warns the user if an update is needed.
 
 --- End of Documentation ---
