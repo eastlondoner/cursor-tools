@@ -16,7 +16,7 @@ export const ignorePatterns = [
   '**/*.tsbuildinfo',
 ];
 
-export const includePatterns = ['**/*', '!.cursorrules'];
+export const includePatterns = ['**/*', '!.cursorrules', '!.cursor/rules/cursor-tools.mdc'];
 
 export const outputOptions = {
   style: 'xml',

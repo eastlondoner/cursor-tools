@@ -87,50 +87,89 @@ when using doc for remote repos suggest writing the output to a file somewhere l
 <!-- cursor-tools-version: ${CURSOR_RULES_VERSION} -->
 </cursor-tools Integration>`;
 
+function isCursorRulesContentUpToDate(content: string) {
+  const startTag = '<cursor-tools Integration>';
+  const endTag = '</cursor-tools Integration>';
+  if (!content.includes(startTag) || !content.includes(endTag)) {
+    return {
+      needsUpdate: true as const,
+      message:
+        'cursor-tools section not found in cursor rules. Run `cursor-tools install .` to update.',
+    };
+  }
+
+  // Check version
+  const versionMatch = content.match(/<!-- cursor-tools-version: ([\w.-]+) -->/);
+  const currentVersion = versionMatch ? versionMatch[1] : '0';
+
+  if (currentVersion !== CURSOR_RULES_VERSION) {
+    return {
+      needsUpdate: true as const,
+      message: `Your cursor rules file is using version ${currentVersion}, but version ${CURSOR_RULES_VERSION} is available. Run \`cursor-tools install .\` to update.`,
+    };
+  }
+
+  return { needsUpdate: false as const };
+}
+
 export function checkCursorRules(workspacePath: string): {
   needsUpdate: boolean;
   message?: string;
+  targetPath: string;
+  hasLegacyCursorRulesFile?: boolean;
 } {
-  const cursorRulesPath = join(workspacePath, '.cursorrules');
+  const legacyPath = join(workspacePath, '.cursorrules');
+  const newPath = join(workspacePath, '.cursor', 'rules', 'cursor-tools.mdc');
 
-  if (!existsSync(cursorRulesPath)) {
+  // Check if either file exists
+  const legacyExists = existsSync(legacyPath);
+  const newExists = existsSync(newPath);
+
+  // If neither exists, prefer new path
+  if (!legacyExists && !newExists) {
     return {
       needsUpdate: true,
       message:
-        'No .cursorrules file found. Run `cursor-tools install .` to set up Cursor integration.',
+        'No cursor rules file found. Run `cursor-tools install .` to set up Cursor integration.',
+      targetPath: newPath,
     };
   }
 
   try {
-    const content = readFileSync(cursorRulesPath, 'utf-8');
-
-    // Check if cursor-tools section exists
-    const startTag = '<cursor-tools Integration>';
-    const endTag = '</cursor-tools Integration>';
-    if (!content.includes(startTag) || !content.includes(endTag)) {
+    // If both exist, check new path first
+    if (newExists && legacyExists) {
+      const newContent = readFileSync(newPath, 'utf-8');
+      const result = isCursorRulesContentUpToDate(newContent);
       return {
-        needsUpdate: true,
-        message:
-          'cursor-tools section not found in .cursorrules. Run `cursor-tools install .` to update.',
+        ...result,
+        targetPath: newPath,
+        hasLegacyCursorRulesFile: true,
       };
     }
 
-    // Check version
-    const versionMatch = content.match(/<!-- cursor-tools-version: ([\w.-]+) -->/);
-    const currentVersion = versionMatch ? versionMatch[1] : '0';
-
-    if (currentVersion !== CURSOR_RULES_VERSION) {
+    // If only new path exists
+    if (newExists) {
+      const newContent = readFileSync(newPath, 'utf-8');
+      const result = isCursorRulesContentUpToDate(newContent);
       return {
-        needsUpdate: true,
-        message: `Your .cursorrules file is using version ${currentVersion}, but version ${CURSOR_RULES_VERSION} is available. Run \`cursor-tools install .\` to update.`,
+        ...result,
+        targetPath: newPath,
       };
     }
 
-    return { needsUpdate: false };
+    // Otherwise only legacy path exists
+    const legacyContent = readFileSync(legacyPath, 'utf-8');
+    const result = isCursorRulesContentUpToDate(legacyContent);
+    return {
+      ...result,
+      targetPath: legacyPath,
+      hasLegacyCursorRulesFile: true,
+    };
   } catch (error) {
     return {
       needsUpdate: true,
-      message: `Error reading .cursorrules: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      message: `Error reading cursor rules: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      targetPath: newPath,
     };
   }
 }
