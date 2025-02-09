@@ -1,7 +1,8 @@
-/* eslint-env node */
+/* eslint-env node, commonjs */
 const { execSync } = require('child_process');
 const { readFileSync } = require('fs');
 const { resolve } = require('path');
+const { verifyStagehandScript } = require('./verify-stagehand.cjs');
 
 function run(command) {
   console.log(`> ${command}`);
@@ -23,6 +24,10 @@ function hasGitChanges() {
 }
 
 try {
+  // Verify stagehand script matches
+  console.log('\nVerifying stagehand script...');
+  verifyStagehandScript();
+
   // Run lint and build
   run('npm run lint');
   run('npm run build');
