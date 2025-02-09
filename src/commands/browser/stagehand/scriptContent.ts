@@ -1,6 +1,4 @@
-import { readFileSync } from 'fs';
+import { STAGEHAND_SCRIPT } from './stagehandScript';
 import { once } from '../../../utils/once';
 
-export const scriptContent = once(() =>
-  readFileSync('./node_modules/@browserbasehq/stagehand/lib/dom/build/index.js').toString()
-);
+export const scriptContent = once(() => STAGEHAND_SCRIPT);
