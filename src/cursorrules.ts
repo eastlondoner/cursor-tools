@@ -141,7 +141,6 @@ export function checkCursorRules(workspacePath: string): CursorRulesResult {
   // Check if either file exists
   const legacyExists = existsSync(legacyPath);
   const newExists = existsSync(newPath);
-  const hasLegacyCursorRulesFile = legacyExists;
 
   // If neither exists, prefer new path
   if (!legacyExists && !newExists) {
