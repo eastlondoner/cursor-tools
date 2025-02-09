@@ -436,6 +436,18 @@ When generating documentation, cursor-tools uses Repomix to analyze your reposit
 - Log files and temporary files
 - Binary files and media files
 
+You can customize the files and folders to exclude by adding a `.repomixignore` file to your project root.
+
+Example `.repomixignore` file for a Laravel project:
+```
+vendor/
+public/
+database/
+storage/
+.idea
+.env
+```
+
 This ensures that the documentation focuses on your actual source code and documentation files.
 Support to customize the input files to include is coming soon - open an issue if you run into problems here.
 
