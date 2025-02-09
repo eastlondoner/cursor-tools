@@ -117,26 +117,40 @@ function isCursorRulesContentUpToDate(content: string) {
   return { needsUpdate: false as const };
 }
 
-export function checkCursorRules(workspacePath: string): {
+// Add new types for better error handling and type safety
+type CursorRulesError = {
+  kind: 'error';
+  message: string;
+  targetPath: string;
+};
+
+type CursorRulesSuccess = {
+  kind: 'success';
   needsUpdate: boolean;
   message?: string;
   targetPath: string;
-  hasLegacyCursorRulesFile?: boolean;
-} {
+  hasLegacyCursorRulesFile: boolean;
+};
+
+type CursorRulesResult = CursorRulesError | CursorRulesSuccess;
+
+export function checkCursorRules(workspacePath: string): CursorRulesResult {
   const legacyPath = join(workspacePath, '.cursorrules');
   const newPath = join(workspacePath, '.cursor', 'rules', 'cursor-tools.mdc');
 
   // Check if either file exists
   const legacyExists = existsSync(legacyPath);
   const newExists = existsSync(newPath);
+  const hasLegacyCursorRulesFile = legacyExists;
 
   // If neither exists, prefer new path
   if (!legacyExists && !newExists) {
     return {
+      kind: 'success',
       needsUpdate: true,
-      message:
-        'No cursor rules file found. Run `cursor-tools install .` to set up Cursor integration.',
+      message: 'No cursor rules file found. Run `cursor-tools install .` to set up Cursor integration.',
       targetPath: newPath,
+      hasLegacyCursorRulesFile: false
     };
   }
 
@@ -146,9 +160,10 @@ export function checkCursorRules(workspacePath: string): {
       const newContent = readFileSync(newPath, 'utf-8');
       const result = isCursorRulesContentUpToDate(newContent);
       return {
+        kind: 'success',
         ...result,
         targetPath: newPath,
-        hasLegacyCursorRulesFile: true,
+        hasLegacyCursorRulesFile: true
       };
     }
 
@@ -157,8 +172,10 @@ export function checkCursorRules(workspacePath: string): {
       const newContent = readFileSync(newPath, 'utf-8');
       const result = isCursorRulesContentUpToDate(newContent);
       return {
+        kind: 'success',
         ...result,
         targetPath: newPath,
+        hasLegacyCursorRulesFile: false
       };
     }
 
@@ -166,15 +183,16 @@ export function checkCursorRules(workspacePath: string): {
     const legacyContent = readFileSync(legacyPath, 'utf-8');
     const result = isCursorRulesContentUpToDate(legacyContent);
     return {
+      kind: 'success',
       ...result,
       targetPath: legacyPath,
-      hasLegacyCursorRulesFile: true,
+      hasLegacyCursorRulesFile: true
     };
   } catch (error) {
     return {
-      needsUpdate: true,
+      kind: 'error',
       message: `Error reading cursor rules: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      targetPath: newPath,
+      targetPath: newPath
     };
   }
 }
