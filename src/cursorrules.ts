@@ -9,7 +9,12 @@ const packageJson = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'
 
 export const CURSOR_RULES_VERSION = packageJson.version; // Using version from package.json
 
-export const CURSOR_RULES_TEMPLATE = `<cursor-tools Integration>
+export const CURSOR_RULES_TEMPLATE = `---
+description: Global Rule
+globs: 
+---
+
+<cursor-tools Integration>
 # Instructions
 Use the following commands to get AI assistance:
 
