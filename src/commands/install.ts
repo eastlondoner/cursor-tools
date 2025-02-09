@@ -182,38 +182,44 @@ export class InstallCommand implements Command {
       yield 'No package.json found - skipping dependency installation\n';
     }
 
-    // 2. Setup API keys
-    yield 'Checking API keys setup...\n';
-    yield* this.setupApiKeys();
+    // 2. Create necessary directories first
+    const rulesDir = join(absolutePath, '.cursor', 'rules');
+    if (!existsSync(rulesDir)) {
+      try {
+        mkdirSync(rulesDir, { recursive: true });
+      } catch (error) {
+        yield `Error creating rules directory: ${error instanceof Error ? error.message : 'Unknown error'}\n`;
+        return;
+      }
+    }
 
-    // 3. Update/create cursor rules
+    // 3. Setup API keys
+    yield 'Checking API keys setup...\n';
+    for await (const message of this.setupApiKeys()) {
+      yield message;
+    }
+
+    // 4. Update/create cursor rules
     try {
       yield 'Checking cursor rules...\n';
-      const {
-        needsUpdate: shouldUpdate,
-        targetPath,
-        hasLegacyCursorRulesFile,
-      } = checkCursorRules(absolutePath);
+      const result = checkCursorRules(absolutePath);
+
+      if (result.kind === 'error') {
+        yield `Error: ${result.message}\n`;
+        return;
+      }
 
       let existingContent = '';
-      let needsUpdate = shouldUpdate;
+      let needsUpdate = result.needsUpdate;
 
-      if (hasLegacyCursorRulesFile) {
-        yield '\n🚧 Warning: Legacy .cursorrules detected. Cursor now recommends using .cursor/rules/*.mdc files. To migrate:\n' +
+      if (result.hasLegacyCursorRulesFile) {
+        yield '\n🚧 Warning: Legacy .cursorrules detected. This file will be deprecated in a future release. To migrate:\n' +
           '  1) Move your rules to .cursor/rules/cursor-tools.mdc\n' +
           '  2) Delete .cursorrules\n\n';
       }
 
-      // Create directories if needed
-      if (!hasLegacyCursorRulesFile) {
-        const rulesDir = join(absolutePath, '.cursor', 'rules');
-        if (!existsSync(rulesDir)) {
-          mkdirSync(rulesDir, { recursive: true });
-        }
-      }
-
-      if (existsSync(targetPath)) {
-        existingContent = readFileSync(targetPath, 'utf-8');
+      if (existsSync(result.targetPath)) {
+        existingContent = readFileSync(result.targetPath, 'utf-8');
 
         // Check if cursor-tools section exists and version matches
         const startTag = '<cursor-tools Integration>';
@@ -232,7 +238,7 @@ export class InstallCommand implements Command {
           yield `Updating cursor rules from version ${currentVersion} to ${CURSOR_RULES_VERSION}...\n`;
         }
       } else {
-        yield `Creating new cursor rules file at ${targetPath}...\n`;
+        yield `Creating new cursor rules file at ${result.targetPath}...\n`;
       }
 
       if (needsUpdate) {
@@ -248,10 +254,10 @@ export class InstallCommand implements Command {
             existingContent.slice(0, startIndex) +
             CURSOR_RULES_TEMPLATE.trim() +
             existingContent.slice(endIndex + endTag.length);
-          writeFileSync(targetPath, newContent);
+          writeFileSync(result.targetPath, newContent);
         } else {
           // Append new section
-          writeFileSync(targetPath, existingContent + CURSOR_RULES_TEMPLATE);
+          writeFileSync(result.targetPath, existingContent + CURSOR_RULES_TEMPLATE);
         }
       }
 
