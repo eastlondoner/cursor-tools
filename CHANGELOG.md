@@ -9,6 +9,8 @@ All notable changes to this project will be documented in this file.
 
 - Browser commands (`open`, `act`, `observe`, `extract`) now have `--console` and `--network` options enabled by default. Use `--no-console` and `--no-network` to disable them. 
 - Improved page reuse in browser commands when using `--connect-to`: now reuses existing tabs instead of creating new ones for better state preservation
+- Improved error handling and type safety in cursor rules management
+- Enhanced directory creation order in installation process
 
 ### Added
 - Support for new Cursor IDE project rules structure
