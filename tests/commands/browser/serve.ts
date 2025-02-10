@@ -12,7 +12,7 @@
 
 import { join } from 'node:path';
 
-const port = process.env['PORT'] || 3000;
+const port = process.env?.PORT ?? 3000;
 console.log(`Starting server on http://localhost:${port}`);
 
 Bun.serve({

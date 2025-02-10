@@ -1,4 +1,4 @@
-import type { Command, CommandGenerator } from '../types';
+import type { Command, CommandGenerator, CommandOptions } from '../types';
 import type { Config } from '../config';
 import { loadConfig, loadEnv } from '../config';
 import { pack } from 'repomix';
@@ -8,7 +8,7 @@ import type { ModelOptions, BaseModelProvider } from '../providers/base';
 import { GeminiProvider, OpenAIProvider, OpenRouterProvider } from '../providers/base';
 import { ModelNotFoundError } from '../errors';
 
-interface DocCommandOptions {
+interface DocCommandOptions extends CommandOptions {
   model?: string;
   maxTokens?: number;
   output?: string;

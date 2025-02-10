@@ -14,7 +14,7 @@ export interface PlanModelProvider extends BaseModelProvider {
 }
 
 // Define plan command specific options
-interface PlanCommandOptions {
+interface PlanCommandOptions extends CommandOptions {
   fileModel?: string;
   thinkingModel?: string;
   fileProvider?: 'gemini' | 'openai' | 'openrouter';

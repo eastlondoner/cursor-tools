@@ -7,6 +7,7 @@ import { CURSOR_RULES_TEMPLATE, CURSOR_RULES_VERSION, checkCursorRules } from '.
 
 interface InstallOptions extends CommandOptions {
   packageManager?: 'npm' | 'yarn' | 'pnpm';
+  global?: boolean;
 }
 
 // Helper function to get user input and properly close stdin

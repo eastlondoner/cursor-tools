@@ -18,12 +18,18 @@ function toKebabCase(str: string): string {
   return str.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
 }
 
-type StringOption =
+// CLI option types
+type CLIStringOption =
+  // Core options
   | 'model'
-  | 'fromGithub'
+  | 'provider'
+  // Output options
   | 'output'
   | 'saveTo'
+  // Context options
   | 'hint'
+  | 'fromGithub'
+  // Browser options
   | 'url'
   | 'screenshot'
   | 'viewport'
@@ -31,20 +37,46 @@ type StringOption =
   | 'wait'
   | 'video'
   | 'evaluate'
+  // Plan options
   | 'fileProvider'
   | 'thinkingProvider'
   | 'fileModel'
   | 'thinkingModel';
-type NumberOption = 'maxTokens' | 'timeout' | 'connectTo';
-type BooleanOption = 'console' | 'html' | 'network' | 'headless' | 'text' | 'debug';
 
-interface Options {
-  // String options
+type CLINumberOption = 
+  // Core options
+  | 'maxTokens'
+  // Browser options
+  | 'timeout'
+  | 'connectTo';
+
+type CLIBooleanOption = 
+  // Core options
+  | 'debug'
+  // Browser options
+  | 'console'
+  | 'html'
+  | 'network'
+  | 'headless'
+  | 'text';
+
+// Main CLI options interface
+interface CLIOptions {
+  // Core options
   model?: string;
-  fromGithub?: string;
+  provider?: string;
+  maxTokens?: number;
+  debug?: boolean;
+
+  // Output options
   output?: string;
   saveTo?: string;
+
+  // Context options
   hint?: string;
+  fromGithub?: string;
+
+  // Browser options
   url?: string;
   screenshot?: string;
   viewport?: string;
@@ -52,69 +84,78 @@ interface Options {
   wait?: string;
   video?: string;
   evaluate?: string;
-  // Plan command options
-  fileProvider?: string;
-  thinkingProvider?: string;
-  fileModel?: string;
-  thinkingModel?: string;
-  // Number options
-  maxTokens?: number;
   timeout?: number;
   connectTo?: number;
-  // Boolean options
   console?: boolean;
   html?: boolean;
   network?: boolean;
   headless?: boolean;
   text?: boolean;
-  debug?: boolean;
+
+  // Plan options
+  fileProvider?: string;
+  thinkingProvider?: string;
+  fileModel?: string;
+  thinkingModel?: string;
 }
 
-type OptionKey = StringOption | NumberOption | BooleanOption;
+type CLIOptionKey = CLIStringOption | CLINumberOption | CLIBooleanOption;
 
 // Map of normalized keys to their option names in the options object
-const OPTION_KEYS: Record<string, OptionKey> = {
+const OPTION_KEYS: Record<string, CLIOptionKey> = {
+  // Core options
   model: 'model',
+  provider: 'provider',
   maxtokens: 'maxTokens',
+  debug: 'debug',
+
+  // Output options
   output: 'output',
   saveto: 'saveTo',
-  fromgithub: 'fromGithub',
+
+  // Context options
   hint: 'hint',
-  // Browser command options
+  fromgithub: 'fromGithub',
+
+  // Browser options
   url: 'url',
-  console: 'console',
-  html: 'html',
   screenshot: 'screenshot',
-  network: 'network',
-  timeout: 'timeout',
   viewport: 'viewport',
-  headless: 'headless',
-  connectto: 'connectTo',
   selector: 'selector',
-  text: 'text',
   wait: 'wait',
-  debug: 'debug',
   video: 'video',
   evaluate: 'evaluate',
-  // Plan command options
+  timeout: 'timeout',
+  connectto: 'connectTo',
+  console: 'console',
+  html: 'html',
+  network: 'network',
+  headless: 'headless',
+  text: 'text',
+
+  // Plan options
   fileprovider: 'fileProvider',
   thinkingprovider: 'thinkingProvider',
   filemodel: 'fileModel',
   thinkingmodel: 'thinkingModel',
 };
 
-// Set of option keys that are boolean flags (don't require a value)
-const BOOLEAN_OPTIONS = new Set<BooleanOption>([
+// Set of option keys that are boolean flags
+const BOOLEAN_OPTIONS = new Set<CLIBooleanOption>([
+  'debug',
   'console',
   'html',
   'network',
   'headless',
-  'text',
-  'debug',
+  'text'
 ]);
 
 // Set of option keys that require numeric values
-const NUMERIC_OPTIONS = new Set<NumberOption>(['maxTokens', 'timeout', 'connectTo']);
+const NUMERIC_OPTIONS = new Set<CLINumberOption>([
+  'maxTokens',
+  'timeout',
+  'connectTo'
+]);
 
 async function main() {
   const [, , command, ...args] = process.argv;
@@ -133,7 +174,7 @@ async function main() {
   }
 
   // Parse options from args
-  const options: Options = {
+  const options: CLIOptions = {
     // String options
     model: undefined,
     fromGithub: undefined,
@@ -186,7 +227,7 @@ async function main() {
           key = arg.slice(5); // Remove --no- prefix
           const normalizedKey = normalizeArgKey(key.toLowerCase());
           const optionKey = OPTION_KEYS[normalizedKey];
-          if (BOOLEAN_OPTIONS.has(optionKey as BooleanOption)) {
+          if (BOOLEAN_OPTIONS.has(optionKey as CLIBooleanOption)) {
             value = 'false'; // Implicitly set boolean flag to false
             isNoPrefix = true;
           } else {
@@ -200,7 +241,7 @@ async function main() {
         // For boolean flags without --no- prefix, check next argument for explicit true/false
         const normalizedKey = normalizeArgKey(key.toLowerCase());
         const optionKey = OPTION_KEYS[normalizedKey];
-        if (!isNoPrefix && BOOLEAN_OPTIONS.has(optionKey as BooleanOption)) {
+        if (!isNoPrefix && BOOLEAN_OPTIONS.has(optionKey as CLIBooleanOption)) {
           // Check if next argument is 'true' or 'false'
           if (i + 1 < args.length && ['true', 'false'].includes(args[i + 1].toLowerCase())) {
             value = args[i + 1].toLowerCase();
@@ -232,25 +273,25 @@ async function main() {
         process.exit(1);
       }
 
-      if (value === undefined && !BOOLEAN_OPTIONS.has(optionKey as BooleanOption)) {
+      if (value === undefined && !BOOLEAN_OPTIONS.has(optionKey as CLIBooleanOption)) {
         console.error(`Error: No value provided for option '--${key}'`);
         process.exit(1);
       }
 
-      if (NUMERIC_OPTIONS.has(optionKey as NumberOption)) {
+      if (NUMERIC_OPTIONS.has(optionKey as CLINumberOption)) {
         const num = Number.parseInt(value || '', 10);
         if (Number.isNaN(num)) {
           console.error(`Error: ${optionKey} must be a number`);
           process.exit(1);
         }
-        options[optionKey as NumberOption] = num;
+        options[optionKey as CLINumberOption] = num;
         continue;
       }
 
-      if (BOOLEAN_OPTIONS.has(optionKey as BooleanOption)) {
-        options[optionKey as BooleanOption] = value === 'true';
+      if (BOOLEAN_OPTIONS.has(optionKey as CLIBooleanOption)) {
+        options[optionKey as CLIBooleanOption] = value === 'true';
       } else if (value !== undefined) {
-        options[optionKey as StringOption] = value;
+        options[optionKey as CLIStringOption] = value;
       }
     } else {
       queryArgs.push(arg);
@@ -323,8 +364,9 @@ async function main() {
     // Execute the command and handle output
     const commandOptions: CommandOptions = {
       ...options,
+      provider: options.provider as Provider,
       fileProvider: options.fileProvider as Provider,
-      thinkingProvider: options.thinkingProvider as Provider,
+      thinkingProvider: options.thinkingProvider as Provider
     };
     for await (const output of commandHandler.execute(query, commandOptions)) {
       process.stdout.write(output);

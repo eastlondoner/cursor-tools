@@ -1,5 +1,4 @@
 import type { z } from 'zod';
-import type { Provider } from '../../types';
 
 // Core Stagehand API interface
 export interface Stagehand {
@@ -17,13 +16,13 @@ export interface StagehandConfig {
   enableCaching: boolean;
   browserbaseApiKey?: string;
   browserbaseProjectId?: string;
-  llmProvider?: StagehandProvider;
+  llmProvider?: LLMProvider;
   openaiApiKey?: string;
   anthropicApiKey?: string;
   googleApiKey?: string;
 }
 
-export type StagehandProvider = 'openai' | 'anthropic' | 'google';
+export type LLMProvider = 'openai' | 'anthropic' | 'google';
 
 // Stagehand method options
 export interface ActOptions {

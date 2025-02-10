@@ -1,4 +1,4 @@
-import type { Page } from 'playwright';
+import type { ConsoleMessage, Page } from 'playwright';
 import type { SharedBrowserCommandOptions } from './browserOptions';
 import { existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -18,7 +18,7 @@ import type { CommandGenerator } from '../../types';
  * });
  * ```
  */
-export async function formatConsoleMessage(msg: any): Promise<string> {
+export async function formatConsoleMessage(msg: ConsoleMessage): Promise<string> {
   const type = msg.type();
   const text = msg.text();
   const location = msg.location();
@@ -38,6 +38,7 @@ export async function formatConsoleMessage(msg: any): Promise<string> {
   // For errors, try to get the stack trace
   if (type === 'error') {
     try {
+      // biome-ignore lint/suspicious/noExplicitAny: 
       const args = await Promise.all(msg.args().map((arg: any) => arg.jsonValue()));
       const errorDetails = args.find(
         (arg: unknown) => arg && typeof arg === 'object' && 'stack' in arg
@@ -192,7 +193,7 @@ export function outputMessages(
   if (options.network === true && networkMessages.length > 0) {
     output.push('\n--- Network Activity ---\n');
     for (const msg of networkMessages) {
-      output.push(msg + '\n');
+      output.push(`${msg}\n`);
     }
     output.push('--- End of Network Activity ---\n');
   }
@@ -201,7 +202,7 @@ export function outputMessages(
   if (options.console === true && consoleMessages.length > 0) {
     output.push('\n--- Console Messages ---\n');
     for (const msg of consoleMessages) {
-      output.push(msg + '\n');
+      output.push(`${msg}\n`);
     }
     output.push('--- End of Console Messages ---\n');
   }

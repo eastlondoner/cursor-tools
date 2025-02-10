@@ -1,5 +1,6 @@
 import type { Command, CommandGenerator, CommandOptions } from '../../types';
 import { chromium } from 'playwright';
+import type { Browser } from 'playwright';
 import { loadConfig } from '../../config.ts';
 import { ensurePlaywright } from './utils.ts';
 
@@ -14,8 +15,9 @@ interface ElementBrowserOptions extends CommandOptions {
 export class ElementCommand implements Command {
   private config = loadConfig();
 
-  async *execute(query: string, options?: ElementBrowserOptions): CommandGenerator {
-    let browser;
+  async *execute(query: string, initialOptions?: ElementBrowserOptions): CommandGenerator {
+    let browser: Browser | undefined;
+    let options = { ...initialOptions };
     try {
       // Check for Playwright availability first
       await ensurePlaywright();

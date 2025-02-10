@@ -1,4 +1,4 @@
-import { execSync } from 'child_process';
+import { execSync } from 'node:child_process';
 import type { CommandOptions } from '../../types';
 
 export interface GithubOptions extends CommandOptions {
@@ -15,10 +15,9 @@ function parseRepoString(repoStr: string): RepoContext | null {
   const parts = repoStr.split('/');
   if (parts.length === 2) {
     return { owner: parts[0], repo: parts[1] };
-  } else {
-    console.error("Invalid repository format. Use 'owner/repo'");
-    return null;
   }
+  console.error("Invalid repository format. Use 'owner/repo'");
+  return null;
 }
 
 export async function getRepoContext(options?: GithubOptions): Promise<RepoContext | null> {
