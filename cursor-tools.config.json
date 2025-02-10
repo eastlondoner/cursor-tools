@@ -1,7 +1,10 @@
 {
   "perplexity": {
-    "model": "sonar-pro",
-    "maxTokens": 8000
+    "model": "sonar-pro"
+  },
+  "gemini": {
+    "model": "gemini-2.0-pro-exp-02-05",
+    "maxTokens": 10000
   },
   "plan": {
     "fileProvider": "gemini",
