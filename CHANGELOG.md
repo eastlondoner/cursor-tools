@@ -24,6 +24,22 @@ All notable changes to this project will be documented in this file.
   - If no model is specified, a default model is used based on the configured provider (OpenAI or Anthropic)
 - **Internal:** Bundled Stagehand script directly into the codebase to prevent dependency issues
 - **Build:** Added stagehand script verification to the release process
+- Enhanced `plan` command with dual-provider architecture:
+  - Separate providers for file identification and plan generation
+  - `fileProvider` handles repository file analysis
+  - `thinkingProvider` generates implementation plans
+  - New command options:
+    - `--fileProvider`: Provider for file identification (gemini, openai, or openrouter)
+    - `--thinkingProvider`: Provider for plan generation (gemini, openai, or openrouter)
+    - `--fileModel`: Model to use for file identification
+    - `--thinkingModel`: Model to use for plan generation
+    - `--fileMaxTokens`: Maximum tokens for file identification
+    - `--thinkingMaxTokens`: Maximum tokens for plan generation
+- Improved provider system with enhanced error handling and configuration:
+  - New provider interfaces for specialized tasks
+  - Shared implementations via provider mixins
+  - Better error messages and debugging support
+  - Configurable system prompts for different tasks
 
 ## [0.4.3-alpha.23] - 2024-03-22
 

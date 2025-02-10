@@ -177,18 +177,36 @@ Use Perplexity AI to get up-to-date information directly within Cursor:
 cursor-tools web "What's new in TypeScript 5.7?"
 ```
 
-### Gemini 2.0: Repository Context
-Leverage Google Gemini 2.0 models with 1M+ token context windows for codebase-aware assistance:
+### Gemini 2.0: Repository Context & Planning
+Leverage Google Gemini 2.0 models with 1M+ token context windows for codebase-aware assistance and implementation planning:
+
 ```bash
+# Get context-aware assistance
 cursor-tools repo "Explain the authentication flow in this project, which files are involved?"
+
+# Generate implementation plans
+cursor-tools plan "Add user authentication to the login page"
 ```
+
+The plan command uses multiple AI models to:
+1. Identify relevant files in your codebase (using Gemini by default)
+2. Extract content from those files
+3. Generate a detailed implementation plan (using OpenRouter by default)
+
+**Plan Command Options:**
+- `--fileProvider=<provider>`: Provider for file identification (gemini, openai, or openrouter)
+- `--thinkingProvider=<provider>`: Provider for plan generation (gemini, openai, or openrouter)
+- `--fileModel=<model>`: Model to use for file identification
+- `--thinkingModel=<model>`: Model to use for plan generation
+- `--fileMaxTokens=<number>`: Maximum tokens for file identification
+- `--thinkingMaxTokens=<number>`: Maximum tokens for plan generation
+- `--debug`: Show detailed error information
 
 Repository context is created using Repomix. See repomix configuration section below for details on how to change repomix behaviour.
 
 Above 1M tokens cursor-tools will always send requests to Gemini 2.0 Pro as it is the only model that supports 1M+ tokens.
 
 The Gemini 2.0 Pro context limit is 2M tokens, you can add filters to .repomixignore if your repomix context is above this limit.
-
 
 ### Stagehand: Browser Automation
 Automate browser interactions for web scraping, testing, and debugging:
