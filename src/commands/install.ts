@@ -46,11 +46,10 @@ export class InstallCommand implements Command {
 
     // Function to write keys to a file
     const writeKeysToFile = (filePath: string, keys: Record<string, string>) => {
-      const envContent =
-        Object.entries(keys)
+      const envContent = `${Object.entries(keys)
           .filter(([_, value]) => value) // Only include keys with values
           .map(([key, value]) => `${key}=${value}`)
-          .join('\n') + '\n';
+          .join('\n')}\n`;
 
       const dir = join(filePath, '..');
       if (!existsSync(dir)) {
@@ -150,6 +149,7 @@ export class InstallCommand implements Command {
             packageJson.devDependencies['cursor-tools'] = 'latest';
             // Remove from dependencies if it exists there
             if (packageJson.dependencies?.['cursor-tools']) {
+              // biome-ignore lint/performance/noDelete: we need to delete the dependency
               delete packageJson.dependencies['cursor-tools'];
             }
             writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));

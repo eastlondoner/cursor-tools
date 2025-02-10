@@ -3,7 +3,7 @@ import type { Config } from '../config';
 import { loadConfig, loadEnv } from '../config';
 import { pack } from 'repomix';
 import { readFileSync, writeFileSync } from 'node:fs';
-import { DocError, DocGenerationError, FileError, NetworkError } from '../errors';
+import { FileError, NetworkError, ProviderError } from '../errors';
 import type { ModelOptions, BaseModelProvider } from '../providers/base';
 import { GeminiProvider, OpenAIProvider, OpenRouterProvider } from '../providers/base';
 import { ModelNotFoundError } from '../errors';
@@ -39,7 +39,7 @@ export class DocCommand implements Command {
     const [repoPath, branch] = url.split('@');
     const parts = repoPath.split('/');
     if (parts.length !== 2) {
-      throw new DocError(
+      throw new ProviderError(
         'Invalid GitHub repository format. Use either https://github.com/username/reponame[@branch] or username/reponame[@branch]'
       );
     }
@@ -63,7 +63,7 @@ export class DocCommand implements Command {
 
       // If repo is larger than the limit, throw an error
       if (sizeInMB > maxSize) {
-        throw new DocError(
+        throw new ProviderError(
           `Repository ${repoIdentifier} is too large (${Math.round(sizeInMB)}MB) to process remotely.
 The current size limit is ${maxSize}MB. You can:
 1. Increase the limit by setting doc.maxRepoSizeMB in cursor-tools.config.json
@@ -136,7 +136,7 @@ The current size limit is ${maxSize}MB. You can:
           errorText.toLowerCase().includes('timeout') ||
           errorText.toLowerCase().includes('too large')
         ) {
-          throw new DocError(
+          throw new ProviderError(
             `Repository ${repoIdentifier} appears to be too large to process remotely.
 Please:
 1. Clone the repository locally
@@ -243,7 +243,7 @@ Please:
       const model = options?.model || this.config?.doc?.model;
 
       if (!model) {
-        throw new DocError(`No model specified for ${providerName}`);
+        throw new ModelNotFoundError(providerName);
       }
 
       console.error(`Generating documentation using ${model}...\n`);
@@ -254,7 +254,7 @@ Please:
           maxTokens: options?.maxTokens || this.config.doc?.maxTokens
         });
       } catch (error) {
-        throw new DocGenerationError(error instanceof Error ? error.message : 'Unknown error during generation', error);
+        throw new ProviderError(error instanceof Error ? error.message : 'Unknown error during generation', error);
       }
 
       // Save to file if output option is provided
@@ -273,10 +273,11 @@ Please:
 
       console.error('Documentation generation completed!\n');
     } catch (error) {
-      if (error instanceof DocError || error instanceof FileError || error instanceof NetworkError) {
-        yield error.formatUserMessage(options?.debug);
-      } else if (error instanceof Error) {
-        yield `Error: ${error.message}\n`;
+      if (error instanceof Error) {
+        yield `${error.message}\n`;
+        if ('details' in error && options?.debug) {
+          yield `Debug details: ${JSON.stringify(error.details, null, 2)}\n`;
+        }
       } else {
         yield 'An unknown error occurred\n';
       }

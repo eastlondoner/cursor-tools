@@ -1,24 +1,6 @@
-// Error codes for common scenarios
-export enum ErrorCode {
-  API_KEY_MISSING = 'API_KEY_MISSING',
-  MODEL_NOT_FOUND = 'MODEL_NOT_FOUND',
-  NETWORK_ERROR = 'NETWORK_ERROR',
-  INVALID_CONFIG = 'INVALID_CONFIG',
-  PROVIDER_ERROR = 'PROVIDER_ERROR',
-  FILE_ERROR = 'FILE_ERROR',
-  REPO_ERROR = 'REPO_ERROR',
-  DOC_ERROR = 'DOC_ERROR',
-  PLAN_ERROR = 'PLAN_ERROR',
-  UNKNOWN_ERROR = 'UNKNOWN_ERROR'
-}
-
 // Base error class for all cursor-tools errors
 export class CursorToolsError extends Error {
-  constructor(
-    message: string,
-    public readonly code: ErrorCode,
-    public readonly details?: unknown
-  ) {
+  constructor(message: string, public readonly details?: unknown) {
     super(message);
     this.name = 'CursorToolsError';
   }
@@ -38,7 +20,7 @@ export class CursorToolsError extends Error {
 // Provider-related errors
 export class ProviderError extends CursorToolsError {
   constructor(message: string, details?: unknown) {
-    super(message, ErrorCode.PROVIDER_ERROR, details);
+    super(message);
     this.name = 'ProviderError';
   }
 }
@@ -73,59 +55,7 @@ export class NetworkError extends ProviderError {
 // File-related errors
 export class FileError extends CursorToolsError {
   constructor(message: string, details?: unknown) {
-    super(message, ErrorCode.FILE_ERROR, details);
+    super(message);
     this.name = 'FileError';
   }
 }
-
-// Repository-related errors
-export class RepoError extends CursorToolsError {
-  constructor(message: string, details?: unknown) {
-    super(message, ErrorCode.REPO_ERROR, details);
-    this.name = 'RepoError';
-  }
-}
-
-export class RepoAnalysisError extends RepoError {
-  constructor(message: string, details?: unknown) {
-    super(`Failed to analyze repository: ${message}`, details);
-    this.name = 'RepoAnalysisError';
-  }
-}
-
-// Documentation-related errors
-export class DocError extends CursorToolsError {
-  constructor(message: string, details?: unknown) {
-    super(message, ErrorCode.DOC_ERROR, details);
-    this.name = 'DocError';
-  }
-}
-
-export class DocGenerationError extends DocError {
-  constructor(message: string, details?: unknown) {
-    super(`Failed to generate documentation: ${message}`, details);
-    this.name = 'DocGenerationError';
-  }
-}
-
-// Plan-related errors
-export class PlanError extends CursorToolsError {
-  constructor(message: string, details?: unknown) {
-    super(message, ErrorCode.PLAN_ERROR, details);
-    this.name = 'PlanError';
-  }
-}
-
-export class FileFilterError extends PlanError {
-  constructor(message: string, details?: unknown) {
-    super(`Failed to identify relevant files: ${message}`, details);
-    this.name = 'FileFilterError';
-  }
-}
-
-export class PlanGenerationError extends PlanError {
-  constructor(message: string, details?: unknown) {
-    super(`Failed to generate implementation plan: ${message}`, details);
-    this.name = 'PlanGenerationError';
-  }
-} 

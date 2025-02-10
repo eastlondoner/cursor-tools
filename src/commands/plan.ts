@@ -4,36 +4,13 @@ import { loadConfig, loadEnv } from '../config';
 import { pack } from 'repomix';
 import { readFileSync } from 'node:fs';
 import type { ModelOptions, BaseModelProvider } from '../providers/base';
-import { GeminiProvider, OpenAIProvider, OpenRouterProvider } from '../providers/base';
-import { ModelNotFoundError } from '../errors';
+import { GeminiProvider, OpenAIProvider, OpenRouterProvider, createProvider } from '../providers/base';
+import { FileError, ProviderError } from '../errors';
 
-// Custom error classes for better error handling
-class PlanError extends Error {
-  constructor(message: string, public readonly details?: unknown) {
-    super(message);
-    this.name = 'PlanError';
-  }
-}
-
-class FileFilterError extends PlanError {
-  constructor(message: string, details?: unknown) {
-    super(`Error during file filtering: ${message}`, details);
-    this.name = 'FileFilterError';
-  }
-}
-
-class ContentExtractionError extends PlanError {
-  constructor(message: string, details?: unknown) {
-    super(`Error during content extraction: ${message}`, details);
-    this.name = 'ContentExtractionError';
-  }
-}
-
-class PlanGenerationError extends PlanError {
-  constructor(message: string, details?: unknown) {
-    super(`Error during plan generation: ${message}`, details);
-    this.name = 'PlanGenerationError';
-  }
+// Plan-specific provider interface
+export interface PlanModelProvider extends BaseModelProvider {
+  getRelevantFiles(query: string, fileListing: string, options?: ModelOptions): Promise<string[]>;
+  generatePlan(query: string, repoContext: string, options?: ModelOptions): Promise<string>;
 }
 
 // Define plan command specific options
@@ -117,7 +94,7 @@ export class PlanCommand implements Command {
           yield `${fileListing.split('\n').slice(0, 5).join('\n')}\n\n`;
         }
       } catch (error) {
-        throw new FileFilterError(error instanceof Error ? error.message : 'Unknown error getting file listing', error);
+        throw new FileError('Failed to get file listing', error);
       }
 
       // Get relevant files
@@ -127,7 +104,7 @@ export class PlanCommand implements Command {
           yield 'Asking AI to identify relevant files...\n';
         }
 
-        filePaths = await fileProvider.getRelevantFiles(query, fileListing, {
+        filePaths = await (fileProvider as PlanModelProvider).getRelevantFiles(query, fileListing, {
           model: options?.fileModel || this.config.plan?.fileModel,
           maxTokens: options?.maxTokens || this.config.plan?.fileMaxTokens
         });
@@ -140,7 +117,7 @@ export class PlanCommand implements Command {
           }
         }
       } catch (error) {
-        throw new FileFilterError(error instanceof Error ? error.message : 'Unknown error during file filtering', error);
+        throw new ProviderError('Failed to identify relevant files', error);
       }
 
       if (filePaths.length === 0) {
@@ -189,24 +166,24 @@ export class PlanCommand implements Command {
 
         filteredContent = readFileSync(tempFile, 'utf-8');
       } catch (error) {
-        throw new ContentExtractionError(error instanceof Error ? error.message : 'Unknown error during content extraction', error);
+        throw new FileError('Failed to extract content', error);
       }
 
       yield 'Generating implementation plan...\n';
       let plan: string;
       try {
-        plan = await thinkingProvider.generatePlan(query, filteredContent, {
+        plan = await (thinkingProvider as PlanModelProvider).generatePlan(query, filteredContent, {
           model: options?.thinkingModel || this.config.plan?.thinkingModel,
           maxTokens: options?.maxTokens || this.config.plan?.thinkingMaxTokens
         });
       } catch (error) {
-        throw new PlanGenerationError(error instanceof Error ? error.message : 'Unknown error during plan generation', error);
+        throw new ProviderError('Failed to generate implementation plan', error);
       }
 
       yield plan;
 
     } catch (error) {
-      if (error instanceof PlanError) {
+      if (error instanceof FileError || error instanceof ProviderError) {
         yield `${error.name}: ${error.message}\n`;
         if (error.details && options?.debug) {
           yield `Debug details: ${JSON.stringify(error.details, null, 2)}\n`;
@@ -218,12 +195,6 @@ export class PlanCommand implements Command {
       }
     }
   }
-}
-
-// Plan-specific provider interface
-export interface PlanModelProvider extends BaseModelProvider {
-  getRelevantFiles(query: string, fileListing: string, options?: ModelOptions): Promise<string[]>;
-  generatePlan(query: string, repoContext: string, options?: ModelOptions): Promise<string>;
 }
 
 // Shared functionality for plan providers
@@ -292,17 +263,3 @@ export class PlanOpenRouterProvider extends OpenRouterProvider implements PlanMo
   getRelevantFiles = PlanProviderMixin.getRelevantFiles;
   generatePlan = PlanProviderMixin.generatePlan;
 }
-
-// Factory function to create providers
-export function createProvider(provider: 'gemini' | 'openai' | 'openrouter'): PlanModelProvider {
-  switch (provider) {
-    case 'gemini':
-      return new PlanGeminiProvider();
-    case 'openai':
-      return new PlanOpenAIProvider();
-    case 'openrouter':
-      return new PlanOpenRouterProvider();
-    default:
-      throw new ModelNotFoundError(provider);
-  }
-} 

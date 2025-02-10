@@ -3,7 +3,7 @@ import type { Config } from '../config';
 import { loadConfig, loadEnv } from '../config';
 import { pack } from 'repomix';
 import { readFileSync } from 'node:fs';
-import { FileError, RepoError, RepoAnalysisError } from '../errors';
+import { FileError, ProviderError } from '../errors';
 import type { ModelOptions, BaseModelProvider } from '../providers/base';
 import { GeminiProvider, OpenAIProvider, OpenRouterProvider } from '../providers/base';
 import { ModelNotFoundError } from '../errors';
@@ -72,7 +72,7 @@ export class RepoCommand implements Command {
       const model = options?.model || this.config?.repo?.model;
 
       if (!model) {
-        throw new RepoError(`No model specified for ${providerName}`);
+        throw new ProviderError(`No model specified for ${providerName}`);
       }
 
       yield `Analyzing repository using ${model}...\n`;
@@ -83,10 +83,10 @@ export class RepoCommand implements Command {
         });
         yield response;
       } catch (error) {
-        throw new RepoAnalysisError(error instanceof Error ? error.message : 'Unknown error during analysis', error);
+        throw new ProviderError(error instanceof Error ? error.message : 'Unknown error during analysis', error);
       }
     } catch (error) {
-      if (error instanceof RepoError || error instanceof FileError) {
+      if (error instanceof FileError || error instanceof ProviderError) {
         yield error.formatUserMessage(options?.debug);
       } else if (error instanceof Error) {
         yield `Error: ${error.message}\n`;
