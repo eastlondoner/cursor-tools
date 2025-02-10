@@ -18,6 +18,20 @@ globs:
 # Instructions
 Use the following commands to get AI assistance:
 
+**Implementation Planning:**
+\`cursor-tools plan "<query>"\` - Generate a focused implementation plan using AI (e.g., \`cursor-tools plan "Add user authentication to the login page"\`)
+The plan command uses multiple AI models to:
+1. Identify relevant files in your codebase
+2. Extract content from those files
+3. Generate a detailed implementation plan
+
+**Plan Command Options:**
+--fileProvider=<provider>: Provider for file identification (gemini, openai, or openrouter)
+--thinkingProvider=<provider>: Provider for plan generation (gemini, openai, or openrouter)
+--fileModel=<model>: Model to use for file identification
+--thinkingModel=<model>: Model to use for plan generation
+--debug: Show detailed error information
+
 **Web Search:**
 \`cursor-tools web "<your question>"\` - Get answers from the web using Perplexity AI (e.g., \`cursor-tools web "latest weather in London"\`)
 when using web for complex queries suggest writing the output to a file somewhere like local-research/<query summary>.md.
@@ -64,8 +78,16 @@ when using doc for remote repos suggest writing the output to a file somewhere l
 --save-to=<file path>: Save command output to a file (in *addition* to displaying it)
 --help: View all available options (help is not fully implemented yet)
 
+**Repository Command Options:**
+--provider=<provider>: AI provider to use (gemini, openai, or openrouter)
+--model=<model>: Model to use for repository analysis
+--max-tokens=<number>: Maximum tokens for response
+
 **Documentation Command Options:**
 --from-github=<GitHub username>/<repository name>[@<branch>]: Generate documentation for a remote GitHub repository
+--provider=<provider>: AI provider to use (gemini, openai, or openrouter)
+--model=<model>: Model to use for documentation generation
+--max-tokens=<number>: Maximum tokens for response
 
 **GitHub Command Options:**
 --from-github=<GitHub username>/<repository name>[@<branch>]: Access PRs/issues from a specific GitHub repository
@@ -99,6 +121,7 @@ Stagehand is a nickname for cursor-tools browser
 - repo has a limit of 2M tokens of context. The context can be reduced by filtering out files in a .repomixignore file.
 - problems running browser commands may be because playwright is not installed. Recommend installing playwright globally.
 - **Remember:** You're part of a team of superhuman expert AIs. Work together to solve complex problems.
+
 <!-- cursor-tools-version: ${CURSOR_RULES_VERSION} -->
 </cursor-tools Integration>`;
 

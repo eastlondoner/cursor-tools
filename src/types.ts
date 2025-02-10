@@ -1,5 +1,7 @@
 export type CommandGenerator = AsyncGenerator<string, void, unknown>;
 
+export type Provider = 'gemini' | 'openai' | 'openrouter';
+
 export interface CommandOptions {
   model?: string;
   maxTokens?: number;
@@ -7,6 +9,12 @@ export interface CommandOptions {
   hint?: string; // Additional context or hint for the AI
   url?: string; // URL for browser commands
   debug?: boolean; // Enable debug output
+  provider?: Provider; // AI provider to use
+  // Plan command specific options
+  fileProvider?: Provider;
+  thinkingProvider?: Provider;
+  fileModel?: string;
+  thinkingModel?: string;
 }
 
 export interface Command {
@@ -23,12 +31,37 @@ export interface Config {
     apiKey?: string;
     maxTokens?: number;
   };
-  gemini: {
-    model: string;
-    apiKey?: string;
+  plan?: {
+    fileProvider: Provider;
+    thinkingProvider: Provider;
+    fileModel?: string;
+    thinkingModel?: string;
+    fileMaxTokens?: number;
+    thinkingMaxTokens?: number;
+  };
+  repo?: {
+    provider: Provider;
+    model?: string;
     maxTokens?: number;
   };
   doc?: {
     maxRepoSizeMB?: number; // Maximum repository size in MB for remote processing
+    provider: Provider;
+    model?: string;
+    maxTokens?: number;
+  };
+  tokenCount?: {
+    encoding: 'o200k_base' | 'gpt2' | 'r50k_base' | 'p50k_base' | 'p50k_edit' | 'cl100k_base';
+  };
+  browser?: {
+    headless?: boolean;
+    defaultViewport?: string;
+    timeout?: number;
+  };
+  stagehand?: {
+    provider: 'anthropic' | 'openai';
+    verbose?: boolean;
+    debugDom?: boolean;
+    enableCaching?: boolean;
   };
 }

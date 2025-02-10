@@ -5,7 +5,8 @@ import {
   ExtractionSchemaError,
   NavigationError,
 } from './stagehandUtils';
-import { ConstructorParams, Stagehand } from '@browserbasehq/stagehand';
+import type { ConstructorParams } from '@browserbasehq/stagehand';
+import { Stagehand } from '@browserbasehq/stagehand';
 import { loadConfig } from '../../../config';
 import {
   loadStagehandConfig,
@@ -27,13 +28,13 @@ import { overrideStagehandInit } from './initOverride';
 overrideStagehandInit();
 
 export class ExtractCommand implements Command {
-  async *execute(query: string, options?: SharedBrowserCommandOptions): CommandGenerator {
+  async *execute(query: string, initialOptions?: SharedBrowserCommandOptions): CommandGenerator {
     if (!query) {
       yield 'Please provide an instruction and URL. Usage: browser extract "<instruction>" --url <url>';
       return;
     }
 
-    const url = options?.url;
+    const url = initialOptions?.url;
     if (!url) {
       yield 'Please provide a URL using the --url option';
       return;
@@ -51,20 +52,20 @@ export class ExtractCommand implements Command {
     try {
       const config = {
         env: 'LOCAL',
-        headless: options?.headless ?? stagehandConfig.headless,
-        verbose: options?.debug || stagehandConfig.verbose ? 1 : 0,
-        debugDom: options?.debug ?? stagehandConfig.debugDom,
-        modelName: getStagehandModel(stagehandConfig, { model: options?.model }),
+        headless: initialOptions?.headless ?? stagehandConfig.headless,
+        verbose: initialOptions?.debug || stagehandConfig.verbose ? 1 : 0,
+        debugDom: initialOptions?.debug ?? stagehandConfig.debugDom,
+        modelName: getStagehandModel(stagehandConfig, { model: initialOptions?.model }),
         apiKey: getStagehandApiKey(stagehandConfig),
         enableCaching: stagehandConfig.enableCaching,
-        logger: stagehandLogger(options?.debug ?? stagehandConfig.verbose),
+        logger: stagehandLogger(initialOptions?.debug ?? stagehandConfig.verbose),
       } satisfies ConstructorParams;
 
       // Set default values for network and console options
-      options = {
-        ...options,
-        network: options?.network === undefined ? true : options.network,
-        console: options?.console === undefined ? true : options.console,
+      const options = {
+        ...initialOptions,
+        network: initialOptions?.network === undefined ? true : initialOptions.network,
+        console: initialOptions?.console === undefined ? true : initialOptions.console,
       };
 
       console.log('using stagehand config', { ...config, apiKey: 'REDACTED' });
@@ -86,11 +87,11 @@ export class ExtractCommand implements Command {
 
       // Initialize with timeout
       const initPromise = stagehand.init({
-        ...options,
+        ...initialOptions,
         //@ts-ignore
-        recordVideo: options.video
+        recordVideo: initialOptions.video
           ? {
-              dir: await setupVideoRecording(options),
+              dir: await setupVideoRecording(initialOptions),
             }
           : undefined,
       });
@@ -100,8 +101,8 @@ export class ExtractCommand implements Command {
       await Promise.race([initPromise, initTimeoutPromise]);
 
       // Setup console and network monitoring
-      consoleMessages = await setupConsoleLogging(stagehand.page, options);
-      networkMessages = await setupNetworkMonitoring(stagehand.page, options);
+      consoleMessages = await setupConsoleLogging(stagehand.page, initialOptions);
+      networkMessages = await setupNetworkMonitoring(stagehand.page, initialOptions);
 
       try {
         // Skip navigation if url is 'current' or if current URL matches target URL
@@ -132,32 +133,32 @@ export class ExtractCommand implements Command {
 
       const result = await this.performExtraction(
         stagehand,
-        { instruction: query, evaluate: options?.evaluate },
-        options?.timeout ?? stagehandConfig.timeout
+        { instruction: query, evaluate: initialOptions?.evaluate },
+        initialOptions?.timeout ?? stagehandConfig.timeout
       );
 
       // Take screenshot if requested
-      await captureScreenshot(stagehand.page, options);
+      await captureScreenshot(stagehand.page, initialOptions);
 
       // Output result and messages
-      yield formatOutput(result, options?.debug);
-      for (const message of outputMessages(consoleMessages, networkMessages, options)) {
+      yield formatOutput(result, initialOptions?.debug);
+      for (const message of outputMessages(consoleMessages, networkMessages, initialOptions)) {
         yield message;
       }
 
       // Output HTML content if requested
-      if (options?.html) {
+      if (initialOptions?.html) {
         const htmlContent = await stagehand.page.content();
         yield '\n--- Page HTML Content ---\n\n';
         yield htmlContent;
         yield '\n--- End of HTML Content ---\n';
       }
 
-      if (options?.screenshot) {
-        yield `Screenshot saved to ${options.screenshot}\n`;
+      if (initialOptions?.screenshot) {
+        yield `Screenshot saved to ${initialOptions.screenshot}\n`;
       }
     } catch (error) {
-      yield handleBrowserError(error, options?.debug);
+      yield handleBrowserError(error, initialOptions?.debug);
     }
   }
 
@@ -174,10 +175,9 @@ export class ExtractCommand implements Command {
   ): Promise<unknown> {
     try {
       let totalTimeout: ReturnType<typeof setTimeout> | undefined;
-      const totalTimeoutPromise = new Promise(
-        (_, reject) =>
-          (totalTimeout = setTimeout(() => reject(new Error('Extraction timeout')), timeout))
-      );
+      const totalTimeoutPromise = new Promise<never>((_, reject) => {
+        totalTimeout = setTimeout(() => reject(new Error('Extraction timeout')), timeout);
+      });
 
       if (evaluate) {
         await Promise.race([stagehand.page.evaluate(evaluate), totalTimeoutPromise]);

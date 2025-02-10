@@ -1,9 +1,9 @@
-import type { Command, CommandGenerator, CommandOptions } from '../types.ts';
+import type { Command, CommandGenerator, CommandOptions } from '../types';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
-import { loadEnv } from '../config.ts';
-import { CURSOR_RULES_TEMPLATE, CURSOR_RULES_VERSION, checkCursorRules } from '../cursorrules.ts';
+import { loadEnv } from '../config';
+import { CURSOR_RULES_TEMPLATE, CURSOR_RULES_VERSION, checkCursorRules } from '../cursorrules';
 
 interface InstallOptions extends CommandOptions {
   packageManager?: 'npm' | 'yarn' | 'pnpm';

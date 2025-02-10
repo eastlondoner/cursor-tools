@@ -1,3 +1,5 @@
+import type { Provider } from './types';
+
 export interface Config {
   perplexity: {
     model: string;
@@ -9,8 +11,24 @@ export interface Config {
     apiKey?: string;
     maxTokens?: number;
   };
+  plan?: {
+    fileProvider: Provider;
+    thinkingProvider: Provider;
+    fileModel?: string;
+    thinkingModel?: string;
+    fileMaxTokens?: number;
+    thinkingMaxTokens?: number;
+  };
+  repo?: {
+    provider: Provider;
+    model?: string;
+    maxTokens?: number;
+  };
   doc?: {
     maxRepoSizeMB?: number; // Maximum repository size in MB for remote processing
+    provider: Provider;
+    model?: string;
+    maxTokens?: number;
   };
   tokenCount?: {
     encoding: 'o200k_base' | 'gpt2' | 'r50k_base' | 'p50k_base' | 'p50k_edit' | 'cl100k_base'; // The tokenizer encoding to use
@@ -37,16 +55,32 @@ export const defaultConfig: Config = {
     model: 'gemini-2.0-pro-exp-02-05',
     maxTokens: 10000,
   },
+  plan: {
+    fileProvider: 'gemini',
+    thinkingProvider: 'openrouter',
+    fileModel: 'gemini-2.0-pro-exp-02-05',
+    thinkingModel: 'deepseek/deepseek-r1',
+    fileMaxTokens: 8192,
+    thinkingMaxTokens: 8192,
+  },
+  repo: {
+    provider: 'gemini',
+    model: 'gemini-2.0-pro-exp-02-05',
+    maxTokens: 8192,
+  },
   doc: {
-    maxRepoSizeMB: 100, // Default to 100MB
+    maxRepoSizeMB: 100,
+    provider: 'gemini',
+    model: 'gemini-2.0-pro-exp-02-05',
+    maxTokens: 8192,
   },
   tokenCount: {
-    encoding: 'o200k_base', // Default to o200k_base as it's optimized for Gemini
+    encoding: 'o200k_base',
   },
   browser: {
     headless: true,
     defaultViewport: '1280x720',
-    timeout: 120000, // 120 seconds - stagehand needs a lot of time to go back and forward to LLMs
+    timeout: 120000,
   },
   stagehand: {
     provider: 'openai',

@@ -3,7 +3,7 @@ import { writeFileSync, mkdirSync, appendFileSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { checkCursorRules } from './cursorrules.ts';
-
+import type { CommandOptions, Provider } from './types';
 // Get the directory name of the current module
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -30,14 +30,45 @@ type StringOption =
   | 'selector'
   | 'wait'
   | 'video'
-  | 'evaluate';
+  | 'evaluate'
+  | 'fileProvider'
+  | 'thinkingProvider'
+  | 'fileModel'
+  | 'thinkingModel';
 type NumberOption = 'maxTokens' | 'timeout' | 'connectTo';
 type BooleanOption = 'console' | 'html' | 'network' | 'headless' | 'text' | 'debug';
 
-interface Options
-  extends Record<StringOption, string | undefined>,
-    Record<NumberOption, number | undefined>,
-    Record<BooleanOption, boolean | undefined> {}
+interface Options {
+  // String options
+  model?: string;
+  fromGithub?: string;
+  output?: string;
+  saveTo?: string;
+  hint?: string;
+  url?: string;
+  screenshot?: string;
+  viewport?: string;
+  selector?: string;
+  wait?: string;
+  video?: string;
+  evaluate?: string;
+  // Plan command options
+  fileProvider?: string;
+  thinkingProvider?: string;
+  fileModel?: string;
+  thinkingModel?: string;
+  // Number options
+  maxTokens?: number;
+  timeout?: number;
+  connectTo?: number;
+  // Boolean options
+  console?: boolean;
+  html?: boolean;
+  network?: boolean;
+  headless?: boolean;
+  text?: boolean;
+  debug?: boolean;
+}
 
 type OptionKey = StringOption | NumberOption | BooleanOption;
 
@@ -65,6 +96,11 @@ const OPTION_KEYS: Record<string, OptionKey> = {
   debug: 'debug',
   video: 'video',
   evaluate: 'evaluate',
+  // Plan command options
+  fileprovider: 'fileProvider',
+  thinkingprovider: 'thinkingProvider',
+  filemodel: 'fileModel',
+  thinkingmodel: 'thinkingModel',
 };
 
 // Set of option keys that are boolean flags (don't require a value)
@@ -111,6 +147,11 @@ async function main() {
     wait: undefined,
     video: undefined,
     evaluate: undefined,
+    // Plan command options
+    fileProvider: undefined,
+    thinkingProvider: undefined,
+    fileModel: undefined,
+    thinkingModel: undefined,
     // Number options
     maxTokens: undefined,
     timeout: undefined,
@@ -197,13 +238,16 @@ async function main() {
       }
 
       if (NUMERIC_OPTIONS.has(optionKey as NumberOption)) {
-        const num = parseInt(value!, 10);
-        if (isNaN(num)) {
+        const num = Number.parseInt(value || '', 10);
+        if (Number.isNaN(num)) {
           console.error(`Error: ${optionKey} must be a number`);
           process.exit(1);
         }
         options[optionKey as NumberOption] = num;
-      } else if (BOOLEAN_OPTIONS.has(optionKey as BooleanOption)) {
+        continue;
+      }
+
+      if (BOOLEAN_OPTIONS.has(optionKey as BooleanOption)) {
         options[optionKey as BooleanOption] = value === 'true';
       } else if (value !== undefined) {
         options[optionKey as StringOption] = value;
@@ -236,7 +280,7 @@ async function main() {
   const commandHandler = commands[command];
   if (!commandHandler) {
     console.error(`Unknown command: ${command}`);
-    console.error('Available commands: ' + Object.keys(commands).join(', '));
+    console.error(`Available commands: ${Object.keys(commands).join(', ')}`);
     process.exit(1);
   }
 
@@ -277,7 +321,12 @@ async function main() {
     }
 
     // Execute the command and handle output
-    for await (const output of commandHandler.execute(query, options)) {
+    const commandOptions: CommandOptions = {
+      ...options,
+      fileProvider: options.fileProvider as Provider,
+      thinkingProvider: options.thinkingProvider as Provider,
+    };
+    for await (const output of commandHandler.execute(query, commandOptions)) {
       process.stdout.write(output);
       if (options.saveTo) {
         try {
