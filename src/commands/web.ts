@@ -5,13 +5,6 @@ import { createEventSource } from 'eventsource-client';
 
 const MAX_RETRIES = 2;
 
-export async function queryPerplexity(
-  query: string,
-  options?: CommandOptions
-): Promise<string> {
-  // ... rest of function implementation ...
-}
-
 export class WebCommand implements Command {
   private config: Config;
 
