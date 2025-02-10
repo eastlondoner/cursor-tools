@@ -13,14 +13,18 @@ export interface PlanModelProvider extends BaseModelProvider {
   generatePlan(query: string, repoContext: string, options?: ModelOptions): Promise<string>;
 }
 
-// Define plan command specific options
-interface PlanCommandOptions extends CommandOptions {
-  fileModel?: string;
-  thinkingModel?: string;
-  fileProvider?: 'gemini' | 'openai' | 'openrouter';
-  thinkingProvider?: 'gemini' | 'openai' | 'openrouter';
-  maxTokens?: number;
-  debug?: boolean;
+// Factory function to create plan providers
+function createPlanProvider(provider: 'gemini' | 'openai' | 'openrouter'): PlanModelProvider {
+  switch (provider) {
+    case 'gemini':
+      return new PlanGeminiProvider();
+    case 'openai':
+      return new PlanOpenAIProvider();
+    case 'openrouter':
+      return new PlanOpenRouterProvider();
+    default:
+      throw new Error(`Unknown provider: ${provider}`);
+  }
 }
 
 export class PlanCommand implements Command {
@@ -33,8 +37,8 @@ export class PlanCommand implements Command {
 
   async *execute(query: string, options?: CommandOptions): CommandGenerator {
     try {
-      const fileProvider = createProvider(options?.fileProvider || this.config.plan?.fileProvider || 'gemini');
-      const thinkingProvider = createProvider(options?.thinkingProvider || this.config.plan?.thinkingProvider || 'openai');
+      const fileProvider = createPlanProvider(options?.fileProvider || this.config.plan?.fileProvider || 'gemini');
+      const thinkingProvider = createPlanProvider(options?.thinkingProvider || this.config.plan?.thinkingProvider || 'openai');
 
       if (options?.debug) {
         yield `Using file provider: ${options?.fileProvider || this.config.plan?.fileProvider || 'gemini'}\n`;
@@ -57,7 +61,7 @@ export class PlanCommand implements Command {
           output: {
             filePath: tempFile,
             style: 'plain',
-            parsableStyle: true,
+            parsableStyle: false,
             fileSummary: false,
             directoryStructure: false,
             removeComments: false,
@@ -92,6 +96,9 @@ export class PlanCommand implements Command {
           yield `Found ${fileListing.split('\n').length} files in total.\n`;
           yield 'First few files:\n';
           yield `${fileListing.split('\n').slice(0, 5).join('\n')}\n\n`;
+          yield 'File listing format check:\n';
+          yield `First 200 characters: ${JSON.stringify(fileListing.slice(0, 200))}\n`;
+          yield `Last 200 characters: ${JSON.stringify(fileListing.slice(-200))}\n\n`;
         }
       } catch (error) {
         throw new FileError('Failed to get file listing', error);
@@ -102,6 +109,10 @@ export class PlanCommand implements Command {
       try {
         if (options?.debug) {
           yield 'Asking AI to identify relevant files...\n';
+          yield 'Provider configuration:\n';
+          yield `Provider: ${options?.fileProvider || this.config.plan?.fileProvider || 'gemini'}\n`;
+          yield `Model: ${options?.fileModel || this.config.plan?.fileModel}\n`;
+          yield `Max tokens: ${options?.maxTokens || this.config.plan?.fileMaxTokens}\n\n`;
         }
 
         filePaths = await (fileProvider as PlanModelProvider).getRelevantFiles(query, fileListing, {
@@ -110,13 +121,19 @@ export class PlanCommand implements Command {
         });
 
         if (options?.debug) {
-          yield `AI identified ${filePaths.length} relevant files.\n`;
-          if (filePaths.length > 0) {
+          yield 'AI response received.\n';
+          yield `Number of files identified: ${filePaths?.length || 0}\n`;
+          if (filePaths?.length > 0) {
             yield 'First few identified files:\n';
             yield `${filePaths.slice(0, 5).join('\n')}\n\n`;
+          } else {
+            yield 'No files were identified.\n\n';
           }
         }
       } catch (error) {
+        if (options?.debug) {
+          yield `Error details: ${error instanceof Error ? error.stack : String(error)}\n`;
+        }
         throw new ProviderError('Failed to identify relevant files', error);
       }
 
