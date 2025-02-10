@@ -399,26 +399,11 @@ Customize `cursor-tools` behavior by creating a `cursor-tools.config.json` file:
 {
   "perplexity": {
     "model": "sonar-pro",
-    "maxTokens": 4000
+    "maxTokens": 8000
   },
-  "plan": {
-    "fileProvider": "gemini",
-    "thinkingProvider": "openrouter",
-    "fileModel": "gemini-2.0-pro-exp-02-05",
-    "thinkingModel": "deepseek/deepseek-r1",
-    "fileMaxTokens": 8192,
-    "thinkingMaxTokens": 8192
-  },
-  "repo": {
-    "provider": "gemini",
+  "gemini": {
     "model": "gemini-2.0-pro-exp-02-05",
-    "maxTokens": 8192
-  },
-  "doc": {
-    "maxRepoSizeMB": 100,
-    "provider": "gemini",
-    "model": "gemini-2.0-pro-exp-02-05",
-    "maxTokens": 8192
+    "maxTokens": 10000
   },
   "tokenCount": {
     "encoding": "o200k_base"
@@ -441,32 +426,11 @@ Customize `cursor-tools` behavior by creating a `cursor-tools.config.json` file:
 ```
 
 The configuration supports:
-
-**Plan Command Settings:**
-- `plan.fileProvider`: Provider for file identification ('gemini', 'openai', or 'openrouter')
-- `plan.thinkingProvider`: Provider for plan generation ('gemini', 'openai', or 'openrouter')
-- `plan.fileModel`: Model to use for file identification
-- `plan.thinkingModel`: Model to use for plan generation
-- `plan.fileMaxTokens`: Maximum tokens for file identification (max 8192)
-- `plan.thinkingMaxTokens`: Maximum tokens for plan generation (max 8192)
-
-**Repository Command Settings:**
-- `repo.provider`: Provider for repository analysis ('gemini', 'openai', or 'openrouter')
-- `repo.model`: Model to use for repository analysis
-- `repo.maxTokens`: Maximum tokens for repository analysis (max 8192)
-
-**Documentation Command Settings:**
-- `doc.maxRepoSizeMB`: Maximum repository size in MB for remote processing
-- `doc.provider`: Provider for documentation generation ('gemini', 'openai', or 'openrouter')
-- `doc.model`: Model to use for documentation generation
-- `doc.maxTokens`: Maximum tokens for documentation generation (max 8192)
-
-**Perplexity Settings:**
 - `perplexity.model`: Perplexity AI model to use
 - `perplexity.maxTokens`: Maximum tokens for Perplexity responses
+- `gemini.model`: Google Gemini model to use
+- `gemini.maxTokens`: Maximum tokens for Gemini responses
 - `tokenCount.encoding`: Tokenizer to use for counting tokens (defaults to `o200k_base` which is optimized for Gemini)
-
-**Browser Command Settings:**
 - `browser.defaultViewport`: Default viewport size for browser commands
 - `browser.timeout`: Default timeout for browser commands
 - `browser.stagehand.env`: Environment for browser commands

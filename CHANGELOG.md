@@ -5,21 +5,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Browser commands (`open`, `act`, `observe`, `extract`) now have `--console` and `--network` options enabled by default. Use `--no-console` and `--no-network` to disable them. 
+- Improved page reuse in browser commands when using `--connect-to`: now reuses existing tabs instead of creating new ones for better state preservation
+- Improved error handling and type safety in cursor rules management
+- Enhanced directory creation order in installation process
+
 ### Added
-- Refactored provider system for better maintainability and type safety:
-  - Removed top-level gemini provider in favor of command-specific providers
-  - Added shared base provider class with common functionality
-  - Implemented command-specific provider mixins for shared behavior
-  - Added provider-specific customization through abstract methods
-  - Improved error handling with custom error classes
-  - Added consistent provider interface across all commands
-  - Added smart token count handling for large repositories
-- Enhanced configuration system:
-  - Added strict type checking for provider configurations
-  - Capped all maxTokens values at 8192 for better consistency
-  - Added proper model defaults for each provider
-  - Added timeout configurations for all commands
-  - Enhanced browser.stagehand configuration with model and timeout settings
 - Support for new Cursor IDE project rules structure
   - New installations now use `.cursor/rules/cursor-tools.mdc`
   - Maintain compatibility with legacy `.cursorrules` file
@@ -27,58 +20,10 @@ All notable changes to this project will be documented in this file.
   - Updated documentation to reflect new path structure
 - Added support for the `gpt-4o` model in browser commands (`act`, `extract`, `observe`)
   - The model can be selected using the `--model=gpt-4o` command-line option
-  - The default model can be configured in `browser.stagehand.model`
+  - The default model can be configured in `cursor-tools.config.json`
   - If no model is specified, a default model is used based on the configured provider (OpenAI or Anthropic)
 - **Internal:** Bundled Stagehand script directly into the codebase to prevent dependency issues
 - **Build:** Added stagehand script verification to the release process
-- New `plan` command for generating focused implementation plans using AI:
-  - Uses multiple AI models to identify relevant files and generate plans
-  - Configurable file and thinking providers (gemini, openai, openrouter)
-  - Customizable models and token limits for each step
-- Added OpenRouter support for AI providers:
-  - Available for plan, repo, and doc commands
-  - Compatible with OpenAI API interface
-  - Configurable through provider options
-- Enhanced provider system with command-specific configurations:
-  - Each command can use different providers and models
-  - Configurable through command options or config file
-  - Improved type safety and error handling
-
-### Changed
-- Browser commands (`open`, `act`, `observe`, `extract`) improvements:
-  - Console and network logging now enabled by default
-    - Use `--no-console` to disable console logging
-    - Use `--no-network` to disable network logging
-  - Enhanced `--connect-to` behavior:
-    - Added special URL values: `current` and `reload-current`
-    - Viewport size only changed if `--viewport` explicitly provided
-    - Video recording not available with `--connect-to`
-  - Improved page reuse when using `--connect-to`
-  - Added warning about disabled wait command in Stagehand
-- Repository analysis command now supports multiple providers:
-  - Added `--provider` option to select AI provider
-  - Configurable default provider in config file
-  - Enhanced error handling and debugging support
-  - Provider-specific system prompts
-- Documentation generation command now supports multiple providers:
-  - Added `--provider` option to select AI provider
-  - Configurable default provider in config file
-  - Improved token count handling and model selection
-  - Better error messages and debugging information
-  - Smart model switching for large repositories
-- Updated documentation to reflect new features and changes
-- Improved error messages and debug information support
-- Improved error handling and type safety in cursor rules management
-- Enhanced directory creation order in installation process
-- Updated configuration system to support command-specific providers
-- Enhanced documentation to reflect new provider options
-- Improved command-line argument handling for provider options
-
-### Fixed
-- Fixed browser commands to respect system color scheme when using `--connect-to`
-- Fixed browser commands to not set viewport size when using `--connect-to` without explicit `--viewport` option
-- Fixed model selection and token handling across all providers
-- Improved error handling and error messages across all commands
 
 ## [0.4.3-alpha.23] - 2024-03-22
 
