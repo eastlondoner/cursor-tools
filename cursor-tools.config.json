@@ -1,7 +1,7 @@
 {
   "perplexity": {
     "model": "sonar-pro",
-    "maxTokens": 4000
+    "maxTokens": 8000
   },
   "plan": {
     "fileProvider": "gemini",
@@ -14,13 +14,13 @@
   "repo": {
     "provider": "gemini",
     "model": "gemini-2.0-pro-exp-02-05",
-    "maxTokens": 8192
+    "maxTokens": 10000
   },
   "doc": {
     "maxRepoSizeMB": 100,
     "provider": "gemini",
     "model": "gemini-2.0-pro-exp-02-05",
-    "maxTokens": 8192
+    "maxTokens": 10000
   },
   "tokenCount": {
     "encoding": "o200k_base"
@@ -28,14 +28,12 @@
   "browser": {
     "headless": true,
     "defaultViewport": "1280x720",
-    "timeout": 120000,
-    "stagehand": {
-      "provider": "openai",
-      "verbose": true,
-      "debugDom": false,
-      "enableCaching": true,
-      "timeout": 120000,
-      "model": "o3-mini"
-    }
+    "timeout": 120000
+  },
+  "stagehand": {
+    "provider": "openai",
+    "verbose": true,
+    "debugDom": false,
+    "enableCaching": true
   }
 }
