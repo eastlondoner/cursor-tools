@@ -5,6 +5,7 @@ import { InstallCommand } from './install.ts';
 import { DocCommand } from './doc.ts';
 import { GithubCommand } from './github.ts';
 import { BrowserCommand } from './browser/browserCommand.ts';
+import { ClickUpCommand } from './clickup.ts';
 
 export const commands: CommandMap = {
   web: new WebCommand(),
@@ -13,4 +14,5 @@ export const commands: CommandMap = {
   doc: new DocCommand(),
   github: new GithubCommand(),
   browser: new BrowserCommand(),
+  clickup: new ClickUpCommand(),
 };
