@@ -33,6 +33,9 @@ when using doc for remote repos suggest writing the output to a file somewhere l
 \`cursor-tools github pr [number]\` - Get the last 10 PRs, or a specific PR by number (e.g., \`cursor-tools github pr 123\`)
 \`cursor-tools github issue [number]\` - Get the last 10 issues, or a specific issue by number (e.g., \`cursor-tools github issue 456\`)
 
+**ClickUp Task Information:**
+\`cursor-tools clickup task <task_id>\` - Get detailed information about a ClickUp task including description, comments, status, assignees, and metadata (e.g., \`cursor-tools clickup task "task_id"\`)
+
 **Stagehand Browser Automation:**
 \`cursor-tools browser open <url> [options]\` - Open a URL and capture page content, console logs, and network activity (e.g., \`cursor-tools browser open "https://example.com" --html\`)
 \`cursor-tools browser act "<instruction>" --url=<url> [options]\` - Execute actions on a webpage using natural language instructions (e.g., \`cursor-tools browser act "Click Login" --url=https://example.com\`)
@@ -93,6 +96,7 @@ Stagehand is a nickname for cursor-tools browser
 - For detailed information, see \`node_modules/cursor-tools/README.md\` (if installed locally).
 - Configuration is in \`cursor-tools.config.json\` (or \`~/.cursor-tools/config.json\`).
 - API keys are loaded from \`.cursor-tools.env\` (or \`~/.cursor-tools/.env\`).
+- ClickUp commands require a \`CLICKUP_API_TOKEN\` to be set in your \`.cursor-tools.env\` file.
 - Browser commands require separate installation of Playwright: \`npm install --save-dev playwright\` or \`npm install -g playwright\`.
 - The default Stagehand model is set in \`cursor-tools.config.json\`, but can be overridden with the \`--model\` option.
 - Available models depend on your configured provider (OpenAI or Anthropic) in \`cursor-tools.config.json\`.
