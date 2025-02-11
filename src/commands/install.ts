@@ -73,6 +73,8 @@ export class InstallCommand implements Command {
     const homeEnvPath = join(homedir(), '.cursor-tools', '.env');
     const localEnvPath = join(process.cwd(), '.cursor-tools.env');
 
+    const apiKeysConfigFileExists = existsSync(homeEnvPath) || existsSync(localEnvPath);
+
     // Check if keys are already set
     const hasPerplexity = !!process.env.PERPLEXITY_API_KEY;
     const hasGemini = !!process.env.GEMINI_API_KEY;
@@ -80,15 +82,18 @@ export class InstallCommand implements Command {
     const hasAnthropic = !!process.env.ANTHROPIC_API_KEY;
     const hasOpenRouter = !!process.env.OPENROUTER_API_KEY;
     const hasModelBox = !!process.env.MODELBOX_API_KEY;
+    const hasClickUp = !!process.env.CLICKUP_API_TOKEN;
 
     // For Stagehand, we need either OpenAI or Anthropic
     const hasStagehandProvider = hasOpenAI || hasAnthropic;
 
     if (
+      apiKeysConfigFileExists &&
       hasPerplexity &&
       hasGemini &&
       hasOpenRouter &&
       hasModelBox &&
+      hasClickUp || process.env.SKIP_CLICKUP &&
       (hasStagehandProvider || process.env.SKIP_STAGEHAND)
     ) {
       return;
@@ -117,6 +122,7 @@ export class InstallCommand implements Command {
         ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY || '',
         OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY || '',
         MODELBOX_API_KEY: process.env.MODELBOX_API_KEY || '',
+        CLICKUP_API_TOKEN: process.env.CLICKUP_API_TOKEN || '',
         SKIP_STAGEHAND: process.env.SKIP_STAGEHAND || '',
       };
 
@@ -171,6 +177,11 @@ export class InstallCommand implements Command {
             yield '\nWarning: No API key provided for Stagehand. You will need to set either OPENAI_API_KEY or ANTHROPIC_API_KEY to use Stagehand features.\n';
           }
         }
+      }
+
+      if (!hasClickUp) {
+        const key = await getUserInput('[https://app.clickup.com/settings/apps] Enter your ClickUp API token (or press Enter to skip): ');
+        keys.CLICKUP_API_TOKEN = key;
       }
 
       try {
