@@ -46,11 +46,29 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Added ModelBox provider for access to a wider range of models through an OpenAI-compatible API
 - Added OpenRouter provider to enable access to models from various providers including Perplexity
+- New ClickUp integration command for task management
+  - Added ClickUp authentication flow with API token request during installation
+  - Implemented ClickUp command with task management capabilities
+  - Added ClickUp command instructions to template
+- Added instructions for Chrome remote debugging setup in cursor rules
 
 ### Changed
 - Improved browser command state management when using `--connect-to`:
     - Reuses existing browser tabs for subsequent commands in a session, preserving page state
     - Introduced `reload-current` as a special URL value to refresh the current page without losing the connected session
+- Browser commands (`open`, `act`, `observe`, `extract`) now have `--console` and `--network` options enabled by default. Use `--no-console` and `--no-network` to disable them. 
+- Improved page reuse in browser commands when using `--connect-to`: now reuses existing tabs instead of creating new ones for better state preservation
+- Improved error handling and type safety in cursor rules management
+- Enhanced directory creation order in installation process
+- Added user choice during installation for cursor rules location (legacy `.cursorrules` or new `.cursor/rules/cursor-tools.mdc`)
+- Added `USE_LEGACY_CURSORRULES` environment variable to control cursor rules file location
+- Improved output handling across all commands:
+  - Centralized output handling in main CLI
+  - Commands now yield output consistently
+  - Better error handling for file writes
+  - Added timeout protection for stdout writes
+  - More reliable output flushing
+- Improved security by not logging API keys in stagehand config
 
 ## [0.6.0-alpha.1] - 2024-03-22
 
@@ -65,18 +83,6 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - Changed default thinking provider for plan command to OpenAI with o3-mini model for significantly faster plan generation, while maintaining plan quality
-- Browser commands (`open`, `act`, `observe`, `extract`) now have `--console` and `--network` options enabled by default. Use `--no-console` and `--no-network` to disable them. 
-- Improved page reuse in browser commands when using `--connect-to`: now reuses existing tabs instead of creating new ones for better state preservation
-- Improved error handling and type safety in cursor rules management
-- Enhanced directory creation order in installation process
-- Added user choice during installation for cursor rules location (legacy `.cursorrules` or new `.cursor/rules/cursor-tools.mdc`)
-- Added `USE_LEGACY_CURSORRULES` environment variable to control cursor rules file location
-- Improved output handling across all commands:
-  - Centralized output handling in main CLI
-  - Commands now yield output consistently
-  - Better error handling for file writes
-  - Added timeout protection for stdout writes
-  - More reliable output flushing
 
 ### Added
 - New `ask` command for direct model queries
