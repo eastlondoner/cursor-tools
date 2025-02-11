@@ -5,12 +5,19 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Changed
+### Added
+- New ClickUp integration command for task management
+  - Added ClickUp authentication flow with API token request during installation
+  - Implemented ClickUp command with task management capabilities
+  - Added ClickUp command instructions to template
+- Added instructions for Chrome remote debugging setup in cursor rules
 
+### Changed
 - Browser commands (`open`, `act`, `observe`, `extract`) now have `--console` and `--network` options enabled by default. Use `--no-console` and `--no-network` to disable them. 
 - Improved page reuse in browser commands when using `--connect-to`: now reuses existing tabs instead of creating new ones for better state preservation
 - Improved error handling and type safety in cursor rules management
 - Enhanced directory creation order in installation process
+- Improved security by not logging API keys in stagehand config
 
 ### Added
 - Support for new Cursor IDE project rules structure
