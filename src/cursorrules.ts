@@ -75,6 +75,9 @@ when using doc for remote repos suggest writing the output to a file somewhere l
 \`cursor-tools github pr [number]\` - Get the last 10 PRs, or a specific PR by number (e.g., \`cursor-tools github pr 123\`)
 \`cursor-tools github issue [number]\` - Get the last 10 issues, or a specific issue by number (e.g., \`cursor-tools github issue 456\`)
 
+**ClickUp Information:**
+\`cursor-tools clickup task <task_id>\` - Get detailed information about a ClickUp task including description, comments, status, assignees, and metadata (e.g., \`cursor-tools clickup task "task_id"\`)
+
 **Model Context Protocol (MCP) Commands:**
 Use the following commands to interact with MCP servers and their specialized tools:
 \`cursor-tools mcp search "<query>"\` - Search the MCP Marketplace for available servers that match your needs (e.g., \`cursor-tools mcp search "git repository management"\`)
@@ -174,7 +177,7 @@ Stagehand is a nickname for cursor-tools browser
 - For detailed information, see \`node_modules/cursor-tools/README.md\` (if installed locally).
 - Configuration is in \`cursor-tools.config.json\` (or \`~/.cursor-tools/config.json\`).
 - API keys are loaded from \`.cursor-tools.env\` (or \`~/.cursor-tools/.env\`).
-- Browser commands require separate installation of Playwright: \`npm install --global playwright\` or \`npm install -g playwright\`.
+- ClickUp commands require a \`CLICKUP_API_TOKEN\` to be set in your \`.cursor-tools.env\` file.
 - The default Stagehand model is set in \`cursor-tools.config.json\`, but can be overridden with the \`--model\` option.
 - Available models depend on your configured provider (OpenAI or Anthropic) in \`cursor-tools.config.json\`.
 - repo has a limit of 2M tokens of context. The context can be reduced by filtering out files in a .repomixignore file.
