@@ -36,11 +36,12 @@ export class InstallCommand implements Command {
     const hasGemini = !!process.env.GEMINI_API_KEY;
     const hasOpenAI = !!process.env.OPENAI_API_KEY;
     const hasAnthropic = !!process.env.ANTHROPIC_API_KEY;
+    const hasClickUp = !!process.env.CLICKUP_API_TOKEN;
 
     // For Stagehand, we need either OpenAI or Anthropic
     const hasStagehandProvider = hasOpenAI || hasAnthropic;
 
-    if (hasPerplexity && hasGemini && (hasStagehandProvider || process.env.SKIP_STAGEHAND)) {
+    if (hasPerplexity && hasGemini && hasClickUp && (hasStagehandProvider || process.env.SKIP_STAGEHAND)) {
       return;
     }
 
@@ -66,6 +67,7 @@ export class InstallCommand implements Command {
         GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
         OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
         ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY || '',
+        CLICKUP_API_TOKEN: process.env.CLICKUP_API_TOKEN || '',
         SKIP_STAGEHAND: process.env.SKIP_STAGEHAND || '',
       };
 
@@ -77,6 +79,11 @@ export class InstallCommand implements Command {
       if (!hasGemini) {
         const key = await getUserInput('Enter your Gemini API key (or press Enter to skip): ');
         keys.GEMINI_API_KEY = key;
+      }
+
+      if (!hasClickUp) {
+        const key = await getUserInput('[https://app.clickup.com/settings/apps] Enter your ClickUp API token (or press Enter to skip): ');
+        keys.CLICKUP_API_TOKEN = key;
       }
 
       // Handle Stagehand setup
