@@ -108,17 +108,21 @@ This command will:
 
 `cursor-tools` uses Perplexity because Perplexity has the best web search api and indexes and it does not hallucinate. Perplexity Pro users can get an API key with their pro account and recieve $5/month of free credits (at time of writing). Support for Google search grounding is coming soon but so far testing has shown it still frequently hallucinates things like APIs and libraries that don't exist.
 
-
-## Additional Examples
-
-To see cursor-tools GitHub and Perplexity skills: Check out [this example issue that was solved using Cursor agent and cursor-tools](https://github.com/eastlondoner/cursor-tools/issues/1)
-
-Tips:
+## Tips:
 
 - Ask Cursor Agent to have Gemini review its work
 - Ask Cursor Agent to generate documentation for external dependencies and write it to a local-docs/ folder
 
 If you do something cool with `cursor-tools` please let me know on twitter or make a PR to add to this section!
+
+## Additional Examples
+
+### GitHub Skills
+To see cursor-tools GitHub and Perplexity skills: Check out [this example issue that was solved using Cursor agent and cursor-tools](https://github.com/eastlondoner/cursor-tools/issues/1)
+
+### Gemini code review
+See cursor get approximately 5x more work done per-prompt with Gemini code review:
+<img width="1701" alt="long view export" src="https://github.com/user-attachments/assets/a8a63f4a-1818-4e84-bb1f-0f60d82c1c42" />
 
 ## Detailed Cursor Usage
 
