@@ -226,6 +226,23 @@ export class OpenCommand implements Command {
           }
         }
 
+        // Get actual window dimensions when taking screenshot of existing browser
+        if (options.connectTo && options.screenshot) {
+          // Get window dimensions from inside the browser context
+          const dimensions = await page.evaluate(() => {
+            return {
+              width: window.innerWidth * window.devicePixelRatio,
+              height: window.innerHeight * window.devicePixelRatio,
+            };
+          });
+          yield `Using actual window dimensions: ${Math.round(dimensions.width)}x${Math.round(dimensions.height)}`;
+          // Update the options with the correct dimensions for the screenshot
+          options.screenshotDimensions = {
+            width: Math.round(dimensions.width),
+            height: Math.round(dimensions.height),
+          };
+        }
+
         // Output console and network messages
         for (const message of outputMessages(consoleMessages, networkMessages, options)) {
           yield message;

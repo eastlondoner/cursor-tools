@@ -158,10 +158,19 @@ export async function setupNetworkMonitoring(
  */
 export async function captureScreenshot(
   page: Page,
-  options: SharedBrowserCommandOptions
+  options: { screenshot?: string; screenshotDimensions?: { width: number; height: number } }
 ): Promise<void> {
   if (options.screenshot) {
-    await page.screenshot({ path: options.screenshot, fullPage: true });
+    await page.screenshot({
+      path: options.screenshot,
+      ...(options.screenshotDimensions && {
+        clip: {
+          x: 0,
+          y: 0,
+          ...options.screenshotDimensions,
+        },
+      }),
+    });
   }
 }
 

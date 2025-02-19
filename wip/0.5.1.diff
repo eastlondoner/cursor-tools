@@ -1,0 +1,1799 @@
+diff --git a/.cursor/rules/cursor-tool.mdc b/.cursor/rules/cursor-tool.mdc
+new file mode 100644
+index 0000000..ac665bf
+--- /dev/null
++++ b/.cursor/rules/cursor-tool.mdc
+@@ -0,0 +1,81 @@
++---
++description: Global Rule
++globs: 
++---
++<cursor-tools Integration>
++# Instructions
++Use the following commands to get AI assistance:
++
++**Web Search:**
++`cursor-tools web "<your question>"` - Get answers from the web using Perplexity AI (e.g., `cursor-tools web "latest weather in London"`)
++when using web for complex queries suggest writing the output to a file somewhere like local-research/<query summary>.md.
++
++**Repository Context:**
++`cursor-tools repo "<your question>"` - Get context-aware answers about this repository using Google Gemini (e.g., `cursor-tools repo "explain authentication flow"`)
++
++**Documentation Generation:**
++`cursor-tools doc [options]` - Generate comprehensive documentation for this repository (e.g., `cursor-tools doc --output docs.md`)
++when using doc for remote repos suggest writing the output to a file somewhere like local-docs/<repo-name>.md.
++
++**GitHub Information:**
++`cursor-tools github pr [number]` - Get the last 10 PRs, or a specific PR by number (e.g., `cursor-tools github pr 123`)
++`cursor-tools github issue [number]` - Get the last 10 issues, or a specific issue by number (e.g., `cursor-tools github issue 456`)
++
++**Browser Automation (Stateless):**
++`cursor-tools browser open <url> [options]` - Open a URL and capture page content, console logs, and network activity (e.g., `cursor-tools browser open "https://example.com" --html`)
++`cursor-tools browser act "<instruction>" --url=<url> [options]` - Execute actions on a webpage using natural language instructions (e.g., `cursor-tools browser act "Click Login" --url=https://example.com`)
++`cursor-tools browser observe "<instruction>" --url=<url> [options]` - Observe interactive elements on a webpage and suggest possible actions (e.g., `cursor-tools browser observe "interactive elements" --url=https://example.com`)
++`cursor-tools browser extract "<instruction>" --url=<url> [options]` - Extract data from a webpage based on natural language instructions (e.g., `cursor-tools browser extract "product names" --url=https://example.com/products`)
++
++**Notes on Browser Commands:**
++- All browser commands are stateless: each command starts with a fresh browser instance and closes it when done.
++- When using `--connect-to`, special URL values are supported:
++  - `current`: Use the existing page without reloading
++  - `reload-current`: Use the existing page and refresh it (useful in development)
++- Multi step workflows involving state or combining multiple actions are supported in the `act` command using the pipe (|) separator (e.g., `cursor-tools browser act "Click Login | Type 'user@example.com' into email | Click Submit" --url=https://example.com`)
++- Video recording is available for all browser commands using the `--video=<directory>` option. This will save a video of the entire browser interaction at 1280x720 resolution. The video file will be saved in the specified directory with a timestamp.
++- DO NOT ask browser act to "wait" for anything, the wait command is currently disabled in Stagehand.
++
++**Tool Recommendations:**
++- `cursor-tools web` is best for general web information not specific to the repository.
++- `cursor-tools repo` is ideal for repository-specific questions, planning, code review and debugging.
++- `cursor-tools doc` generates documentation for local or remote repositories.
++- `cursor-tools browser` is useful for testing and debugging web apps.
++
++**Running Commands:**
++1. **Installed version:** Use `cursor-tools <command>` (if in PATH) or `npm exec cursor-tools "<command>"`, `yarn cursor-tools "<command>"`, `pnpm cursor-tools "<command>"`.
++2. **Without installation:** Use `npx -y cursor-tools@latest "<command>"` or `bunx -y cursor-tools@latest "<command>"`.
++
++**General Command Options (Supported by all commands):**
++--model=<model name>: Specify an alternative AI model to use
++--max-tokens=<number>: Control response length
++--save-to=<file path>: Save command output to a file (in *addition* to displaying it)
++--help: View all available options (help is not fully implemented yet)
++
++**Documentation Command Options:**
++--from-github=<GitHub username>/<repository name>[@<branch>]: Generate documentation for a remote GitHub repository
++
++**GitHub Command Options:**
++--from-github=<GitHub username>/<repository name>[@<branch>]: Access PRs/issues from a specific GitHub repository
++
++**Browser Command Options (for 'open', 'act', 'observe', 'extract'):**
++--console: Capture browser console logs (enabled by default, use --no-console to disable)
++--html: Capture page HTML content
++--network: Capture network activity (enabled by default, use --no-network to disable)
++--screenshot=<file path>: Save a screenshot of the page
++--timeout=<milliseconds>: Set navigation timeout (default: 30000ms)
++--viewport=<width>x<height>: Set viewport size (e.g., 1280x720). When using --connect-to, viewport is only changed if this option is explicitly provided
++--headless: Run browser in headless mode (default: true)
++--no-headless: Show browser UI (non-headless mode) for debugging
++--connect-to=<port>: Connect to existing Chrome instance
++--wait=<duration or selector>: Wait after page load (e.g., '5s', '#element-id', 'selector:.my-class')
++--video=<directory>: Save a video recording of the browser interaction to the specified directory (1280x720 resolution). Not available when using --connect-to
++
++**Additional Notes:**
++- For detailed information, see `node_modules/cursor-tools/README.md` (if installed locally).
++- Configuration is in `cursor-tools.config.json` (or `~/.cursor-tools/config.json`).
++- API keys are loaded from `.cursor-tools.env` (or `~/.cursor-tools/.env`).
++- Browser commands require separate installation of Playwright: `npm install --save-dev playwright` or `npm install -g playwright`.
++- **Remember:** You're part of a team of superhuman expert AIs. Work together to solve complex problems.
++<!-- cursor-tools-version: 0.4.3-alpha.23 -->
++</cursor-tools Integration>
+\ No newline at end of file
+diff --git a/.prettierignore b/.prettierignore
+index 62f6b6e..e79dce1 100644
+--- a/.prettierignore
++++ b/.prettierignore
+@@ -28,3 +28,4 @@ coverage/
+ 
+ # Other
+ repomix-output.txt
++src/commands/browser/stagehand/stagehandScript.ts
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 1d95493..09ba463 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -9,6 +9,21 @@ All notable changes to this project will be documented in this file.
+ 
+ - Browser commands (`open`, `act`, `observe`, `extract`) now have `--console` and `--network` options enabled by default. Use `--no-console` and `--no-network` to disable them. 
+ - Improved page reuse in browser commands when using `--connect-to`: now reuses existing tabs instead of creating new ones for better state preservation
++- Improved error handling and type safety in cursor rules management
++- Enhanced directory creation order in installation process
++
++### Added
++- Support for new Cursor IDE project rules structure
++  - New installations now use `.cursor/rules/cursor-tools.mdc`
++  - Maintain compatibility with legacy `.cursorrules` file
++  - When both exist, prefer new path and show warning
++  - Updated documentation to reflect new path structure
++
++### Added
++- Added support for the `gpt-4o` model in browser commands (`act`, `extract`, `observe`)
++  - The model can be selected using the `--model=gpt-4o` command-line option
++  - The default model can be configured in `cursor-tools.config.json`
++  - If no model is specified, a default model is used based on the configured provider (OpenAI or Anthropic)
+ 
+ ## [0.4.3-alpha.23] - 2024-03-22
+ 
+diff --git a/README.md b/README.md
+index c1508b1..8a260eb 100644
+--- a/README.md
++++ b/README.md
+@@ -7,7 +7,8 @@
+ ### The AI Team
+ - Perplexity to search the web and perform deep research
+ - Gemini 2.0 for huge whole-codebase context window, search grounding and reasoning
+-- (coming soon) o3 for browser operation to test and debug web apps
++- Stagehand for browser operation to test and debug web apps (uses Anthropic or OpenAI models)
++
+ 
+ ### New Skills for your existing Agent
+ - Work with GitHub Issues and Pull Requests
+@@ -75,7 +76,7 @@ Here are two examples:
+ 
+ ## What is cursor-tools
+ 
+-`cursor-tools` provides a CLI that your **AI agent can use** to expand its capabilities. `cursor-tools` works with with Cursor (and is compatible with other agents), When you run `cursor-tools install` we automatically add a prompt section to your `.cursorrules` file so that it works out of the box with Cursor, there's not need for additional prompts.
++`cursor-tools` provides a CLI that your **AI agent can use** to expand its capabilities. `cursor-tools` works with with Cursor (and is compatible with other agents), When you run `cursor-tools install` we automatically add a prompt section to your Cursor project rules (`.cursor/rules/cursor-tools.mdc` or legacy `.cursorrules` file) so that it works out of the box with Cursor, there's no need for additional prompts.
+ 
+ `cursor-tools` requires a Perplexity API key and a Google AI API key.
+ 
+@@ -92,13 +93,16 @@ This command will:
+ 
+ 1. Add `cursor-tools` as a dev dependency in your package.json
+ 2. Guide you through API key configuration
+-3. Update your `.cursorrules` file for Cursor integration
++3. Update your Cursor project rules for Cursor integration (using `.cursor/rules/cursor-tools.mdc` or existing `.cursorrules`)
+ 
+ ## Requirements
+ 
+ - Node.js 18 or later
+ - Perplexity API key
+ - Google Gemini API key
++- For browser commands:
++  - Playwright (`npm install --global playwright`)
++  - OpenAI API key or Anthropic API key (for `act`, `extract`, and `observe` commands)
+ 
+ `cursor-tools` uses Gemini-2.0 because it is the only good LLM with a context window that goes up to 2 million tokens - enough to handle and entire codebase in one shot. Gemini 2.0 experimental models that we use by default are currently free to use on Google and you need a Google Cloud project to create an API key.
+ 
+@@ -144,6 +148,16 @@ Note: in most cases you can say "generate documentation" instead of "use cursor-
+ 
+ Note: in most cases you can say "fetch issue 123" or "fetch PR 321" instead of "use cursor-tools github" and it will work the same.
+ 
++### Use browser automation
++"Use cursor-tools to open the users page and check the error in the console logs, fix it"
++
++"Use cursor-tools to test the form field validation logic. Take screenshots of each state"
++
++"Use cursor-tools to open https://example.com/foo the and check the error in the network logs, what could be causing it?"
++
++Note: in most cases you can say "Use Stagehand" instead of "use cursor-tools" and it will work the same.
++
++
+ ## Authentication and API Keys
+ `cursor-tools` requires API keys for both Perplexity AI and Google Gemini. These can be configured in two ways:
+ 
+@@ -155,21 +169,28 @@ Note: in most cases you can say "fetch issue 123" or "fetch PR 321" instead of "
+    ```
+ 
+ 
+-## Core Features
++## AI Team Features
+ 
+-### Web Search
++### Perplexity: Web Search & Research
+ Use Perplexity AI to get up-to-date information directly within Cursor:
+ ```bash
+ cursor-tools web "What's new in TypeScript 5.7?"
+ ```
+ 
+-### Repository Context
+-Leverage Google Gemini for codebase-aware assistance:
++### Gemini 2.0: Repository Context
++Leverage Google Gemini 2.0 models with 1M+ token context windows for codebase-aware assistance:
+ ```bash
+ cursor-tools repo "Explain the authentication flow in this project, which files are involved?"
+ ```
+ 
+-### Browser Automation
++Repository context is created using Repomix. See repomix configuration section below for details on how to change repomix behaviour.
++
++Above 1M tokens cursor-tools will always send requests to Gemini 2.0 Pro as it is the only model that supports 1M+ tokens.
++
++The Gemini 2.0 Pro context limit is 2M tokens, you can add filters to .repomixignore if your repomix context is above this limit.
++
++
++### Stagehand: Browser Automation
+ Automate browser interactions for web scraping, testing, and debugging:
+ 
+ **Important:** The `browser` command requires the Playwright package to be installed separately in your project:
+@@ -181,154 +202,194 @@ yarn add playwright
+ pnpm add playwright
+ ```
+ 
+-#### Video Recording
+-All browser commands support video recording of the browser interaction. This is useful for debugging and documentation:
+-- Use `--video=<directory>` to enable recording
+-- Videos are saved at 1280x720 resolution
+-- Each recording gets a unique timestamp
+-- Recording starts when the browser opens and ends when it closes
+-- Videos are saved as .webm files
+-
+-Example:
++1. `open` - Open a URL and capture page content:
+ ```bash
+-# Record a video of filling out a form
+-cursor-tools browser act "Fill out registration form with name John Doe" --url "http://localhost:3000/signup" --video="./recordings"
+-```
++# Open and capture HTML content, console logs and network activity (enabled by default)
++cursor-tools browser open "https://example.com" --html
+ 
+-#### Complex Actions
+-The `act` command supports chaining multiple actions using the pipe (|) separator. This allows you to perform complex sequences of actions in a single command:
++# Take a screenshot
++cursor-tools browser open "https://example.com" --screenshot=page.png
+ 
++# Debug in an interactive browser session
++cursor-tools browser open "https://example.com" --connect-to=9222
++```
++
++2. `act` - Execute actions using natural language - Agent tells the browser-use agent what to do:
+ ```bash
+-# Login sequence
+-cursor-tools browser act "Click Login | Type 'user@example.com' into email | Type 'password123' into password | Click Submit" --url "http://localhost:3000/signup"
++# Single action
++cursor-tools browser act "Login as 'user@example.com'" --url "https://example.com/login"
+ 
+-# Form filling
+-cursor-tools browser act "Select 'Mr' from title | Type 'John' into first name | Type 'Doe' into last name | Click Next" --url "http://localhost:3000/register"
+-```
++# Multi-step workflow using pipe separator
++cursor-tools browser act "Click Login | Type 'user@example.com' into email | Click Submit" --url "https://example.com"
+ 
+-Each instruction is executed in sequence, and the command will fail if any step fails. You can combine this with video recording and console and network logging to debug complex interactions:
++# Record interaction video
++cursor-tools browser act "Fill out registration form" --url "https://example.com/signup" --video="./recordings"
++```
+ 
++3. `observe` - Analyze interactive elements:
+ ```bash
+-# Record a complex interaction
+-cursor-tools browser act "Click Login | Type credentials | Click Submit | Wait for dashboard" --url "https://example.com" --video="./debug-recordings" --console --network
++# Get overview of interactive elements
++cursor-tools browser observe "What can I interact with?" --url "https://example.com"
++
++# Find specific elements
++cursor-tools browser observe "Find the login form" --url "https://example.com"
+ ```
+ 
+-Examples:
++4. `extract` - Extract data using natural language:
+ ```bash
+-# Basic usage: Open a URL and capture its HTML content
+-cursor-tools browser open "http://localhost:3000" --html
++# Extract specific content
++cursor-tools browser extract "Get all product prices" --url "https://example.com/products"
+ 
+-# Add console logs and network monitoring
+-cursor-tools browser open "http://localhost:3000" --console --network
++# Save extracted content
++cursor-tools browser extract "Get article text" --url "https://example.com/blog" --html > article.html
+ 
+-# Capture a screenshot of the entire page
+-cursor-tools browser open "http://localhost:3000" --screenshot="page.png"
++# Extract with network monitoring
++cursor-tools browser extract "Get API responses" --url "https://example.com/api-test" --network
++```
+ 
+-# Debug with visible browser window (non-headless mode)
+-cursor-tools browser open "http://localhost:3000" --no-headless
++#### Browser Command Options
++All browser commands (`open`, `act`, `observe`, `extract`) support these options:
++- `--console`: Capture browser console logs (enabled by default, use `--no-console` to disable)
++- `--html`: Capture page HTML content (disabled by default)
++- `--network`: Capture network activity (enabled by default, use `--no-network` to disable)
++- `--screenshot=<file path>`: Save a screenshot of the page
++- `--timeout=<milliseconds>`: Set navigation timeout (default: 120000ms for Stagehand operations, 30000ms for navigation)
++- `--viewport=<width>x<height>`: Set viewport size (e.g., 1280x720).
++- `--headless`: Run browser in headless mode (default: true)
++- `--no-headless`: Show browser UI (non-headless mode) for debugging
++- `--connect-to=<port>`: Connect to existing Chrome instance. Special values: 'current' (use existing page), 'reload-current' (refresh existing page)
++- `--wait=<time:duration or selector:css-selector>`: Wait after page load (e.g., 'time:5s', 'selector:#element-id')
++- `--video=<directory>`: Save a video recording (1280x720 resolution, timestamped subdirectory). Not available when using --connect-to
++- `--url=<url>`: Required for `act`, `observe`, and `extract` commands
++
++
++**Notes on Connecting to an existing browser session with --connect-to**
++- DO NOT ask browser act to "wait" for anything, the wait command is currently disabled in Stagehand.
++- When using `--connect-to`, viewport is only changed if `--viewport` is explicitly provided
++- Video recording is not available when using `--connect-to`
++- Special `--connect-to` values:
++  - `current`: Use the existing page without reloading
++  - `reload-current`: Use the existing page and refresh it (useful in development)
+ 
+-# Advanced: Connect to an existing Chrome instance
+-cursor-tools browser open "http://localhost:3000" --connect-to=9222
++#### Video Recording
++All browser commands support video recording of the browser interaction in headless mode (not supported with --connect-to):
++- Use `--video=<directory>` to enable recording
++- Videos are saved at 1280x720 resolution in timestamped subdirectories
++- Recording starts when the browser opens and ends when it closes
++- Videos are saved as .webm files
++
++Example:
++```bash
++# Record a video of filling out a form
++cursor-tools browser act "Fill out registration form with name John Doe" --url "http://localhost:3000/signup" --video="./recordings"
++```
+ 
+-# AI-powered action: Click on a button using natural language instruction
+-cursor-tools browser act "Click on 'Get Started' button" --url "http://localhost:3000"
++#### Console and Network Logging
++Console logs and network activity are captured by default:
++- Use `--no-console` to disable console logging
++- Use `--no-network` to disable network logging
++- Logs are displayed in the command output
+ 
+-# AI-powered action: Multiple sequential actions using pipe separator and console and network logging
+-cursor-tools browser act "Click Login | Type 'user@example.com' into email | Click Submit" --url "http://localhost:3000/login" --console --network
++#### Complex Actions
++The `act` command supports chaining multiple actions using the pipe (|) separator:
+ 
+-# Record video of browser interaction
+-cursor-tools browser act "Fill out all fields on the registration form with dummy data" --url "http://localhost:3000/signup" --video="./recordings"
++```bash
++# Login sequence with console/network logging (enabled by default)
++cursor-tools browser act "Click Login | Type 'user@example.com' into email | Click Submit" --url "http://localhost:3000/login"
+ 
+-# AI-powered data extraction: Extract product names and prices
+-cursor-tools browser extract "Extract product names and prices" --url "http://localhost:3000/products"
++# Form filling with multiple fields
++cursor-tools browser act "Select 'Mr' from title | Type 'John' into first name | Type 'Doe' into last name | Click Next" --url "http://localhost:3000/register"
+ 
+-# AI-powered observation: List interactive elements on a page
+-cursor-tools browser observe "List all interactive elements" --url "http://localhost:3000/signup"
++# Record complex interaction
++cursor-tools browser act "Fill form | Submit | Verify success" --url "http://localhost:3000/signup" --video="./recordings"
+ ```
+ 
+-**Browser Command Options (for 'open', 'act', 'observe', 'extract'):**
+---console: Capture browser console logs (enabled by default, use --no-console to disable)
+---html: Capture page HTML content
+---network: Capture network activity (enabled by default, use --no-network to disable)
+---screenshot=<file path>: Save a screenshot of the page
+---timeout=<milliseconds>: Set navigation timeout (default: 30000ms)
+---viewport=<width>x<height>: Set viewport size (e.g., 1280x720)
+---headless: Run browser in headless mode (default: true)
+---no-headless: Show browser UI (non-headless mode) for debugging
+---connect-to=<port>: Connect to existing Chrome instance
+---wait=<duration or selector>: Wait after page load (e.g., '5s', '#element-id', 'selector:.my-class')
+---video=<directory>: Save a video recording of the browser interaction to the specified directory (1280x720 resolution)
+-
+-**Notes on Browser Commands:**
+-- All browser commands are stateless: each command starts with a fresh browser instance and closes it when done.
+-- Multi step workflows involving state or combining multiple actions are supported in the `act` command using the pipe (|) separator (e.g., `cursor-tools browser act "Click Login | Type 'user@example.com' into email | Click Submit" --url=https://example.com`)
+-- Video recording is available for all browser commands using the `--video=<directory>` option. This will save a video of the entire browser interaction at 1280x720 resolution. The video file will be saved in the specified directory with a timestamp.
+-- The `--console` and `--network` options are enabled by default. Use `--no-console` and `--no-network` to disable them.
+-
+-**Examples:**
++#### Troubleshooting Browser Commands
++Common issues and solutions:
+ 
+-```bash
+-# Open a URL, capturing console logs and network activity (enabled by default)
+-cursor-tools browser open "http://localhost:3000"
++1. **Element Not Found Errors**
++   - Use `--no-headless` to visually debug the page
++   - Use `browser observe` to see what elements Stagehand can identify
++   - Check if the element is in an iframe or shadow DOM
++   - Ensure the page has fully loaded (try increasing `--timeout`)
+ 
+-# Disable console and network monitoring
+-cursor-tools browser open "http://localhost:3000" --no-console --no-network
++2. **Stagehand API Errors**
++   - Verify your OpenAI or Anthropic API key is set correctly
++   - Check if you have sufficient API credits
++   - Try switching models using `--model`
+ 
+-# AI-powered action: Multiple sequential actions using pipe separator (console and network logging are enabled by default)
+-cursor-tools browser act "Click Login | Type 'user@example.com' into email | Click Submit" --url "http://localhost:3000/login"
++3. **Network Errors**
++   - Check your internet connection
++   - Verify the target website is accessible
++   - Try increasing the timeout with `--timeout`
++   - Check if the site blocks automated access
+ 
+-# AI-powered action: Multiple sequential actions with console and network logging explicitly disabled
+-cursor-tools browser act "Click Login | Type 'user@example.com' into email | Click Submit" --url "http://localhost:3000/login" --no-console --no-network
+-```
+-
+-### Documentation Generation
+-Generate comprehensive documentation for your repository or any GitHub repository:
+-```bash
+-# Document local repository
+-cursor-tools doc
++4. **Video Recording Issues**
++   - Ensure the target directory exists and is writable
++   - Check disk space
++   - Video recording is not available with `--connect-to`
+ 
+-# Document remote GitHub repository
+-cursor-tools doc --from-github=username/repo-name
+-cursor-tools doc --from-github=username/repo-name@branch  # Specify branch
+-cursor-tools doc --from-github=https://github.com/username/repo-name@branch  # HTTPS URL format
++5. **Performance Issues**
++   - Use `--headless` mode for better performance (default)
++   - Reduce the viewport size with `--viewport`
++   - Consider using `--connect-to` for development
+ 
+-# Save documentation to file
+-# This is really useful to generate local documentation for libraries and dependencies
+-cursor-tools doc --from-github=eastlondoner/cursor-tools --save-to=docs/CURSOR-TOOLS.md
+-cursor-tools doc --from-github=eastlondoner/cursor-tools --save-to=docs/CURSOR-TOOLS.md --hint="only information about the doc command"
+-```
+ 
++## Skills
+ 
+ ### GitHub Integration
+-Access GitHub issues and pull requests directly from the command line:
++Access GitHub issues and pull requests directly from the command line with rich formatting and full context:
++
+ ```bash
+-# List recent PRs
++# List recent PRs or issues
+ cursor-tools github pr
+-
+-# View specific PR with full discussion and code review comments
+-cursor-tools github pr 123
+-
+-# List recent issues
+ cursor-tools github issue
+ 
+-# View specific issue with full discussion thread
++# View specific PR or issue with full discussion
++cursor-tools github pr 123
+ cursor-tools github issue 456
+-
+-# Access other repositories using --from-github or --repo
+-cursor-tools github pr --from-github microsoft/vscode
+-cursor-tools github issue 789 --from-github microsoft/vscode
+ ```
+ 
+ The GitHub commands provide:
+-- If no PR/Issue number is specified, view of 10 most recent open PRs or issues
+-- If a PR/Issue number is specified, detailed view of specific PR or issue including:
++- View of 10 most recent open PRs or issues when no number specified
++- Detailed view of specific PR/issue including:
+   - PR/Issue description and metadata
+   - Code review comments grouped by file (PRs only)
+-  - Full Discussion thread
+-  - Labels, assignees, milestones and reviewers as appropriate
++  - Full discussion thread
++  - Labels, assignees, milestones and reviewers
+ - Support for both local repositories and remote GitHub repositories
+ - Markdown-formatted output for readability
+ 
++**Authentication Methods:**
++The commands support multiple authentication methods:
++1. GitHub token via environment variable: `GITHUB_TOKEN=your_token_here`
++2. GitHub CLI integration (if `gh` is installed and logged in)
++3. Git credentials (stored tokens or Basic Auth)
++
++Without authentication:
++- Public repositories: Limited to 60 requests per hour
++- Private repositories: Not accessible
++
++With authentication:
++- Public repositories: 5,000 requests per hour
++- Private repositories: Full access (with appropriate token scopes)
++
++### Documentation Generation (uses Gemini 2.0)
++Generate comprehensive documentation for your repository or any GitHub repository:
++```bash
++# Document local repository
++cursor-tools doc --output=docs.md
++
++# Document remote GitHub repository (both formats supported)
++cursor-tools doc --from-github=username/repo-name@branch
++cursor-tools doc --from-github=https://github.com/username/repo-name@branch
++
++# Save documentation to file (with and without a hint)
++# This is really useful to generate local documentation for libraries and dependencies
++cursor-tools doc --from-github=eastlondoner/cursor-tools --save-to=docs/CURSOR-TOOLS.md
++cursor-tools doc --from-github=eastlondoner/cursor-tools --save-to=docs/CURSOR-TOOLS.md --hint="only information about the doc command"
++```
++
+ 
+ ## Configuration
+ 
+@@ -341,11 +402,11 @@ Customize `cursor-tools` behavior by creating a `cursor-tools.config.json` file:
+     "maxTokens": 8000
+   },
+   "gemini": {
+-    "model": "gemini-2.0-flash-thinking-exp-01-21",
++    "model": "gemini-2.0-pro-exp-02-05",
+     "maxTokens": 10000
+   },
+   "tokenCount": {
+-    "encoding": "o200k_base"  // Tokenizer to use for token counting (options: o200k_base, cl100k_base, gpt2, r50k_base, p50k_base, p50k_edit)
++    "encoding": "o200k_base"
+   },
+   "browser": {
+     "defaultViewport": "1280x720",
+@@ -356,8 +417,9 @@ Customize `cursor-tools` behavior by creating a `cursor-tools.config.json` file:
+       "verbose": 1,
+       "debugDom": false,
+       "enableCaching": false,
+-      "llmProvider": "openai", // or "anthropic" or "google"
+-      "timeout": 30000 // Optional, timeout for operations in milliseconds
++      "model": "claude-3-5-sonnet-latest", // For Anthropic provider
++      "provider": "anthropic", // or "openai"
++      "timeout": 30000
+     }
+   }
+ }
+@@ -376,7 +438,8 @@ The configuration supports:
+ - `browser.stagehand.verbose`: Verbosity level for browser commands
+ - `browser.stagehand.debugDom`: Whether to enable debug output for browser commands
+ - `browser.stagehand.enableCaching`: Whether to enable caching for browser commands
+-- `browser.stagehand.llmProvider`: Language model provider for browser commands
++- `browser.stagehand.model`: The default model to use. See "Model Selection" below.
++- `browser.stagehand.provider`: The AI provider to use ("openai" or "anthropic"). Determines which API key is required.
+ - `browser.stagehand.timeout`: Timeout for operations in milliseconds
+ 
+ ### GitHub Authentication
+@@ -436,16 +499,69 @@ When generating documentation, cursor-tools uses Repomix to analyze your reposit
+ - Log files and temporary files
+ - Binary files and media files
+ 
++You can customize the files and folders to exclude by adding a `.repomixignore` file to your project root.
++
++Example `.repomixignore` file for a Laravel project:
++```
++vendor/
++public/
++database/
++storage/
++.idea
++.env
++```
++
+ This ensures that the documentation focuses on your actual source code and documentation files.
+ Support to customize the input files to include is coming soon - open an issue if you run into problems here.
+ 
++#### Model Selection
++
++The `browser` commands support different AI models for processing. You can select the model using the `--model` option:
++
++```bash
++# Use gpt-4o
++cursor-tools browser act "Click Login" --url "https://example.com" --model=gpt-4o
++
++# Use Claude 3.5 Sonnet
++cursor-tools browser act "Click Login" --url "https://example.com" --model=claude-3-5-sonnet-latest
++```
++
++You can set a default provider in your `cursor-tools.config.json` file under the `stagehand` section:
++
++```json
++{
++  "stagehand": {
++    "provider": "openai", // or "anthropic"
++  }
++}
++```
++
++You can also set a default model in your `cursor-tools.config.json` file under the `stagehand` section:
++
++```json
++{
++  "stagehand": {
++    "provider": "openai", // or "anthropic"
++    "model": "gpt-4o"
++  }
++}
++```
++
++If no model is specified (either on the command line or in the config), a default model will be used based on your configured provider:
++
++- **OpenAI:** `o3-mini`
++- **Anthropic:** `claude-3-5-sonnet-latest`
++
++Available models depend on your configured provider (OpenAI or Anthropic) in `cursor-tools.config.json` and your API key.
+ 
+ ### Cursor Configuration
+-`cursor-tools` automatically configures Cursor by updating your `.cursorrules` file during installation. This provides:
++`cursor-tools` automatically configures Cursor by updating your project rules during installation. This provides:
+ - Command suggestions
+ - Usage examples
+ - Context-aware assistance
+ 
++For new installations, we use the recommended `.cursor/rules/cursor-tools.mdc` path. For existing installations, we maintain compatibility with the legacy `.cursorrules` file. If both files exist, we prefer the new path and show a warning.
++
+ #### Cursor Agent Configuration:
+ 
+ To get the benefits of cursor-tools you should use Cursor agent in "yolo mode". Ideal settings:
+@@ -622,6 +738,12 @@ Contributions are welcome! Please feel free to submit a Pull Request. If you use
+ 
+ :link: [Take Vinted reselling to the next level](https://resoled.it)
+ 
++---
++
++### [iterate.com](https://iterate.com)
++**Build self-driving startups** with autonomous AI agents that run your company.
++
++:link: [AI Engineer in London? Join the startup revolution](https://iterate.com)
+ 
+ ## License
+ 
+diff --git a/eslint.config.js b/eslint.config.js
+index 2d6561f..e2d4e29 100644
+--- a/eslint.config.js
++++ b/eslint.config.js
+@@ -7,6 +7,7 @@ export default [
+   eslint.configs.recommended,
+   {
+     files: ['src/**/*.ts', 'src/*.ts'],
++    ignores: ['src/commands/browser/stagehand/stagehandScript.ts'],
+     languageOptions: {
+       parser: tseslintParser,
+       parserOptions: {
+diff --git a/local-docs/cursor-tools-remote.md b/local-docs/cursor-tools-remote.md
+deleted file mode 100644
+index 8c38c62..0000000
+--- a/local-docs/cursor-tools-remote.md
++++ /dev/null
+@@ -1,134 +0,0 @@
+-
+---- Repository Documentation ---
+-
+-# Cursor Tools Documentation
+-
+-## Repository Purpose and Summary
+-
+-`cursor-tools` enhances AI-powered development agents and IDEs. It provides AI-powered web queries and codebase understanding. It integrates with Cursor and other agents using Perplexity AI for web searches and Google Gemini for repository-aware assistance. It's an npm package with a CLI to extend agent capabilities.
+-
+-## Quick Start
+-
+-1.  **Installation:**
+-
+-    Run this interactive setup in your project's root directory:
+-    ```bash
+-    npx cursor-tools@latest install .
+-    ```
+-    This installs `cursor-tools`, configures API keys, and updates `.cursorrules`.
+-
+-2.  **Basic Usage:**
+-
+-    *   **Web Search (Perplexity AI):**
+-
+-        ```bash
+-        cursor-tools web "Your question here"
+-        ```
+-
+-    *   **Repository Context (Google Gemini):**
+-
+-        ```bash
+-        cursor-tools repo "Your question about the codebase"
+-        ```
+-    If it is not globally installed you can use:
+-
+-    ```bash
+-     npx -y cursor-tools@latest web "query"
+-    ```
+-
+-## Configuration
+-
+-### API Keys
+-
+-`cursor-tools` needs API keys for Perplexity AI and Google Gemini. Set them up using:
+-
+-1.  **Interactive Setup**: `cursor-tools install` guides you through the process.
+-
+-2.  **Manual Setup**: Create `.cursor-tools.env` in your project root, or `~/.cursor-tools/.env` in home directory:
+-
+-    ```
+-    PERPLEXITY_API_KEY="your-perplexity-api-key"
+-    GEMINI_API_KEY="your-gemini-api-key"
+-    ```
+-
+-### Default Settings
+-
+-Customize with `cursor-tools.config.json`:
+-```json
+-{
+-  "perplexity": {
+-    "model": "sonar-pro",
+-    "maxTokens": 8000
+-  },
+-  "gemini": {
+-    "model": "gemini-2.0-flash-thinking-exp-01-21",
+-    "maxTokens": 10000
+-  }
+-}
+-```
+-
+-## Core Features
+-
+-### Web Search
+-
+-Get current web info:
+-
+-```bash
+-cursor-tools web "What's new in TypeScript 5.7?"
+-```
+-
+-### Repository Context
+-
+-Get codebase-aware answers:
+-
+-```bash
+-cursor-tools repo "Explain the authentication flow."
+-```
+-
+-### Documentation Generation
+-Create docs for your repository or a GitHub repo:
+-
+-```bash
+-# Local
+-cursor-tools doc "Generate documentation"
+-
+-# Remote GitHub repo
+-cursor-tools doc "Generate documentation" --fromGithub=username/repo-name
+-cursor-tools doc "Generate documentation" --fromGithub=username/repo-name@branch # Specific branch
+-
+-# Save to file
+-cursor-tools doc "Generate documentation" --output=docs/README.md
+-```
+-
+-### Command Options
+-*   `--model`: Choose a different model.
+-*   `--maxTokens`: Set the maximum response length.
+-*   `--help`: All available options.
+-*   `--fromGithub`: Generate docs from a remote GitHub repository (For documentation).
+-*    `--output`: Save the documentation to a specified file (For documentation).
+-
+-## Cursor Integration
+-
+-`cursor-tools` sets up Cursor by changing `.cursorrules` on installation. This provides command suggestions and context-aware help.
+-
+-Use Cursor agent in "yolo mode."
+-
+-## Troubleshooting
+-
+-### Common Issues
+-
+-1.  **Command Not Found:**
+-    *   Install `cursor-tools` (globally or as dev dependency).
+-    *   Check your PATH if globally installed.
+-
+-2.  **API Key Errors:**
+-    *   Make sure `.cursor-tools.env` file exists and has correct API keys.
+-    *   Run `cursor-tools install` again to set up the API keys.
+-
+-3.  **Model Errors:**
+-    *   Check internet connection.
+-    *   Check API key permissions.
+-    *   Make sure the model is available for your API tier.
+-
+-
+---- End of Documentation ---
+diff --git a/local-docs/cursor-tools.md b/local-docs/cursor-tools.md
+deleted file mode 100644
+index 8c4776e..0000000
+--- a/local-docs/cursor-tools.md
++++ /dev/null
+@@ -1,279 +0,0 @@
+-
+---- Repository Documentation ---
+-
+-# cursor-tools
+-
+-## What is it?
+-
+-`cursor-tools` is an npm package that extends the capabilities of AI-powered development environments (like Cursor) by providing a command-line interface (CLI) for web queries, repository analysis, documentation generation, and GitHub integration. It leverages Perplexity AI for web searches and Google Gemini for in-depth, context-aware code understanding.
+-
+-## Quick Start
+-
+-### Requirements
+-
+--   Node.js 18 or later
+--   Perplexity API key
+--   Google Gemini API key
+-
+-### Installation
+-
+-1.  **Install:**
+-    Run the interactive setup within your project directory:
+-
+-    ```bash
+-    npx cursor-tools@latest install .
+-    ```
+-
+-    This will:
+-
+-    -   Add `cursor-tools` as a dev dependency to your `package.json`.
+-    -   Guide you through setting up API keys (or you can set them manually).
+-    -   Update your `.cursorrules` file for integration with Cursor.
+-
+-2.  **API Keys:**
+-    The install command should prompt to enter your API Keys, but, if this does not happen, you can enter them manually. `cursor-tools` requires API keys for both Perplexity AI and Google Gemini. Create a `.cursor-tools.env` file in your project root (or `~/.cursor-tools/.env` in your home directory) with the following content:
+-
+-    ```
+-    PERPLEXITY_API_KEY="your-perplexity-api-key"
+-    GEMINI_API_KEY="your-gemini-api-key"
+-    ```
+-    Replace the placeholders with your actual API keys.
+-
+-### Basic Usage
+-
+-Once installed, your AI coding assistant (e.g., within Cursor) can utilize `cursor-tools` commands. Below is a simplified summary, and later sections of this document provide more detail.
+-
+-1.  **Web Search (Perplexity AI):**
+-    ```bash
+-    cursor-tools web "your question"
+-    ```
+-
+-2.  **Repository Context (Google Gemini):**
+-    ```bash
+-    cursor-tools repo "your question about the codebase"
+-    ```
+-
+-3. **Documentation Generation:**
+-    ```bash
+-    cursor-tools doc  # Documents the current local repository
+-    cursor-tools doc --from-github username/repo # Documents a remote Github repository
+-    cursor-tools doc --output filepath # Save to file
+-    ```
+-4. **GitHub Integration:**
+-   ```bash
+-   cursor-tools github pr [number] # List or view PRs.
+-   cursor-tools github issue [number] #List or view Issues.
+-   ```
+-
+-## Configuration
+-
+-You can customize `cursor-tools` by creating a `cursor-tools.config.json` file in your project root (or `~/.cursor-tools/config.json` in your home directory):
+-
+-```json
+-{
+-  "perplexity": {
+-    "model": "sonar-pro",
+-    "maxTokens": 4000
+-  },
+-  "gemini": {
+-    "model": "gemini-2.0-flash-thinking-exp-01-21",
+-    "maxTokens": 10000
+-  },
+-  "doc": {
+-      "maxRepoSizeMB": 100
+-  }
+-}
+-```
+-
+--   **`perplexity`:**
+-    -   `model`:  The Perplexity AI model to use (default: `"sonar-pro"`).
+-    -   `maxTokens`: The maximum number of tokens in the Perplexity AI response (default: `4000`).
+--   **`gemini`:**
+-    -   `model`: The Google Gemini model to use (default: `"gemini-2.0-flash-thinking-exp-01-21"`).  `cursor-tools` will automatically switch to `"gemini-2.0-pro-exp-02-05"` if the repository token count exceeds 800,000.
+-    -   `maxTokens`: The maximum number of tokens in the Gemini response (default: `10000`).
+--   **`doc`**:
+-    -   `maxRepoSizeMB`: Maximum repository size in MB for *remote* processing, used with `cursor-tools doc --from-github`.  Default is 100MB.  Larger repos should be cloned and documented locally.
+-
+-## Public Features / API / Interfaces
+-
+-`cursor-tools` provides the following commands, which are designed to be used primarily by an AI agent, but can also be used directly from the command line.
+-
+-### 1. `web` Command
+-
+-Performs web searches using Perplexity AI.
+-
+-**Interface:**
+-
+-```typescript
+-interface Command {
+-  execute(query: string, options?: CommandOptions): CommandGenerator;
+-}
+-
+-type CommandGenerator = AsyncGenerator<string, void, unknown>;
+-
+-interface CommandOptions {
+-  model?: string;        // Perplexity model name.
+-  maxTokens?: number;    // Maximum tokens in response.
+-  saveTo?: string;       // Path to save the output, in *addition* to printing to stdout.
+-  hint?: string;         // Additional context/hint for the AI.
+-}
+-```
+-
+-**Usage:**
+-
+-```bash
+-cursor-tools web "What is the latest version of React?"  # Basic search
+-cursor-tools web --model sonar-pro "Explain quantum computing" # Specify model.
+-cursor-tools web "How do I use fetch in JavaScript?" --max-tokens 500 --save-to output.txt # Limit tokens and save.
+-```
+-
+-**Dependencies:**
+-
+--   Perplexity API key (set as `PERPLEXITY_API_KEY` environment variable).
+--   `eventsource-client` npm package for streaming responses.
+-
+-### 2. `repo` Command
+-
+-Provides context-aware answers about the current repository using Google Gemini.
+-
+-**Interface:**  (Uses the same `Command`, `CommandGenerator`, and `CommandOptions` interfaces as `web`.)
+-
+-```typescript
+-interface CommandOptions {
+-  model?: string;        // Gemini model name.
+-  maxTokens?: number;    // Maximum tokens in response.
+-  saveTo?: string;       // Path to save the output, in *addition* to printing to stdout.
+-  hint?: string;        // Additional context/hint for the AI.
+-}
+-```
+-
+-**Usage:**
+-
+-```bash
+-cursor-tools repo "Explain the purpose of the src/config.ts file"
+-cursor-tools repo "How does authentication work in this project?" --model gemini-pro
+-cursor-tools repo "List all public functions in src/commands/index.ts" --save-to functions.txt
+-```
+-
+-**Dependencies:**
+-
+--   Google Gemini API key (set as `GEMINI_API_KEY` environment variable).
+--   `repomix` npm package to pack the repository context.
+-
+-### 3. `doc` Command
+-
+-Generates documentation for a repository.
+-
+-**Interface:** (Uses the same `Command` and `CommandGenerator` interfaces as `web`).
+-
+-```typescript
+-interface DocCommandOptions extends CommandOptions {
+-  output?: string;      // Optional output file path.  If omitted, prints to stdout.
+-  fromGithub?: string;  // GitHub URL or 'username/reponame[@branch]'
+-}
+-```
+-
+-**Usage:**
+-
+-```bash
+-cursor-tools doc  # Documents the local repository, output to stdout.
+-cursor-tools doc --output docs.md # Documents local repo, saves to docs.md
+-cursor-tools doc --from-github eastlondoner/cursor-tools # Documents a remote GitHub repo.
+-cursor-tools doc --from-github eastlondoner/cursor-tools@main --output cursor-tools-docs.md # Specify branch and output file.
+-cursor-tools doc --hint "Focus on the public API" --output api-docs.md
+-```
+-
+-**Dependencies:**
+-
+--   Google Gemini API key (set as `GEMINI_API_KEY` environment variable).
+--   `repomix` npm package for local repository packing.  For remote repositories, the Repomix API (`api.repomix.com`) is used.
+--   `node:fs` for file operations.
+-
+-### 4. `github` Command
+-Accesses information from GitHub, including pull requests and issues.
+-**Interface:**
+-```typescript
+-interface GithubOptions extends CommandOptions {
+-  repo?: string;
+-  fromGithub?: string;
+-}
+-```
+-
+-**Subcommands:**
+-  - `pr`: Accesses pull request information.
+-    **Usage**:
+-    ```bash
+-    cursor-tools github pr # Lists recent PRs.
+-    cursor-tools github pr 123 # Shows details for PR #123.
+-    cursor-tools github pr --from-github owner/repo # Lists PRs from a remote repository.
+-    cursor-tools github pr 123 --from-github owner/repo # Shows details of remote PR #123.
+-    ```
+-  - `issue`: Accesses issue information.
+-     **Usage**:
+-    ```bash
+-    cursor-tools github issue # Lists recent issues.
+-    cursor-tools github issue 456 # Shows details for Issue #456.
+-    cursor-tools github issue --from-github owner/repo # Lists issues from remote repository.
+-    cursor-tools github issue 456 --from-github owner/repo # Shows details of remote issue #456.
+-    ```
+-**Dependencies:**
+-
+--   GitHub authentication (see below).
+-
+-### 5. `install` command
+-Installs `cursor-tools` into a repository.
+-**Interface:**
+-```typescript
+-interface InstallOptions extends CommandOptions {
+-  packageManager?: 'npm' | 'yarn' | 'pnpm';
+-}
+-```
+-**Usage:**
+-
+-```bash
+-npx cursor-tools@latest install . # Install in the current directory.
+-```
+-**Dependencies:**
+-   -   `node:fs` for file operations.
+-   -   `node:path` for path manipulation.
+-   -   `node:os` for accessing the user's home directory.
+-
+-## GitHub Authentication
+-
+-The `github` command supports multiple authentication methods, tried in this order:
+-
+-1.  **`GITHUB_TOKEN` environment variable:**  Set this to a personal access token with `repo` and `read:user` scopes.
+-2.  **GitHub CLI (`gh`):** If installed and logged in, `cursor-tools` will use it to generate temporary tokens.
+-3.  **Git Credentials:** If you've authenticated with GitHub via HTTPS, `cursor-tools` will try to use those credentials.  It looks for tokens starting with `ghp_` or `gho_`, or uses Basic Auth if those aren't found.
+-
+-If no authentication is available, the command will use unauthenticated access, which has significantly lower rate limits.
+-
+-## Advanced Usage Examples
+-
+-- **Combining commands:**  An AI agent could use `cursor-tools web` to research a topic, then use `cursor-tools repo` to apply that knowledge to the current codebase.
+-
+-- **Iterative refinement:** An AI agent could use multiple `cursor-tools repo` calls with different `hint` values to progressively refine its understanding of a complex code section.
+-
+-- **Automated documentation updates:**  A script could use `cursor-tools doc --output` to automatically regenerate documentation whenever the codebase changes.
+-
+-- **GitHub Workflow Integration**: You could set up a GitHub Action that runs `cursor-tools doc --from-github` on a schedule or on pushes to the `main` branch, automatically updating your project's documentation.
+-
+-## Dependencies
+-
+--   **`dotenv`:** Loads environment variables from `.env` files.
+--   **`eventsource-client`:**  Used by the `web` command to handle streaming responses from Perplexity AI.
+--   **`repomix`:** Used by the `repo` and `doc` commands to pack the repository context.
+--   Node.js built-in modules: `fs`, `path`, `os`, `child_process`, `url`.
+-
+-## .cursorrules File
+-
+-The `.cursorrules` file is updated by the `install` command to provide instructions to the Cursor AI.  It includes:
+-
+--   A list of available `cursor-tools` commands.
+--   Explanations of when to use each command.
+--   Instructions on how to run the commands (both installed and in development).
+--   Notes about configuration and API keys.
+--   A version number (`cursor-tools-version`) to track updates.  The `checkCursorRules` function in `src/cursorrules.ts` checks this version and warns the user if an update is needed.
+-
+-
+---- End of Documentation ---
+diff --git a/local-docs/cursorrules-folder.md b/local-docs/cursorrules-folder.md
+new file mode 100644
+index 0000000..36739f2
+--- /dev/null
++++ b/local-docs/cursorrules-folder.md
+@@ -0,0 +1,26 @@
++Querying Perplexity AI using sonar-pro for: What is the new cursor rules directory format? How does it differ from the old format? What are the benefits? Save to local-docs/cursorrules-folder.md
++The new Cursor rules directory format is `.cursor/rules/`. It replaces the old single `.cursorrules` file format[1][2].
++
++Key differences:
++- Multiple rule files can be created in the `.cursor/rules/` directory instead of a single file[1][2]
++- Rules can have descriptions and glob patterns to specify when they apply[5]
++- Rules are automatically chosen by the Agent based on context[1]
++
++Benefits:
++- More granular control over AI behavior in different parts of a project[2]
++- Folder-specific configurations[2] 
++- Automatic attachment of relevant rules when matching files are referenced[2]
++- Better organization for complex projects like monorepos[3]
++
++Example structure:
++```
++.cursor/
++  rules/
++    rule_a.txt
++    rule_b.txt
++    rule_c.txt
++```
++
++Rules can be created via the command palette: `Cmd + Shift + P` > `New Cursor Rule`[2].
++
++This new format provides more flexibility and control compared to the old single file approach, especially for larger projects with varying requirements across different sections.
+\ No newline at end of file
+diff --git a/package.json b/package.json
+index cfcc10f..57aa080 100644
+--- a/package.json
++++ b/package.json
+@@ -7,7 +7,7 @@
+     "ai",
+     "assistant"
+   ],
+-  "version": "0.5.0",
++  "version": "0.5.1-alpha.1",
+   "type": "module",
+   "main": "./dist/index.mjs",
+   "bin": {
+diff --git a/scripts/release.cjs b/scripts/release.cjs
+index 8bf5afb..cf58199 100644
+--- a/scripts/release.cjs
++++ b/scripts/release.cjs
+@@ -1,7 +1,8 @@
+-/* eslint-env node */
++/* eslint-env node, commonjs */
+ const { execSync } = require('child_process');
+ const { readFileSync } = require('fs');
+ const { resolve } = require('path');
++const { verifyStagehandScript } = require('./verify-stagehand.cjs');
+ 
+ function run(command) {
+   console.log(`> ${command}`);
+@@ -23,6 +24,10 @@ function hasGitChanges() {
+ }
+ 
+ try {
++  // Verify stagehand script matches
++  console.log('\nVerifying stagehand script...');
++  verifyStagehandScript();
++
+   // Run lint and build
+   run('npm run lint');
+   run('npm run build');
+diff --git a/scripts/verify-stagehand.cjs b/scripts/verify-stagehand.cjs
+new file mode 100644
+index 0000000..914d388
+--- /dev/null
++++ b/scripts/verify-stagehand.cjs
+@@ -0,0 +1,39 @@
++/* eslint-env node, commonjs */
++const { readFileSync } = require('fs');
++const { resolve } = require('path');
++
++function verifyStagehandScript() {
++  // Read our bundled script
++  const bundledScriptPath = resolve(__dirname, '../src/commands/browser/stagehand/stagehandScript.ts');
++  const bundledContent = readFileSync(bundledScriptPath, 'utf8');
++  
++  // Extract the actual script content from our bundled version (removing the export and comment)
++  const scriptMatch = bundledContent.match(/export const STAGEHAND_SCRIPT = "([\s\S]*)";/);
++  if (!scriptMatch) {
++    throw new Error('Could not find STAGEHAND_SCRIPT in bundled file');
++  }
++  const bundledScript = scriptMatch[1].replace(/\\n/g, '\n');
++
++  // Read the original script from node_modules
++  const originalScriptPath = resolve(__dirname, '../node_modules/@browserbasehq/stagehand/lib/dom/build/index.js');
++  const originalScript = readFileSync(originalScriptPath, 'utf8');
++
++  // Compare the scripts
++  if (bundledScript.trim() !== originalScript.trim()) {
++    throw new Error(
++      'Stagehand script mismatch detected!\n' +
++      'The bundled script in src/commands/browser/stagehand/stagehandScript.ts does not match\n' +
++      'the script in node_modules/@browserbasehq/stagehand/lib/dom/build/index.js\n\n' +
++      'Please update the bundled script to match the latest version.'
++    );
++  }
++
++  console.log('✓ Stagehand script verification passed');
++}
++
++// If this script is run directly
++if (require.main === module) {
++  verifyStagehandScript();
++}
++
++module.exports = { verifyStagehandScript }; 
+diff --git a/src/commands/browser/stagehand/act.ts b/src/commands/browser/stagehand/act.ts
+index b68613f..3e5913b 100644
+--- a/src/commands/browser/stagehand/act.ts
++++ b/src/commands/browser/stagehand/act.ts
+@@ -61,7 +61,7 @@ export class ActCommand implements Command {
+         headless: options?.headless ?? stagehandConfig.headless,
+         verbose: options?.debug || stagehandConfig.verbose ? 1 : 0,
+         debugDom: options?.debug ?? stagehandConfig.debugDom,
+-        modelName: getStagehandModel(stagehandConfig),
++        modelName: getStagehandModel(stagehandConfig, { model: options?.model }),
+         apiKey: getStagehandApiKey(stagehandConfig),
+         enableCaching: stagehandConfig.enableCaching,
+         logger: stagehandLogger(options?.debug ?? stagehandConfig.verbose),
+@@ -74,7 +74,7 @@ export class ActCommand implements Command {
+         console: options?.console === undefined ? true : options.console,
+       };
+ 
+-      console.log('using stagehand config', config);
++      console.log('using stagehand config', { ...config, apiKey: 'REDACTED' });
+       stagehand = new Stagehand(config);
+ 
+       await using _stagehand = {
+diff --git a/src/commands/browser/stagehand/config.ts b/src/commands/browser/stagehand/config.ts
+index 5fda916..778878b 100644
+--- a/src/commands/browser/stagehand/config.ts
++++ b/src/commands/browser/stagehand/config.ts
+@@ -1,4 +1,9 @@
+-import type { AvailableModel } from '@browserbasehq/stagehand';
++import { z } from 'zod';
++
++// Define available models
++export const availableModels = z.enum(['claude-3-5-sonnet-latest', 'o3-mini', 'gpt-4o']);
++
++export type AvailableModel = z.infer<typeof availableModels>;
+ 
+ export interface StagehandConfig {
+   provider: 'anthropic' | 'openai';
+@@ -7,6 +12,7 @@ export interface StagehandConfig {
+   debugDom: boolean;
+   enableCaching: boolean;
+   timeout?: number;
++  model?: string;
+ }
+ 
+ interface BrowserConfig {
+@@ -14,11 +20,13 @@ interface BrowserConfig {
+   defaultViewport?: string;
+   timeout?: number;
+   stagehand?: {
++    provider?: string;
+     headless?: boolean;
+     verbose?: boolean;
+     debugDom?: boolean;
+     enableCaching?: boolean;
+     timeout?: number;
++    model?: string;
+   };
+ }
+ 
+@@ -36,17 +44,43 @@ export function loadStagehandConfig(config: Config): StagehandConfig {
+   const debugDom = stagehandConfig.debugDom ?? false;
+   const enableCaching = stagehandConfig.enableCaching ?? false;
+   const timeout = stagehandConfig.timeout ?? 120000;
+-  let provider: 'anthropic' | 'openai';
++  let provider: 'anthropic' | 'openai' | undefined = stagehandConfig.provider?.toLowerCase() as any;
+ 
+-  // Set provider based on available API keys
+-  if (process.env.ANTHROPIC_API_KEY) {
+-    provider = 'anthropic';
+-  } else if (process.env.OPENAI_API_KEY) {
+-    provider = 'openai';
++  if (!provider) {
++    // Set provider based on available API keys
++    if (process.env.ANTHROPIC_API_KEY) {
++      provider = 'anthropic';
++      if (process.env.OPENAI_API_KEY) {
++        console.log('Defaulting to anthropic as AI provider for Stagehand');
++      }
++    } else if (process.env.OPENAI_API_KEY) {
++      provider = 'openai';
++    } else {
++      throw new Error(
++        'Either ANTHROPIC_API_KEY or OPENAI_API_KEY is required for Stagehand. Please set one in your environment or add it to ~/.cursor-tools/.env file.'
++      );
++    }
+   } else {
+-    throw new Error(
+-      'Either ANTHROPIC_API_KEY or OPENAI_API_KEY is required for Stagehand. Please set one in your environment or add it to ~/.cursor-tools/.env file.'
+-    );
++    switch (provider) {
++      case 'anthropic': {
++        if (!process.env.ANTHROPIC_API_KEY) {
++          throw new Error(
++            'ANTHROPIC_API_KEY is required for when Stagehand is configured for to use Anthropic. Please set one in your environment or add it to ~/.cursor-tools/.env file.'
++          );
++        }
++        break;
++      }
++      case 'openai': {
++        if (!process.env.OPENAI_API_KEY) {
++          throw new Error(
++            'OPENAI_API_KEY is required for when Stagehand is configured for to use Anthropic. Please set one in your environment or add it to ~/.cursor-tools/.env file.'
++          );
++        }
++        break;
++      }
++      default:
++        throw new Error('Unrecognized AI provider for stagehand ' + provider);
++    }
+   }
+ 
+   return {
+@@ -56,6 +90,7 @@ export function loadStagehandConfig(config: Config): StagehandConfig {
+     debugDom,
+     enableCaching,
+     timeout,
++    model: stagehandConfig.model,
+   };
+ }
+ 
+@@ -93,6 +128,40 @@ export function getStagehandApiKey(config: StagehandConfig): string {
+   return apiKey;
+ }
+ 
+-export function getStagehandModel(config: StagehandConfig): AvailableModel {
+-  return config.provider === 'anthropic' ? 'claude-3-5-sonnet-latest' : 'o3-mini';
++/**
++ * Get the Stagehand model to use based on the following precedence:
++ * 1. Command line option (--model)
++ * 2. Configuration file (cursor-tools.config.json)
++ * 3. Default model based on provider (claude-3-5-sonnet-latest for Anthropic, o3-mini for OpenAI)
++ *
++ * If both command line and config models are invalid, falls back to the default model for the provider.
++ *
++ * @param config The Stagehand configuration
++ * @param options Optional command line options
++ * @returns The model to use
++ */
++export function getStagehandModel(
++  config: StagehandConfig,
++  options?: { model?: string }
++): AvailableModel {
++  // If a model is specified, log a warning and use it
++  const modelToUse = options?.model ?? config.model;
++  const parseAttempt = availableModels.safeParse(modelToUse);
++  if (!parseAttempt.success) {
++    console.warn(
++      `Warning: Using unfamiliar model "${config.model}" this may be a mistake.` +
++        `Typical models are "claude-3-5-sonnet-latest" for Anthropic and "o3-mini" or "gpt-4o" for OpenAI.`
++    );
++    return modelToUse as AvailableModel;
++  }
++
++  // Otherwise use defaults
++  switch (config.provider) {
++    case 'anthropic': {
++      return 'claude-3-5-sonnet-latest';
++    }
++    case 'openai': {
++      return 'o3-mini';
++    }
++  }
+ }
+diff --git a/src/commands/browser/stagehand/extract.ts b/src/commands/browser/stagehand/extract.ts
+index 11d2a2e..d0641fc 100644
+--- a/src/commands/browser/stagehand/extract.ts
++++ b/src/commands/browser/stagehand/extract.ts
+@@ -29,7 +29,7 @@ overrideStagehandInit();
+ export class ExtractCommand implements Command {
+   async *execute(query: string, options?: SharedBrowserCommandOptions): CommandGenerator {
+     if (!query) {
+-      yield 'Please provide an extraction instruction and URL. Usage: browser extract "<instruction>" --url <url>';
++      yield 'Please provide an instruction and URL. Usage: browser extract "<instruction>" --url <url>';
+       return;
+     }
+ 
+@@ -54,7 +54,7 @@ export class ExtractCommand implements Command {
+         headless: options?.headless ?? stagehandConfig.headless,
+         verbose: options?.debug || stagehandConfig.verbose ? 1 : 0,
+         debugDom: options?.debug ?? stagehandConfig.debugDom,
+-        modelName: getStagehandModel(stagehandConfig),
++        modelName: getStagehandModel(stagehandConfig, { model: options?.model }),
+         apiKey: getStagehandApiKey(stagehandConfig),
+         enableCaching: stagehandConfig.enableCaching,
+         logger: stagehandLogger(options?.debug ?? stagehandConfig.verbose),
+@@ -67,7 +67,7 @@ export class ExtractCommand implements Command {
+         console: options?.console === undefined ? true : options.console,
+       };
+ 
+-      console.log('using stagehand config', config);
++      console.log('using stagehand config', { ...config, apiKey: 'REDACTED' });
+       stagehand = new Stagehand(config);
+ 
+       await using _stagehand = {
+diff --git a/src/commands/browser/stagehand/observe.ts b/src/commands/browser/stagehand/observe.ts
+index 111ab86..26c9e1f 100644
+--- a/src/commands/browser/stagehand/observe.ts
++++ b/src/commands/browser/stagehand/observe.ts
+@@ -38,7 +38,13 @@ interface ObservationResult {
+ 
+ export class ObserveCommand implements Command {
+   async *execute(query: string, options?: SharedBrowserCommandOptions): CommandGenerator {
+-    if (!options?.url) {
++    if (!query) {
++      yield 'Please provide an instruction and URL. Usage: browser observe "<instruction>" --url <url>';
++      return;
++    }
++
++    const url = options?.url;
++    if (!url) {
+       yield 'Please provide a URL using the --url option';
+       return;
+     }
+@@ -58,7 +64,7 @@ export class ObserveCommand implements Command {
+         headless: options?.headless ?? stagehandConfig.headless,
+         verbose: options?.debug || stagehandConfig.verbose ? 1 : 0,
+         debugDom: options?.debug ?? stagehandConfig.debugDom,
+-        modelName: getStagehandModel(stagehandConfig),
++        modelName: getStagehandModel(stagehandConfig, { model: options?.model }),
+         apiKey: getStagehandApiKey(stagehandConfig),
+         enableCaching: stagehandConfig.enableCaching,
+         logger: stagehandLogger(options?.debug ?? stagehandConfig.verbose),
+@@ -71,7 +77,7 @@ export class ObserveCommand implements Command {
+         console: options?.console === undefined ? true : options.console,
+       };
+ 
+-      console.log('using stagehand config', config);
++      console.log('using stagehand config', { ...config, apiKey: 'REDACTED' });
+       stagehand = new Stagehand(config);
+ 
+       await using _stagehand = {
+diff --git a/src/commands/browser/stagehand/scriptContent.ts b/src/commands/browser/stagehand/scriptContent.ts
+index 04e018f..c0027e2 100644
+--- a/src/commands/browser/stagehand/scriptContent.ts
++++ b/src/commands/browser/stagehand/scriptContent.ts
+@@ -1,6 +1,4 @@
+-import { readFileSync } from 'fs';
++import { STAGEHAND_SCRIPT } from './stagehandScript';
+ import { once } from '../../../utils/once';
+ 
+-export const scriptContent = once(() =>
+-  readFileSync('./node_modules/@browserbasehq/stagehand/lib/dom/build/index.js').toString()
+-);
++export const scriptContent = once(() => STAGEHAND_SCRIPT);
+diff --git a/src/commands/browser/stagehand/stagehandScript.ts b/src/commands/browser/stagehand/stagehandScript.ts
+new file mode 100644
+index 0000000..b3922d4
+--- /dev/null
++++ b/src/commands/browser/stagehand/stagehandScript.ts
+@@ -0,0 +1,3 @@
++// This script is copied from @browserbasehq/stagehand/lib/dom/build/index.js
++// It's stored directly in the codebase to avoid dependency path issues during distribution
++export const STAGEHAND_SCRIPT = "(() => {\n  // lib/dom/xpathUtils.ts\n  function getParentElement(node) {\n    return isElementNode(node) ? node.parentElement : node.parentNode;\n  }\n  function getCombinations(attributes, size) {\n    const results = [];\n    function helper(start, combo) {\n      if (combo.length === size) {\n        results.push([...combo]);\n        return;\n      }\n      for (let i = start; i < attributes.length; i++) {\n        combo.push(attributes[i]);\n        helper(i + 1, combo);\n        combo.pop();\n      }\n    }\n    helper(0, []);\n    return results;\n  }\n  function isXPathFirstResultElement(xpath, target) {\n    try {\n      const result = document.evaluate(\n        xpath,\n        document.documentElement,\n        null,\n        XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,\n        null\n      );\n      return result.snapshotItem(0) === target;\n    } catch (error) {\n      console.warn(`Invalid XPath expression: ${xpath}`, error);\n      return false;\n    }\n  }\n  function escapeXPathString(value) {\n    if (value.includes(\"'\")) {\n      if (value.includes('\"')) {\n        return \"concat(\" + value.split(/('+)/).map((part) => {\n          if (part === \"'\") {\n            return `\"'\"`;\n          } else if (part.startsWith(\"'\") && part.endsWith(\"'\")) {\n            return `\"${part}\"`;\n          } else {\n            return `'${part}'`;\n          }\n        }).join(\",\") + \")\";\n      } else {\n        return `\"${value}\"`;\n      }\n    } else {\n      return `'${value}'`;\n    }\n  }\n  async function generateXPathsForElement(element) {\n    if (!element) return [];\n    const [complexXPath, standardXPath, idBasedXPath] = await Promise.all([\n      generateComplexXPath(element),\n      generateStandardXPath(element),\n      generatedIdBasedXPath(element)\n    ]);\n    return [standardXPath, ...idBasedXPath ? [idBasedXPath] : [], complexXPath];\n  }\n  async function generateComplexXPath(element) {\n    const parts = [];\n    let currentElement = element;\n    while (currentElement && (isTextNode(currentElement) || isElementNode(currentElement))) {\n      if (isElementNode(currentElement)) {\n        const el = currentElement;\n        let selector = el.tagName.toLowerCase();\n        const attributePriority = [\n          \"data-qa\",\n          \"data-component\",\n          \"data-role\",\n          \"role\",\n          \"aria-role\",\n          \"type\",\n          \"name\",\n          \"aria-label\",\n          \"placeholder\",\n          \"title\",\n          \"alt\"\n        ];\n        const attributes = attributePriority.map((attr) => {\n          let value = el.getAttribute(attr);\n          if (attr === \"href-full\" && value) {\n            value = el.getAttribute(\"href\");\n          }\n          return value ? { attr: attr === \"href-full\" ? \"href\" : attr, value } : null;\n        }).filter((attr) => attr !== null);\n        let uniqueSelector = \"\";\n        for (let i = 1; i <= attributes.length; i++) {\n          const combinations = getCombinations(attributes, i);\n          for (const combo of combinations) {\n            const conditions = combo.map((a) => `@${a.attr}=${escapeXPathString(a.value)}`).join(\" and \");\n            const xpath2 = `//${selector}[${conditions}]`;\n            if (isXPathFirstResultElement(xpath2, el)) {\n              uniqueSelector = xpath2;\n              break;\n            }\n          }\n          if (uniqueSelector) break;\n        }\n        if (uniqueSelector) {\n          parts.unshift(uniqueSelector.replace(\"//\", \"\"));\n          break;\n        } else {\n          const parent = getParentElement(el);\n          if (parent) {\n            const siblings = Array.from(parent.children).filter(\n              (sibling) => sibling.tagName === el.tagName\n            );\n            const index = siblings.indexOf(el) + 1;\n            selector += siblings.length > 1 ? `[${index}]` : \"\";\n          }\n          parts.unshift(selector);\n        }\n      }\n      currentElement = getParentElement(currentElement);\n    }\n    const xpath = \"//\" + parts.join(\"/\");\n    return xpath;\n  }\n  async function generateStandardXPath(element) {\n    const parts = [];\n    while (element && (isTextNode(element) || isElementNode(element))) {\n      let index = 0;\n      let hasSameTypeSiblings = false;\n      const siblings = element.parentElement ? Array.from(element.parentElement.childNodes) : [];\n      for (let i = 0; i < siblings.length; i++) {\n        const sibling = siblings[i];\n        if (sibling.nodeType === element.nodeType && sibling.nodeName === element.nodeName) {\n          index = index + 1;\n          hasSameTypeSiblings = true;\n          if (sibling.isSameNode(element)) {\n            break;\n          }\n        }\n      }\n      if (element.nodeName !== \"#text\") {\n        const tagName = element.nodeName.toLowerCase();\n        const pathIndex = hasSameTypeSiblings ? `[${index}]` : \"\";\n        parts.unshift(`${tagName}${pathIndex}`);\n      }\n      element = element.parentElement;\n    }\n    return parts.length ? `/${parts.join(\"/\")}` : \"\";\n  }\n  async function generatedIdBasedXPath(element) {\n    if (isElementNode(element) && element.id) {\n      return `//*[@id='${element.id}']`;\n    }\n    return null;\n  }\n\n  // lib/dom/utils.ts\n  async function waitForDomSettle() {\n    return new Promise((resolve) => {\n      const createTimeout = () => {\n        return setTimeout(() => {\n          resolve();\n        }, 2e3);\n      };\n      let timeout = createTimeout();\n      const observer = new MutationObserver(() => {\n        clearTimeout(timeout);\n        timeout = createTimeout();\n      });\n      observer.observe(window.document.body, { childList: true, subtree: true });\n    });\n  }\n  window.waitForDomSettle = waitForDomSettle;\n  function calculateViewportHeight() {\n    return Math.ceil(window.innerHeight * 0.75);\n  }\n  function canElementScroll(elem) {\n    if (typeof elem.scrollTo !== \"function\") {\n      console.warn(\"canElementScroll: .scrollTo is not a function.\");\n      return false;\n    }\n    try {\n      const originalTop = elem.scrollTop;\n      elem.scrollTo({\n        top: originalTop + 100,\n        left: 0,\n        behavior: \"instant\"\n      });\n      if (elem.scrollTop === originalTop) {\n        throw new Error(\"scrollTop did not change\");\n      }\n      elem.scrollTo({\n        top: originalTop,\n        left: 0,\n        behavior: \"instant\"\n      });\n      return true;\n    } catch (error) {\n      console.warn(\"canElementScroll error:\", error.message || error);\n      return false;\n    }\n  }\n\n  // lib/dom/GlobalPageContainer.ts\n  var GlobalPageContainer = class {\n    getViewportHeight() {\n      return calculateViewportHeight();\n    }\n    getScrollHeight() {\n      return document.documentElement.scrollHeight;\n    }\n    async scrollTo(offset) {\n      await new Promise((resolve) => setTimeout(resolve, 1500));\n      window.scrollTo({ top: offset, left: 0, behavior: \"smooth\" });\n      await this.waitForScrollEnd();\n    }\n    async waitForScrollEnd() {\n      return new Promise((resolve) => {\n        let scrollEndTimer;\n        const handleScroll = () => {\n          clearTimeout(scrollEndTimer);\n          scrollEndTimer = window.setTimeout(() => {\n            window.removeEventListener(\"scroll\", handleScroll);\n            resolve();\n          }, 100);\n        };\n        window.addEventListener(\"scroll\", handleScroll, { passive: true });\n        handleScroll();\n      });\n    }\n  };\n\n  // lib/dom/ElementContainer.ts\n  var ElementContainer = class {\n    constructor(el) {\n      this.el = el;\n    }\n    getViewportHeight() {\n      return this.el.clientHeight;\n    }\n    getScrollHeight() {\n      return this.el.scrollHeight;\n    }\n    async scrollTo(offset) {\n      await new Promise((resolve) => setTimeout(resolve, 1500));\n      this.el.scrollTo({ top: offset, left: 0, behavior: \"smooth\" });\n      await this.waitForScrollEnd();\n    }\n    async waitForScrollEnd() {\n      return new Promise((resolve) => {\n        let scrollEndTimer;\n        const handleScroll = () => {\n          clearTimeout(scrollEndTimer);\n          scrollEndTimer = window.setTimeout(() => {\n            this.el.removeEventListener(\"scroll\", handleScroll);\n            resolve();\n          }, 100);\n        };\n        this.el.addEventListener(\"scroll\", handleScroll, { passive: true });\n        handleScroll();\n      });\n    }\n  };\n\n  // lib/dom/containerFactory.ts\n  function createStagehandContainer(obj) {\n    if (obj instanceof Window) {\n      return new GlobalPageContainer();\n    } else {\n      return new ElementContainer(obj);\n    }\n  }\n\n  // lib/dom/process.ts\n  function isElementNode(node) {\n    return node.nodeType === Node.ELEMENT_NODE;\n  }\n  function isTextNode(node) {\n    return node.nodeType === Node.TEXT_NODE && Boolean(node.textContent?.trim());\n  }\n  function getMainScrollableElement() {\n    const docEl = document.documentElement;\n    let mainScrollable = docEl;\n    const rootScrollDiff = docEl.scrollHeight - docEl.clientHeight;\n    let maxScrollDiff = rootScrollDiff;\n    const allElements = document.querySelectorAll(\"*\");\n    for (const elem of allElements) {\n      const style = window.getComputedStyle(elem);\n      const overflowY = style.overflowY;\n      const isPotentiallyScrollable = overflowY === \"auto\" || overflowY === \"scroll\" || overflowY === \"overlay\";\n      if (isPotentiallyScrollable) {\n        const candidateScrollDiff = elem.scrollHeight - elem.clientHeight;\n        if (candidateScrollDiff > maxScrollDiff) {\n          maxScrollDiff = candidateScrollDiff;\n          mainScrollable = elem;\n        }\n      }\n    }\n    if (mainScrollable !== docEl) {\n      if (!canElementScroll(mainScrollable)) {\n        console.log(\n          \"Stagehand (Browser Process): Unable to scroll candidate. Fallback to <html>.\"\n        );\n        mainScrollable = docEl;\n      }\n    }\n    return mainScrollable;\n  }\n  async function processDom(chunksSeen) {\n    const { chunk, chunksArray } = await pickChunk(chunksSeen);\n    const container = createStagehandContainer(window);\n    const { outputString, selectorMap } = await processElements(\n      chunk,\n      true,\n      0,\n      container\n    );\n    console.log(\n      `Stagehand (Browser Process): Extracted dom elements:\n${outputString}`\n    );\n    return {\n      outputString,\n      selectorMap,\n      chunk,\n      chunks: chunksArray\n    };\n  }\n  async function processAllOfDom() {\n    console.log(\"Stagehand (Browser Process): Processing all of DOM\");\n    const mainScrollable = getMainScrollableElement();\n    const container = mainScrollable === document.documentElement ? createStagehandContainer(window) : createStagehandContainer(mainScrollable);\n    const viewportHeight = container.getViewportHeight();\n    const documentHeight = container.getScrollHeight();\n    const totalChunks = Math.ceil(documentHeight / viewportHeight);\n    let index = 0;\n    const results = [];\n    for (let chunk = 0; chunk < totalChunks; chunk++) {\n      const result = await processElements(chunk, true, index, container);\n      results.push(result);\n      index += Object.keys(result.selectorMap).length;\n    }\n    await container.scrollTo(0);\n    const allOutputString = results.map((result) => result.outputString).join(\"\");\n    const allSelectorMap = results.reduce(\n      (acc, result) => ({ ...acc, ...result.selectorMap }),\n      {}\n    );\n    console.log(\n      `Stagehand (Browser Process): All dom elements: ${allOutputString}`\n    );\n    return {\n      outputString: allOutputString,\n      selectorMap: allSelectorMap\n    };\n  }\n  var xpathCache = /* @__PURE__ */ new Map();\n  async function processElements(chunk, scrollToChunk = true, indexOffset = 0, container) {\n    console.time(\"processElements:total\");\n    const stagehandContainer = container ?? createStagehandContainer(window);\n    const viewportHeight = stagehandContainer.getViewportHeight();\n    const totalScrollHeight = stagehandContainer.getScrollHeight();\n    const chunkHeight = viewportHeight * chunk;\n    const maxScrollTop = totalScrollHeight - viewportHeight;\n    const offsetTop = Math.min(chunkHeight, maxScrollTop);\n    if (scrollToChunk) {\n      console.time(\"processElements:scroll\");\n      await stagehandContainer.scrollTo(offsetTop);\n      console.timeEnd(\"processElements:scroll\");\n    }\n    console.log(\"Stagehand (Browser Process): Generating candidate elements\");\n    console.time(\"processElements:findCandidates\");\n    const DOMQueue = [...document.body.childNodes];\n    const candidateElements = [];\n    while (DOMQueue.length > 0) {\n      const element = DOMQueue.pop();\n      let shouldAddElement = false;\n      if (element && isElementNode(element)) {\n        const childrenCount = element.childNodes.length;\n        for (let i = childrenCount - 1; i >= 0; i--) {\n          const child = element.childNodes[i];\n          DOMQueue.push(child);\n        }\n        if (isInteractiveElement(element)) {\n          if (isActive(element) && isVisible(element)) {\n            shouldAddElement = true;\n          }\n        }\n        if (isLeafElement(element)) {\n          if (isActive(element) && isVisible(element)) {\n            shouldAddElement = true;\n          }\n        }\n      }\n      if (element && isTextNode(element) && isTextVisible(element)) {\n        shouldAddElement = true;\n      }\n      if (shouldAddElement) {\n        candidateElements.push(element);\n      }\n    }\n    console.timeEnd(\"processElements:findCandidates\");\n    const selectorMap = {};\n    let outputString = \"\";\n    console.log(\n      `Stagehand (Browser Process): Processing candidate elements: ${candidateElements.length}`\n    );\n    console.time(\"processElements:processCandidates\");\n    console.time(\"processElements:generateXPaths\");\n    const xpathLists = await Promise.all(\n      candidateElements.map(async (element) => {\n        if (xpathCache.has(element)) {\n          return xpathCache.get(element);\n        }\n        const xpaths = await generateXPathsForElement(element);\n        xpathCache.set(element, xpaths);\n        return xpaths;\n      })\n    );\n    console.timeEnd(\"processElements:generateXPaths\");\n    candidateElements.forEach((element, index) => {\n      const xpaths = xpathLists[index];\n      let elementOutput = \"\";\n      if (isTextNode(element)) {\n        const textContent = element.textContent?.trim();\n        if (textContent) {\n          elementOutput += `${index + indexOffset}:${textContent}\n`;\n        }\n      } else if (isElementNode(element)) {\n        const tagName = element.tagName.toLowerCase();\n        const attributes = collectEssentialAttributes(element);\n        const openingTag = `<${tagName}${attributes ? \" \" + attributes : \"\"}>`;\n        const closingTag = `</${tagName}>`;\n        const textContent = element.textContent?.trim() || \"\";\n        elementOutput += `${index + indexOffset}:${openingTag}${textContent}${closingTag}\n`;\n      }\n      outputString += elementOutput;\n      selectorMap[index + indexOffset] = xpaths;\n    });\n    console.timeEnd(\"processElements:processCandidates\");\n    console.timeEnd(\"processElements:total\");\n    return {\n      outputString,\n      selectorMap\n    };\n  }\n  function collectEssentialAttributes(element) {\n    const essentialAttributes = [\n      \"id\",\n      \"class\",\n      \"href\",\n      \"src\",\n      \"aria-label\",\n      \"aria-name\",\n      \"aria-role\",\n      \"aria-description\",\n      \"aria-expanded\",\n      \"aria-haspopup\",\n      \"type\",\n      \"value\"\n    ];\n    const attrs = essentialAttributes.map((attr) => {\n      const value = element.getAttribute(attr);\n      return value ? `${attr}=\"${value}\"` : \"\";\n    }).filter((attr) => attr !== \"\");\n    Array.from(element.attributes).forEach((attr) => {\n      if (attr.name.startsWith(\"data-\")) {\n        attrs.push(`${attr.name}=\"${attr.value}\"`);\n      }\n    });\n    return attrs.join(\" \");\n  }\n  function storeDOM() {\n    const originalDOM = document.body.cloneNode(true);\n    console.log(\"DOM state stored.\");\n    return originalDOM.outerHTML;\n  }\n  function restoreDOM(storedDOM) {\n    console.log(\"Restoring DOM\");\n    if (storedDOM) {\n      document.body.innerHTML = storedDOM;\n    } else {\n      console.error(\"No DOM state was provided.\");\n    }\n  }\n  function createTextBoundingBoxes() {\n    const style = document.createElement(\"style\");\n    document.head.appendChild(style);\n    if (style.sheet) {\n      style.sheet.insertRule(\n        `\n      .stagehand-highlighted-word, .stagehand-space {\n        border: 0px solid orange;\n        display: inline-block !important;\n        visibility: visible;\n      }\n    `,\n        0\n      );\n      style.sheet.insertRule(\n        `\n        code .stagehand-highlighted-word, code .stagehand-space,\n        pre .stagehand-highlighted-word, pre .stagehand-space {\n          white-space: pre-wrap;\n          display: inline !important;\n      }\n     `,\n        1\n      );\n    }\n    function applyHighlighting(root) {\n      root.querySelectorAll(\"body *\").forEach((element) => {\n        if (element.closest(\".stagehand-nav, .stagehand-marker\")) {\n          return;\n        }\n        if ([\"SCRIPT\", \"STYLE\", \"IFRAME\", \"INPUT\"].includes(element.tagName)) {\n          return;\n        }\n        const childNodes = Array.from(element.childNodes);\n        childNodes.forEach((node) => {\n          if (node.nodeType === 3 && node.textContent?.trim().length > 0) {\n            const textContent = node.textContent.replace(/\\u00A0/g, \" \");\n            const tokens = textContent.split(/(\\s+)/g);\n            const fragment = document.createDocumentFragment();\n            const parentIsCode = element.tagName === \"CODE\";\n            tokens.forEach((token) => {\n              const span = document.createElement(\"span\");\n              span.textContent = token;\n              if (parentIsCode) {\n                span.style.whiteSpace = \"pre-wrap\";\n                span.style.display = \"inline\";\n              }\n              span.className = token.trim().length === 0 ? \"stagehand-space\" : \"stagehand-highlighted-word\";\n              fragment.appendChild(span);\n            });\n            if (fragment.childNodes.length > 0 && node.parentNode) {\n              element.insertBefore(fragment, node);\n              node.remove();\n            }\n          }\n        });\n      });\n    }\n    applyHighlighting(document);\n    document.querySelectorAll(\"iframe\").forEach((iframe) => {\n      try {\n        iframe.contentWindow?.postMessage({ action: \"highlight\" }, \"*\");\n      } catch (error) {\n        console.error(\"Error accessing iframe content: \", error);\n      }\n    });\n  }\n  function getElementBoundingBoxes(xpath) {\n    const element = document.evaluate(\n      xpath,\n      document,\n      null,\n      XPathResult.FIRST_ORDERED_NODE_TYPE,\n      null\n    ).singleNodeValue;\n    if (!element) return [];\n    const isValidText = (text) => text && text.trim().length > 0;\n    let dropDownElem = element.querySelector(\"option[selected]\");\n    if (!dropDownElem) {\n      dropDownElem = element.querySelector(\"option\");\n    }\n    if (dropDownElem) {\n      const elemText = dropDownElem.textContent || \"\";\n      if (isValidText(elemText)) {\n        const parentRect = element.getBoundingClientRect();\n        return [\n          {\n            text: elemText.trim(),\n            top: parentRect.top + window.scrollY,\n            left: parentRect.left + window.scrollX,\n            width: parentRect.width,\n            height: parentRect.height\n          }\n        ];\n      } else {\n        return [];\n      }\n    }\n    let placeholderText = \"\";\n    if ((element.tagName.toLowerCase() === \"input\" || element.tagName.toLowerCase() === \"textarea\") && element.placeholder) {\n      placeholderText = element.placeholder;\n    } else if (element.tagName.toLowerCase() === \"a\") {\n      placeholderText = \"\";\n    } else if (element.tagName.toLowerCase() === \"img\") {\n      placeholderText = element.alt || \"\";\n    }\n    const words = element.querySelectorAll(\n      \".stagehand-highlighted-word\"\n    );\n    const boundingBoxes = Array.from(words).map((word) => {\n      const rect = word.getBoundingClientRect();\n      return {\n        text: word.innerText || \"\",\n        top: rect.top + window.scrollY,\n        left: rect.left + window.scrollX,\n        width: rect.width,\n        height: rect.height * 0.75\n      };\n    }).filter(\n      (box) => box.width > 0 && box.height > 0 && box.top >= 0 && box.left >= 0 && isValidText(box.text)\n    );\n    if (boundingBoxes.length === 0) {\n      const elementRect = element.getBoundingClientRect();\n      return [\n        {\n          text: placeholderText,\n          top: elementRect.top + window.scrollY,\n          left: elementRect.left + window.scrollX,\n          width: elementRect.width,\n          height: elementRect.height * 0.75\n        }\n      ];\n    }\n    return boundingBoxes;\n  }\n  window.processDom = processDom;\n  window.processAllOfDom = processAllOfDom;\n  window.processElements = processElements;\n  window.storeDOM = storeDOM;\n  window.restoreDOM = restoreDOM;\n  window.createTextBoundingBoxes = createTextBoundingBoxes;\n  window.getElementBoundingBoxes = getElementBoundingBoxes;\n  window.createStagehandContainer = createStagehandContainer;\n  var leafElementDenyList = [\"SVG\", \"IFRAME\", \"SCRIPT\", \"STYLE\", \"LINK\"];\n  var interactiveElementTypes = [\n    \"A\",\n    \"BUTTON\",\n    \"DETAILS\",\n    \"EMBED\",\n    \"INPUT\",\n    \"LABEL\",\n    \"MENU\",\n    \"MENUITEM\",\n    \"OBJECT\",\n    \"SELECT\",\n    \"TEXTAREA\",\n    \"SUMMARY\"\n  ];\n  var interactiveRoles = [\n    \"button\",\n    \"menu\",\n    \"menuitem\",\n    \"link\",\n    \"checkbox\",\n    \"radio\",\n    \"slider\",\n    \"tab\",\n    \"tabpanel\",\n    \"textbox\",\n    \"combobox\",\n    \"grid\",\n    \"listbox\",\n    \"option\",\n    \"progressbar\",\n    \"scrollbar\",\n    \"searchbox\",\n    \"switch\",\n    \"tree\",\n    \"treeitem\",\n    \"spinbutton\",\n    \"tooltip\"\n  ];\n  var interactiveAriaRoles = [\"menu\", \"menuitem\", \"button\"];\n  var isVisible = (element) => {\n    const rect = element.getBoundingClientRect();\n    if (rect.width === 0 || rect.height === 0 || rect.top < 0 || rect.top > window.innerHeight) {\n      return false;\n    }\n    if (!isTopElement(element, rect)) {\n      return false;\n    }\n    const visible = element.checkVisibility({\n      checkOpacity: true,\n      checkVisibilityCSS: true\n    });\n    return visible;\n  };\n  var isTextVisible = (element) => {\n    const range = document.createRange();\n    range.selectNodeContents(element);\n    const rect = range.getBoundingClientRect();\n    if (rect.width === 0 || rect.height === 0 || rect.top < 0 || rect.top > window.innerHeight) {\n      return false;\n    }\n    const parent = element.parentElement;\n    if (!parent) {\n      return false;\n    }\n    const visible = parent.checkVisibility({\n      checkOpacity: true,\n      checkVisibilityCSS: true\n    });\n    return visible;\n  };\n  function isTopElement(elem, rect) {\n    const points = [\n      { x: rect.left + rect.width * 0.25, y: rect.top + rect.height * 0.25 },\n      { x: rect.left + rect.width * 0.75, y: rect.top + rect.height * 0.25 },\n      { x: rect.left + rect.width * 0.25, y: rect.top + rect.height * 0.75 },\n      { x: rect.left + rect.width * 0.75, y: rect.top + rect.height * 0.75 },\n      { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }\n    ];\n    return points.some((point) => {\n      const topEl = document.elementFromPoint(point.x, point.y);\n      let current = topEl;\n      while (current && current !== document.body) {\n        if (current.isSameNode(elem)) {\n          return true;\n        }\n        current = current.parentElement;\n      }\n      return false;\n    });\n  }\n  var isActive = (element) => {\n    if (element.hasAttribute(\"disabled\") || element.hasAttribute(\"hidden\") || element.getAttribute(\"aria-disabled\") === \"true\") {\n      return false;\n    }\n    return true;\n  };\n  var isInteractiveElement = (element) => {\n    const elementType = element.tagName;\n    const elementRole = element.getAttribute(\"role\");\n    const elementAriaRole = element.getAttribute(\"aria-role\");\n    return elementType && interactiveElementTypes.includes(elementType) || elementRole && interactiveRoles.includes(elementRole) || elementAriaRole && interactiveAriaRoles.includes(elementAriaRole);\n  };\n  var isLeafElement = (element) => {\n    if (element.textContent === \"\") {\n      return false;\n    }\n    if (element.childNodes.length === 0) {\n      return !leafElementDenyList.includes(element.tagName);\n    }\n    if (element.childNodes.length === 1 && isTextNode(element.childNodes[0])) {\n      return true;\n    }\n    return false;\n  };\n  async function pickChunk(chunksSeen) {\n    const viewportHeight = calculateViewportHeight();\n    const documentHeight = document.documentElement.scrollHeight;\n    const chunks = Math.ceil(documentHeight / viewportHeight);\n    const chunksArray = Array.from({ length: chunks }, (_, i) => i);\n    const chunksRemaining = chunksArray.filter((chunk2) => {\n      return !chunksSeen.includes(chunk2);\n    });\n    const currentScrollPosition = window.scrollY;\n    const closestChunk = chunksRemaining.reduce((closest, current) => {\n      const currentChunkTop = viewportHeight * current;\n      const closestChunkTop = viewportHeight * closest;\n      return Math.abs(currentScrollPosition - currentChunkTop) < Math.abs(currentScrollPosition - closestChunkTop) ? current : closest;\n    }, chunksRemaining[0]);\n    const chunk = closestChunk;\n    if (chunk === void 0) {\n      throw new Error(`No chunks remaining to check: ${chunksRemaining}`);\n    }\n    return {\n      chunk,\n      chunksArray\n    };\n  }\n\n  // lib/dom/debug.ts\n  async function debugDom() {\n    window.chunkNumber = 0;\n    const { selectorMap: multiSelectorMap } = await window.processElements(\n      window.chunkNumber\n    );\n    const selectorMap = multiSelectorMapToSelectorMap(multiSelectorMap);\n    drawChunk(selectorMap);\n  }\n  function multiSelectorMapToSelectorMap(multiSelectorMap) {\n    return Object.fromEntries(\n      Object.entries(multiSelectorMap).map(([key, selectors]) => [\n        Number(key),\n        selectors[0]\n      ])\n    );\n  }\n  function drawChunk(selectorMap) {\n    if (!window.showChunks) return;\n    cleanupMarkers();\n    Object.values(selectorMap).forEach((selector) => {\n      const element = document.evaluate(\n        selector,\n        document,\n        null,\n        XPathResult.FIRST_ORDERED_NODE_TYPE,\n        null\n      ).singleNodeValue;\n      if (element) {\n        let rect;\n        if (element.nodeType === Node.ELEMENT_NODE) {\n          rect = element.getBoundingClientRect();\n        } else {\n          const range = document.createRange();\n          range.selectNodeContents(element);\n          rect = range.getBoundingClientRect();\n        }\n        const color = \"grey\";\n        const overlay = document.createElement(\"div\");\n        overlay.style.position = \"absolute\";\n        overlay.style.left = `${rect.left + window.scrollX}px`;\n        overlay.style.top = `${rect.top + window.scrollY}px`;\n        overlay.style.padding = \"2px\";\n        overlay.style.width = `${rect.width}px`;\n        overlay.style.height = `${rect.height}px`;\n        overlay.style.backgroundColor = color;\n        overlay.className = \"stagehand-marker\";\n        overlay.style.opacity = \"0.3\";\n        overlay.style.zIndex = \"1000000000\";\n        overlay.style.border = \"1px solid\";\n        overlay.style.pointerEvents = \"none\";\n        document.body.appendChild(overlay);\n      }\n    });\n  }\n  async function cleanupDebug() {\n    cleanupMarkers();\n  }\n  function cleanupMarkers() {\n    const markers = document.querySelectorAll(\".stagehand-marker\");\n    markers.forEach((marker) => {\n      marker.remove();\n    });\n  }\n  window.debugDom = debugDom;\n  window.cleanupDebug = cleanupDebug;\n})();\n";
+\ No newline at end of file
+diff --git a/src/commands/install.ts b/src/commands/install.ts
+index 495a672..04e800f 100644
+--- a/src/commands/install.ts
++++ b/src/commands/install.ts
+@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+ import { join } from 'node:path';
+ import { homedir } from 'node:os';
+ import { loadEnv } from '../config.ts';
+-import { CURSOR_RULES_TEMPLATE, CURSOR_RULES_VERSION } from '../cursorrules.ts';
++import { CURSOR_RULES_TEMPLATE, CURSOR_RULES_VERSION, checkCursorRules } from '../cursorrules.ts';
+ 
+ interface InstallOptions extends CommandOptions {
+   packageManager?: 'npm' | 'yarn' | 'pnpm';
+@@ -182,20 +182,44 @@ export class InstallCommand implements Command {
+       yield 'No package.json found - skipping dependency installation\n';
+     }
+ 
+-    // 2. Setup API keys
++    // 2. Create necessary directories first
++    const rulesDir = join(absolutePath, '.cursor', 'rules');
++    if (!existsSync(rulesDir)) {
++      try {
++        mkdirSync(rulesDir, { recursive: true });
++      } catch (error) {
++        yield `Error creating rules directory: ${error instanceof Error ? error.message : 'Unknown error'}\n`;
++        return;
++      }
++    }
++
++    // 3. Setup API keys
+     yield 'Checking API keys setup...\n';
+-    yield* this.setupApiKeys();
++    for await (const message of this.setupApiKeys()) {
++      yield message;
++    }
+ 
+-    // 3. Update/create .cursorrules
++    // 4. Update/create cursor rules
+     try {
+-      yield 'Checking .cursorrules...\n';
+-      const cursorRulesPath = join(absolutePath, '.cursorrules');
++      yield 'Checking cursor rules...\n';
++      const result = checkCursorRules(absolutePath);
++
++      if (result.kind === 'error') {
++        yield `Error: ${result.message}\n`;
++        return;
++      }
+ 
+       let existingContent = '';
+-      let needsUpdate = true;
++      let needsUpdate = result.needsUpdate;
++
++      if (result.hasLegacyCursorRulesFile) {
++        yield '\n🚧 Warning: Legacy .cursorrules detected. This file will be deprecated in a future release. To migrate:\n' +
++          '  1) Move your rules to .cursor/rules/cursor-tools.mdc\n' +
++          '  2) Delete .cursorrules\n\n';
++      }
+ 
+-      if (existsSync(cursorRulesPath)) {
+-        existingContent = readFileSync(cursorRulesPath, 'utf-8');
++      if (existsSync(result.targetPath)) {
++        existingContent = readFileSync(result.targetPath, 'utf-8');
+ 
+         // Check if cursor-tools section exists and version matches
+         const startTag = '<cursor-tools Integration>';
+@@ -209,12 +233,12 @@ export class InstallCommand implements Command {
+           currentVersion === CURSOR_RULES_VERSION
+         ) {
+           needsUpdate = false;
+-          yield '.cursorrules is up to date.\n';
++          yield 'Cursor rules are up to date.\n';
+         } else {
+-          yield `Updating .cursorrules from version ${currentVersion} to ${CURSOR_RULES_VERSION}...\n`;
++          yield `Updating cursor rules from version ${currentVersion} to ${CURSOR_RULES_VERSION}...\n`;
+         }
+       } else {
+-        yield 'Creating new .cursorrules file...\n';
++        yield `Creating new cursor rules file at ${result.targetPath}...\n`;
+       }
+ 
+       if (needsUpdate) {
+@@ -230,16 +254,16 @@ export class InstallCommand implements Command {
+             existingContent.slice(0, startIndex) +
+             CURSOR_RULES_TEMPLATE.trim() +
+             existingContent.slice(endIndex + endTag.length);
+-          writeFileSync(cursorRulesPath, newContent);
++          writeFileSync(result.targetPath, newContent);
+         } else {
+           // Append new section
+-          writeFileSync(cursorRulesPath, existingContent + CURSOR_RULES_TEMPLATE);
++          writeFileSync(result.targetPath, existingContent + CURSOR_RULES_TEMPLATE);
+         }
+       }
+ 
+       yield 'Installation completed successfully!\n';
+     } catch (error) {
+-      yield `Error updating .cursorrules: ${error instanceof Error ? error.message : 'Unknown error'}\n`;
++      yield `Error updating cursor rules: ${error instanceof Error ? error.message : 'Unknown error'}\n`;
+     }
+   }
+ }
+diff --git a/src/config.ts b/src/config.ts
+index 83760c2..2cb18ef 100644
+--- a/src/config.ts
++++ b/src/config.ts
+@@ -34,7 +34,7 @@ export const defaultConfig: Config = {
+     maxTokens: 4000,
+   },
+   gemini: {
+-    model: 'gemini-2.0-flash-thinking-exp-01-21',
++    model: 'gemini-2.0-pro-exp-02-05',
+     maxTokens: 10000,
+   },
+   doc: {
+diff --git a/src/cursorrules.ts b/src/cursorrules.ts
+index ac026e8..f0d4d02 100644
+--- a/src/cursorrules.ts
++++ b/src/cursorrules.ts
+@@ -9,7 +9,12 @@ const packageJson = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'
+ 
+ export const CURSOR_RULES_VERSION = packageJson.version; // Using version from package.json
+ 
+-export const CURSOR_RULES_TEMPLATE = `<cursor-tools Integration>
++export const CURSOR_RULES_TEMPLATE = `---
++description: Global Rule
++globs: 
++---
++
++<cursor-tools Integration>
+ # Instructions
+ Use the following commands to get AI assistance:
+ 
+@@ -28,14 +33,14 @@ when using doc for remote repos suggest writing the output to a file somewhere l
+ \`cursor-tools github pr [number]\` - Get the last 10 PRs, or a specific PR by number (e.g., \`cursor-tools github pr 123\`)
+ \`cursor-tools github issue [number]\` - Get the last 10 issues, or a specific issue by number (e.g., \`cursor-tools github issue 456\`)
+ 
+-**Browser Automation (Stateless):**
++**Stagehand Browser Automation:**
+ \`cursor-tools browser open <url> [options]\` - Open a URL and capture page content, console logs, and network activity (e.g., \`cursor-tools browser open "https://example.com" --html\`)
+ \`cursor-tools browser act "<instruction>" --url=<url> [options]\` - Execute actions on a webpage using natural language instructions (e.g., \`cursor-tools browser act "Click Login" --url=https://example.com\`)
+ \`cursor-tools browser observe "<instruction>" --url=<url> [options]\` - Observe interactive elements on a webpage and suggest possible actions (e.g., \`cursor-tools browser observe "interactive elements" --url=https://example.com\`)
+ \`cursor-tools browser extract "<instruction>" --url=<url> [options]\` - Extract data from a webpage based on natural language instructions (e.g., \`cursor-tools browser extract "product names" --url=https://example.com/products\`)
+ 
+ **Notes on Browser Commands:**
+-- All browser commands are stateless: each command starts with a fresh browser instance and closes it when done.
++- All browser commands are stateless unless --connect-to is used to connect to a long-lived interactive session. In disconnected mode each command starts with a fresh browser instance and closes it when done.
+ - When using \`--connect-to\`, special URL values are supported:
+   - \`current\`: Use the existing page without reloading
+   - \`reload-current\`: Use the existing page and refresh it (useful in development)
+@@ -54,7 +59,7 @@ when using doc for remote repos suggest writing the output to a file somewhere l
+ 2. **Without installation:** Use \`npx -y cursor-tools@latest "<command>"\` or \`bunx -y cursor-tools@latest "<command>"\`.
+ 
+ **General Command Options (Supported by all commands):**
+---model=<model name>: Specify an alternative AI model to use
++--model=<model name>: Specify an alternative AI model to use.
+ --max-tokens=<number>: Control response length
+ --save-to=<file path>: Save command output to a file (in *addition* to displaying it)
+ --help: View all available options (help is not fully implemented yet)
+@@ -67,70 +72,137 @@ when using doc for remote repos suggest writing the output to a file somewhere l
+ 
+ **Browser Command Options (for 'open', 'act', 'observe', 'extract'):**
+ --console: Capture browser console logs (enabled by default, use --no-console to disable)
+---html: Capture page HTML content
++--html: Capture page HTML content (disabled by default)
+ --network: Capture network activity (enabled by default, use --no-network to disable)
+ --screenshot=<file path>: Save a screenshot of the page
+---timeout=<milliseconds>: Set navigation timeout (default: 30000ms)
++--timeout=<milliseconds>: Set navigation timeout (default: 120000ms for Stagehand operations, 30000ms for navigation)
+ --viewport=<width>x<height>: Set viewport size (e.g., 1280x720). When using --connect-to, viewport is only changed if this option is explicitly provided
+ --headless: Run browser in headless mode (default: true)
+ --no-headless: Show browser UI (non-headless mode) for debugging
+---connect-to=<port>: Connect to existing Chrome instance
+---wait=<duration or selector>: Wait after page load (e.g., '5s', '#element-id', 'selector:.my-class')
+---video=<directory>: Save a video recording of the browser interaction to the specified directory (1280x720 resolution). Not available when using --connect-to
++--connect-to=<port>: Connect to existing Chrome instance. Special values: 'current' (use existing page), 'reload-current' (refresh existing page)
++--wait=<time:duration or selector:css-selector>: Wait after page load (e.g., 'time:5s', 'selector:#element-id')
++--video=<directory>: Save a video recording (1280x720 resolution, timestamped subdirectory). Not available when using --connect-to
++
++**Nicknames**
++Users can ask for these tools using nicknames
++Gemini is a nickname for cursor-tools repo
++Perplexity is a nickname for cursor-tools web
++Stagehand is a nickname for cursor-tools browser
+ 
+ **Additional Notes:**
+ - For detailed information, see \`node_modules/cursor-tools/README.md\` (if installed locally).
+ - Configuration is in \`cursor-tools.config.json\` (or \`~/.cursor-tools/config.json\`).
+ - API keys are loaded from \`.cursor-tools.env\` (or \`~/.cursor-tools/.env\`).
+ - Browser commands require separate installation of Playwright: \`npm install --save-dev playwright\` or \`npm install -g playwright\`.
++- The default Stagehand model is set in \`cursor-tools.config.json\`, but can be overridden with the \`--model\` option.
++- Available models depend on your configured provider (OpenAI or Anthropic) in \`cursor-tools.config.json\`.
++- repo has a limit of 2M tokens of context. The context can be reduced by filtering out files in a .repomixignore file.
++- problems running browser commands may be because playwright is not installed. Recommend installing playwright globally.
+ - **Remember:** You're part of a team of superhuman expert AIs. Work together to solve complex problems.
+ <!-- cursor-tools-version: ${CURSOR_RULES_VERSION} -->
+ </cursor-tools Integration>`;
+ 
+-export function checkCursorRules(workspacePath: string): {
++function isCursorRulesContentUpToDate(content: string) {
++  const startTag = '<cursor-tools Integration>';
++  const endTag = '</cursor-tools Integration>';
++  if (!content.includes(startTag) || !content.includes(endTag)) {
++    return {
++      needsUpdate: true as const,
++      message:
++        'cursor-tools section not found in cursor rules. Run `cursor-tools install .` to update.',
++    };
++  }
++
++  // Check version
++  const versionMatch = content.match(/<!-- cursor-tools-version: ([\w.-]+) -->/);
++  const currentVersion = versionMatch ? versionMatch[1] : '0';
++
++  if (currentVersion !== CURSOR_RULES_VERSION) {
++    return {
++      needsUpdate: true as const,
++      message: `Your cursor rules file is using version ${currentVersion}, but version ${CURSOR_RULES_VERSION} is available. Run \`cursor-tools install .\` to update.`,
++    };
++  }
++
++  return { needsUpdate: false as const };
++}
++
++// Add new types for better error handling and type safety
++type CursorRulesError = {
++  kind: 'error';
++  message: string;
++  targetPath: string;
++};
++
++type CursorRulesSuccess = {
++  kind: 'success';
+   needsUpdate: boolean;
+   message?: string;
+-} {
+-  const cursorRulesPath = join(workspacePath, '.cursorrules');
++  targetPath: string;
++  hasLegacyCursorRulesFile: boolean;
++};
++
++type CursorRulesResult = CursorRulesError | CursorRulesSuccess;
++
++export function checkCursorRules(workspacePath: string): CursorRulesResult {
++  const legacyPath = join(workspacePath, '.cursorrules');
++  const newPath = join(workspacePath, '.cursor', 'rules', 'cursor-tools.mdc');
++
++  // Check if either file exists
++  const legacyExists = existsSync(legacyPath);
++  const newExists = existsSync(newPath);
+ 
+-  if (!existsSync(cursorRulesPath)) {
++  // If neither exists, prefer new path
++  if (!legacyExists && !newExists) {
+     return {
++      kind: 'success',
+       needsUpdate: true,
+       message:
+-        'No .cursorrules file found. Run `cursor-tools install .` to set up Cursor integration.',
++        'No cursor rules file found. Run `cursor-tools install .` to set up Cursor integration.',
++      targetPath: newPath,
++      hasLegacyCursorRulesFile: false,
+     };
+   }
+ 
+   try {
+-    const content = readFileSync(cursorRulesPath, 'utf-8');
+-
+-    // Check if cursor-tools section exists
+-    const startTag = '<cursor-tools Integration>';
+-    const endTag = '</cursor-tools Integration>';
+-    if (!content.includes(startTag) || !content.includes(endTag)) {
++    // If both exist, check new path first
++    if (newExists && legacyExists) {
++      const newContent = readFileSync(newPath, 'utf-8');
++      const result = isCursorRulesContentUpToDate(newContent);
+       return {
+-        needsUpdate: true,
+-        message:
+-          'cursor-tools section not found in .cursorrules. Run `cursor-tools install .` to update.',
++        kind: 'success',
++        ...result,
++        targetPath: newPath,
++        hasLegacyCursorRulesFile: true,
+       };
+     }
+ 
+-    // Check version
+-    const versionMatch = content.match(/<!-- cursor-tools-version: ([\w.-]+) -->/);
+-    const currentVersion = versionMatch ? versionMatch[1] : '0';
+-
+-    if (currentVersion !== CURSOR_RULES_VERSION) {
++    // If only new path exists
++    if (newExists) {
++      const newContent = readFileSync(newPath, 'utf-8');
++      const result = isCursorRulesContentUpToDate(newContent);
+       return {
+-        needsUpdate: true,
+-        message: `Your .cursorrules file is using version ${currentVersion}, but version ${CURSOR_RULES_VERSION} is available. Run \`cursor-tools install .\` to update.`,
++        kind: 'success',
++        ...result,
++        targetPath: newPath,
++        hasLegacyCursorRulesFile: false,
+       };
+     }
+ 
+-    return { needsUpdate: false };
++    // Otherwise only legacy path exists
++    const legacyContent = readFileSync(legacyPath, 'utf-8');
++    const result = isCursorRulesContentUpToDate(legacyContent);
++    return {
++      kind: 'success',
++      ...result,
++      targetPath: legacyPath,
++      hasLegacyCursorRulesFile: true,
++    };
+   } catch (error) {
+     return {
+-      needsUpdate: true,
+-      message: `Error reading .cursorrules: ${error instanceof Error ? error.message : 'Unknown error'}`,
++      kind: 'error',
++      message: `Error reading cursor rules: ${error instanceof Error ? error.message : 'Unknown error'}`,
++      targetPath: newPath,
+     };
+   }
+ }
+diff --git a/src/index.ts b/src/index.ts
+index 028dad4..2dec41c 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -242,9 +242,11 @@ async function main() {
+ 
+   // Check .cursorrules version unless running the install command
+   if (command !== 'install') {
+-    const { needsUpdate, message } = checkCursorRules(process.cwd());
+-    if (needsUpdate && message) {
+-      console.error('\x1b[33m%s\x1b[0m', `Warning: ${message}`); // Yellow text
++    const result = checkCursorRules(process.cwd());
++    if (result.kind === 'success' && result.needsUpdate && result.message) {
++      console.error('\x1b[33m%s\x1b[0m', `Warning: ${result.message}`); // Yellow text
++    } else if (result.kind === 'error') {
++      console.error('\x1b[31m%s\x1b[0m', `Error: ${result.message}`); // Red text
+     }
+   }
+ 
+diff --git a/src/repomix/repomixConfig.ts b/src/repomix/repomixConfig.ts
+index 0bc89ae..cd5c5dc 100644
+--- a/src/repomix/repomixConfig.ts
++++ b/src/repomix/repomixConfig.ts
+@@ -16,7 +16,7 @@ export const ignorePatterns = [
+   '**/*.tsbuildinfo',
+ ];
+ 
+-export const includePatterns = ['**/*', '!.cursorrules'];
++export const includePatterns = ['**/*', '!.cursorrules', '!.cursor/rules/cursor-tools.mdc'];
+ 
+ export const outputOptions = {
+   style: 'xml',

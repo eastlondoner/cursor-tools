@@ -33,11 +33,12 @@ when using doc for remote repos suggest writing the output to a file somewhere l
 \`cursor-tools github pr [number]\` - Get the last 10 PRs, or a specific PR by number (e.g., \`cursor-tools github pr 123\`)
 \`cursor-tools github issue [number]\` - Get the last 10 issues, or a specific issue by number (e.g., \`cursor-tools github issue 456\`)
 
-**Stagehand Browser Automation:**
+**Browser Automation (Stateless):**
 \`cursor-tools browser open <url> [options]\` - Open a URL and capture page content, console logs, and network activity (e.g., \`cursor-tools browser open "https://example.com" --html\`)
 \`cursor-tools browser act "<instruction>" --url=<url> [options]\` - Execute actions on a webpage using natural language instructions (e.g., \`cursor-tools browser act "Click Login" --url=https://example.com\`)
 \`cursor-tools browser observe "<instruction>" --url=<url> [options]\` - Observe interactive elements on a webpage and suggest possible actions (e.g., \`cursor-tools browser observe "interactive elements" --url=https://example.com\`)
 \`cursor-tools browser extract "<instruction>" --url=<url> [options]\` - Extract data from a webpage based on natural language instructions (e.g., \`cursor-tools browser extract "product names" --url=https://example.com/products\`)
+\`cursor-tools browser vision <image_path> [options]\` - Analyze a screenshot for visual issues and UI/UX problems (e.g., \`cursor-tools browser vision screenshot.png --context=page.html\`)
 
 **Notes on Browser Commands:**
 - All browser commands are stateless unless --connect-to is used to connect to a long-lived interactive session. In disconnected mode each command starts with a fresh browser instance and closes it when done.
@@ -48,11 +49,19 @@ when using doc for remote repos suggest writing the output to a file somewhere l
 - Video recording is available for all browser commands using the \`--video=<directory>\` option. This will save a video of the entire browser interaction at 1280x720 resolution. The video file will be saved in the specified directory with a timestamp.
 - DO NOT ask browser act to "wait" for anything, the wait command is currently disabled in Stagehand.
 
+**Vision Command Options:**
+--prompt="<custom prompt>": Provide a custom analysis prompt (default focuses on UI/UX issues)
+--context=<file path>: Include HTML, CSS, or JS files for context (e.g., \`--context=page.html\` or \`--context=html:page.html,css:styles.css\`)
+--save-to=<file path>: Save analysis output to a file
+--debug: Enable debug output for troubleshooting
+--model=<model name>: Use a specific Gemini model (default: gemini-pro-vision)
+
 **Tool Recommendations:**
 - \`cursor-tools web\` is best for general web information not specific to the repository.
 - \`cursor-tools repo\` is ideal for repository-specific questions, planning, code review and debugging.
 - \`cursor-tools doc\` generates documentation for local or remote repositories.
 - \`cursor-tools browser\` is useful for testing and debugging web apps.
+- \`cursor-tools browser vision\` is perfect for UI/UX reviews and visual QA, especially with HTML context.
 
 **Running Commands:**
 1. **Installed version:** Use \`cursor-tools <command>\` (if in PATH) or \`npm exec cursor-tools "<command>"\`, \`yarn cursor-tools "<command>"\`, \`pnpm cursor-tools "<command>"\`.
@@ -98,6 +107,7 @@ Stagehand is a nickname for cursor-tools browser
 - Available models depend on your configured provider (OpenAI or Anthropic) in \`cursor-tools.config.json\`.
 - repo has a limit of 2M tokens of context. The context can be reduced by filtering out files in a .repomixignore file.
 - problems running browser commands may be because playwright is not installed. Recommend installing playwright globally.
+- Vision command requires a GEMINI_API_KEY in your .cursor-tools.env file.
 - **Remember:** You're part of a team of superhuman expert AIs. Work together to solve complex problems.
 <!-- cursor-tools-version: ${CURSOR_RULES_VERSION} -->
 </cursor-tools Integration>`;

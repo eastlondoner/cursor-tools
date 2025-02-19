@@ -21,7 +21,8 @@ export interface Config {
     timeout?: number; // Default navigation timeout in milliseconds
   };
   stagehand?: {
-    provider: 'anthropic' | 'openai';
+    provider: 'anthropic' | 'openai' | 'groq';
+    model?: string; // Model name - for Groq this can be any string
     verbose?: boolean;
     debugDom?: boolean;
     enableCaching?: boolean;
@@ -49,7 +50,7 @@ export const defaultConfig: Config = {
     timeout: 120000, // 120 seconds - stagehand needs a lot of time to go back and forward to LLMs
   },
   stagehand: {
-    provider: 'openai',
+    provider: 'anthropic', // Make anthropic the default provider
     verbose: false,
     debugDom: false,
     enableCaching: true,

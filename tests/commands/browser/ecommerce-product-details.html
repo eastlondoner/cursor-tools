@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Product Details</title>
+    <style>
+        body { 
+            font-family: sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #007bff;
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        #product-details {
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 4px;
+        }
+        .product-name {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        .product-price {
+            color: #28a745;
+            font-size: 20px;
+            margin-bottom: 15px;
+        }
+        .product-description {
+            color: #333;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+        .features-list {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+        .feature-item {
+            margin-bottom: 10px;
+            padding-left: 24px;
+            position: relative;
+        }
+        .feature-item:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #28a745;
+        }
+        .error-message {
+            padding: 20px;
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 4px;
+            color: #721c24;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <a href="ecommerce-test.html" class="back-link">← Back to Products</a>
+    <h1>Product Details</h1>
+
+    <div id="product-details">
+        <!-- Product details will be added here by JavaScript -->
+    </div>
+
+    <script>
+        const products = [
+            {
+                id: 1,
+                name: "Awesome Gadget",
+                price: "$29.99",
+                description: "This is an awesome gadget that will make your life easier.",
+                features: ["Wireless", "Rechargeable", "Smart controls"]
+            },
+            {
+                id: 2,
+                name: "Super Widget",
+                price: "$19.99",
+                description: "A super useful widget for all your widget needs.",
+                features: ["Compact", "Durable", "Easy to use"]
+            },
+            {
+                id: 3,
+                name: "Fantastic Thingamajig",
+                price: "$49.99",
+                description: "A fantastic thingamajig with amazing capabilities.",
+                features: ["Advanced tech", "Premium quality", "1-year warranty"]
+            }
+        ];
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const productId = parseInt(urlParams.get('id'));
+        const product = products.find(p => p.id === productId);
+
+        const productDetails = document.getElementById('product-details');
+        
+        if (product) {
+            productDetails.innerHTML = `
+                <div class="product-name">${product.name}</div>
+                <div class="product-price">${product.price}</div>
+                <div class="product-description">${product.description}</div>
+                <h2>Features</h2>
+                <ul class="features-list">
+                    ${product.features.map(feature => `
+                        <li class="feature-item">${feature}</li>
+                    `).join('')}
+                </ul>
+            `;
+        } else {
+            productDetails.innerHTML = `
+                <div class="error-message">
+                    Product not found. Please return to the products page and try again.
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html> 

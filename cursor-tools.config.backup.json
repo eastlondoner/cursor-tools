@@ -11,13 +11,12 @@
   "browser": {
     "headless": true,
     "defaultViewport": "1280x720",
-    "timeout": 120000,
-    "stagehand": {
-      "provider": "groq",
-      "model": "deepseek-r1-distill-llama-70b",
-      "verbose": false,
-      "debugDom": false,
-      "enableCaching": false
-    }
+    "timeout": 120000
+  },
+  "stagehand": {
+    "provider": "openai",
+    "verbose": true,
+    "debugDom": false,
+    "enableCaching": true
   }
 }

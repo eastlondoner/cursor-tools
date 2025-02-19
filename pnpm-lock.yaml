@@ -4,19 +4,31 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  '@browserbasehq/stagehand': file:../stagehand
+
 importers:
 
   .:
     dependencies:
       '@browserbasehq/stagehand':
-        specifier: 1.12.0
-        version: 1.12.0(@playwright/test@1.50.1)(deepmerge@4.3.1)(dotenv@16.4.7)(openai@4.83.0(ws@8.18.0)(zod@3.24.1))(zod@3.24.1)
+        specifier: file:../stagehand
+        version: file:../stagehand(@playwright/test@1.50.1)(deepmerge@4.3.1)(dotenv@16.4.7)(openai@4.85.1(ws@8.18.0)(zod@3.24.1))(zod@3.24.1)
+      '@google/generative-ai':
+        specifier: ^0.21.0
+        version: 0.21.0
       dotenv:
         specifier: 16.4.7
         version: 16.4.7
       eventsource-client:
         specifier: 1.1.3
         version: 1.1.3
+      groq-sdk:
+        specifier: ^0.15.0
+        version: 0.15.0
+      groq-stagehand-client:
+        specifier: 0.1.4
+        version: 0.1.4(@browserbasehq/stagehand@file:../stagehand(@playwright/test@1.50.1)(deepmerge@4.3.1)(dotenv@16.4.7)(openai@4.85.1(ws@8.18.0)(zod@3.24.1))(zod@3.24.1))(zod@3.24.1)
       playwright:
         specifier: 1.50.1
         version: 1.50.1
@@ -29,6 +41,9 @@ importers:
       zod:
         specifier: 3.24.1
         version: 3.24.1
+      zod-to-json-schema:
+        specifier: ^3.24.1
+        version: 3.24.1(zod@3.24.1)
     devDependencies:
       '@eslint/js':
         specifier: ^9.19.0
@@ -75,11 +90,11 @@ packages:
   '@anthropic-ai/sdk@0.27.3':
     resolution: {integrity: sha512-IjLt0gd3L4jlOfilxVXTifn42FnVffMgDC04RJK1KDZpmkBWLv0XC92MVVmkxrFZNS/7l3xWgP/I3nqtX1sQHw==}
 
-  '@browserbasehq/sdk@2.2.0':
-    resolution: {integrity: sha512-CWusIff7KenGfMwg/kNnrdOi+1JUIYpj8ZtEciuEUOEQVp3BEYqbaXk4FxCoQPvyO0h4eUVE5Banc9b3GQU01Q==}
+  '@browserbasehq/sdk@2.3.0':
+    resolution: {integrity: sha512-H2nu46C6ydWgHY+7yqaP8qpfRJMJFVGxVIgsuHe1cx9HkfJHqzkuIqaK/k8mU4ZeavQgV5ZrJa0UX6MDGYiT4w==}
 
-  '@browserbasehq/stagehand@1.12.0':
-    resolution: {integrity: sha512-RWhdGxs2tUKyNpUh710ct/1Wwhv4jsEc1Qs8lz8Qngm3y7onRu0WYH0Cf3mnFZqYLTf3ni9x17VNju8YJACa5Q==}
+  '@browserbasehq/stagehand@file:../stagehand':
+    resolution: {directory: ../stagehand, type: directory}
     peerDependencies:
       '@playwright/test': ^1.42.1
       deepmerge: ^4.3.1
@@ -420,6 +435,10 @@ packages:
   '@eslint/plugin-kit@0.2.5':
     resolution: {integrity: sha512-lB05FkqEdUg2AA0xEbUz0SnkXT1LcCTa438W4IWTUh4hdOnVbQyOJ81OrDXsJk/LSiJHubgGEFoR5EHq1NsH1A==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+
+  '@google/generative-ai@0.21.0':
+    resolution: {integrity: sha512-7XhUbtnlkSEZK15kN3t+tzIMxsbKm/dSkKBFalj+20NvPKe1kBY7mR2P7vuijEn+f06z5+A8bVGKO0v39cr6Wg==}
+    engines: {node: '>=18.0.0'}
 
   '@humanfs/core@0.19.1':
     resolution: {integrity: sha512-5DyQ4+1JEUzejeK1JGICcideyfUbGixgS9jNgex5nqkW+cY7WZhxBigmieN5Qnw9ZosSNVC9KQKyb+GUaGyKUA==}
@@ -1116,6 +1135,15 @@ packages:
   graphemer@1.4.0:
     resolution: {integrity: sha512-EtKwoO6kxCL9WO5xipiHTZlSzBm7WLT627TqC/uVRd0HKmq8NXyebnNYxDoBi7wt8eTWrUrKXCOVaFq9x1kgag==}
 
+  groq-sdk@0.15.0:
+    resolution: {integrity: sha512-aYDEdr4qczx3cLCRRe+Beb37I7g/9bD5kHF+EEDxcrREWw1vKoRcfP3vHEkJB7Ud/8oOuF0scRwDpwWostTWuQ==}
+
+  groq-stagehand-client@0.1.4:
+    resolution: {integrity: sha512-Sfqdk5+0q/9QWtqLsJ3JNTnDkjdAsxHfnAYgjFAmYDW4GmU8iLvMa+2Xk1lmgLeKuYUN9gn7oqsSPmSCiNFGkg==}
+    version: 0.1.4
+    peerDependencies:
+      '@browserbasehq/stagehand': ^1.12.0
+
   handlebars@4.7.8:
     resolution: {integrity: sha512-vafaFqs8MZkRrSX7sFVUdo3ap/eNiLnb4IakshzvP56X5Nr1iGKAIqdX6tMlm6HcNRIkr6AxO5jFEoJzzpT8aQ==}
     engines: {node: '>=0.4.7'}
@@ -1314,8 +1342,8 @@ packages:
     resolution: {integrity: sha512-VXJjc87FScF88uafS3JllDgvAm+c/Slfz06lorj2uAY34rlUu0Nt+v8wreiImcrgAjjIHp1rXpTDlLOGw29WwQ==}
     engines: {node: '>=18'}
 
-  openai@4.83.0:
-    resolution: {integrity: sha512-fmTsqud0uTtRKsPC7L8Lu55dkaTwYucqncDHzVvO64DKOpNTuiYwjbR/nVgpapXuYy8xSnhQQPUm+3jQaxICgw==}
+  openai@4.85.1:
+    resolution: {integrity: sha512-jkX2fntHljUvSH3MkWh4jShl10oNkb+SsCj4auKlbu2oF4KWAnmHLNR5EpnUHK1ZNW05Rp0fjbJzYwQzMsH8ZA==}
     hasBin: true
     peerDependencies:
       ws: ^8.18.0
@@ -1735,7 +1763,7 @@ snapshots:
     transitivePeerDependencies:
       - encoding
 
-  '@browserbasehq/sdk@2.2.0':
+  '@browserbasehq/sdk@2.3.0':
     dependencies:
       '@types/node': 18.19.75
       '@types/node-fetch': 2.6.12
@@ -1747,14 +1775,14 @@ snapshots:
     transitivePeerDependencies:
       - encoding
 
-  '@browserbasehq/stagehand@1.12.0(@playwright/test@1.50.1)(deepmerge@4.3.1)(dotenv@16.4.7)(openai@4.83.0(ws@8.18.0)(zod@3.24.1))(zod@3.24.1)':
+  '@browserbasehq/stagehand@file:../stagehand(@playwright/test@1.50.1)(deepmerge@4.3.1)(dotenv@16.4.7)(openai@4.85.1(ws@8.18.0)(zod@3.24.1))(zod@3.24.1)':
     dependencies:
       '@anthropic-ai/sdk': 0.27.3
-      '@browserbasehq/sdk': 2.2.0
+      '@browserbasehq/sdk': 2.3.0
       '@playwright/test': 1.50.1
       deepmerge: 4.3.1
       dotenv: 16.4.7
-      openai: 4.83.0(ws@8.18.0)(zod@3.24.1)
+      openai: 4.85.1(ws@8.18.0)(zod@3.24.1)
       ws: 8.18.0
       zod: 3.24.1
       zod-to-json-schema: 3.24.1(zod@3.24.1)
@@ -1962,6 +1990,8 @@ snapshots:
     dependencies:
       '@eslint/core': 0.10.0
       levn: 0.4.1
+
+  '@google/generative-ai@0.21.0': {}
 
   '@humanfs/core@0.19.1': {}
 
@@ -2667,6 +2697,27 @@ snapshots:
 
   graphemer@1.4.0: {}
 
+  groq-sdk@0.15.0:
+    dependencies:
+      '@types/node': 18.19.75
+      '@types/node-fetch': 2.6.12
+      abort-controller: 3.0.0
+      agentkeepalive: 4.6.0
+      form-data-encoder: 1.7.2
+      formdata-node: 4.4.1
+      node-fetch: 2.7.0
+    transitivePeerDependencies:
+      - encoding
+
+  groq-stagehand-client@0.1.4(@browserbasehq/stagehand@file:../stagehand(@playwright/test@1.50.1)(deepmerge@4.3.1)(dotenv@16.4.7)(openai@4.85.1(ws@8.18.0)(zod@3.24.1))(zod@3.24.1))(zod@3.24.1):
+    dependencies:
+      '@browserbasehq/stagehand': file:../stagehand(@playwright/test@1.50.1)(deepmerge@4.3.1)(dotenv@16.4.7)(openai@4.85.1(ws@8.18.0)(zod@3.24.1))(zod@3.24.1)
+      groq-sdk: 0.15.0
+      zod-to-json-schema: 3.24.1(zod@3.24.1)
+    transitivePeerDependencies:
+      - encoding
+      - zod
+
   handlebars@4.7.8:
     dependencies:
       minimist: 1.2.8
@@ -2833,7 +2884,7 @@ snapshots:
     dependencies:
       mimic-function: 5.0.1
 
-  openai@4.83.0(ws@8.18.0)(zod@3.24.1):
+  openai@4.85.1(ws@8.18.0)(zod@3.24.1):
     dependencies:
       '@types/node': 18.19.75
       '@types/node-fetch': 2.6.12

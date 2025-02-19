@@ -1,37 +1,15 @@
 import type { Command, CommandGenerator } from '../../../types';
-import { formatOutput, handleBrowserError, ActionError, NavigationError } from './stagehandUtils';
-import {
-  BrowserResult,
-  ConstructorParams,
-  InitResult,
-  LogLine,
-  Stagehand,
-} from '@browserbasehq/stagehand';
-import { loadConfig } from '../../../config';
-import {
-  loadStagehandConfig,
-  validateStagehandConfig,
-  getStagehandApiKey,
-  getStagehandModel,
-} from './config';
+import { createStagehand, navigateToUrl, DEFAULT_TIMEOUTS } from './createStagehand';
+import { ActionError } from './errors';
+import { Stagehand } from '@browserbasehq/stagehand';
 import type { SharedBrowserCommandOptions } from '../browserOptions';
 import {
   setupConsoleLogging,
   setupNetworkMonitoring,
   captureScreenshot,
   outputMessages,
-  setupVideoRecording,
 } from '../utilsShared';
-import { overrideStagehandInit, stagehandLogger } from './initOverride';
-
-export type RecordVideoOptions = {
-  /**, stagehandLogger
-   * Path to the directory to put videos into.
-   */
-  dir: string;
-};
-
-overrideStagehandInit();
+import { formatOutput, handleBrowserError } from './stagehandUtils';
 
 export class ActCommand implements Command {
   async *execute(query: string, options?: SharedBrowserCommandOptions): CommandGenerator {
@@ -46,116 +24,37 @@ export class ActCommand implements Command {
       return;
     }
 
-    // Load and validate configuration
-    const config = loadConfig();
-    const stagehandConfig = loadStagehandConfig(config);
-    validateStagehandConfig(stagehandConfig);
-
-    let stagehand: Stagehand | undefined;
-    let consoleMessages: string[] = [];
-    let networkMessages: string[] = [];
-
+    let stagehandInstance;
     try {
-      const config = {
-        env: 'LOCAL',
-        headless: options?.headless ?? stagehandConfig.headless,
-        verbose: options?.debug || stagehandConfig.verbose ? 1 : 0,
-        debugDom: options?.debug ?? stagehandConfig.debugDom,
-        modelName: getStagehandModel(stagehandConfig, { model: options?.model }),
-        apiKey: getStagehandApiKey(stagehandConfig),
-        enableCaching: stagehandConfig.enableCaching,
-        logger: stagehandLogger(options?.debug ?? stagehandConfig.verbose),
-      } satisfies ConstructorParams;
+      stagehandInstance = await createStagehand(options);
+      const { stagehand, page } = stagehandInstance;
 
-      // Set default values for network and console options
-      options = {
-        ...options,
-        network: options?.network === undefined ? true : options.network,
-        console: options?.console === undefined ? true : options.console,
-      };
+      const consoleMessages = await setupConsoleLogging(page, options || {});
+      const networkMessages = await setupNetworkMonitoring(page, options || {});
 
-      console.log('using stagehand config', { ...config, apiKey: 'REDACTED' });
-      stagehand = new Stagehand(config);
+      await navigateToUrl(stagehand, url, options?.timeout);
 
-      await using _stagehand = {
-        [Symbol.asyncDispose]: async () => {
-          console.error('closing stagehand, this can take a while');
-          await Promise.race([
-            options?.connectTo ? undefined : stagehand?.page.close(),
-            stagehand?.close(),
-            new Promise((_, reject) =>
-              setTimeout(() => reject(new Error('Page close timeout')), 5000)
-            ),
-          ]);
-          console.error('stagehand closed');
-        },
-      };
-
-      // Initialize with timeout
-      const initPromise = stagehand.init({
-        // this method is overriden in our Stagehand class patch hack
-        ...options,
-        //@ts-ignore
-        recordVideo: options.video
-          ? {
-              dir: await setupVideoRecording(options),
-            }
-          : undefined,
-      });
-      const initTimeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Initialization timeout')), 30000)
-      );
-      await Promise.race([initPromise, initTimeoutPromise]);
-
-      // Setup console and network monitoring
-      consoleMessages = await setupConsoleLogging(stagehand.page, options || {});
-      networkMessages = await setupNetworkMonitoring(stagehand.page, options || {});
-
-      try {
-        // Skip navigation if url is 'current' or if current URL matches target URL
-        if (url !== 'current') {
-          const currentUrl = await stagehand.page.url();
-          if (currentUrl !== url) {
-            // Navigate with timeout
-            const gotoPromise = stagehand.page.goto(url);
-            const gotoTimeoutPromise = new Promise((_, reject) =>
-              setTimeout(
-                () => reject(new Error('Navigation timeout')),
-                stagehandConfig.timeout ?? 30000
-              )
-            );
-            await Promise.race([gotoPromise, gotoTimeoutPromise]);
-          } else {
-            console.log('Skipping navigation - already on correct page');
-          }
-        } else {
-          console.log('Skipping navigation - using current page');
-        }
-      } catch (error) {
-        throw new NavigationError(
-          `Failed to navigate to ${url}. Please check if the URL is correct and accessible.`,
-          error
-        );
+      // Execute custom JavaScript if provided
+      if (options?.evaluate) {
+        await page.evaluate(options.evaluate);
       }
 
       const result = await this.performAction(
         stagehand,
         { instruction: query, evaluate: options?.evaluate },
-        options?.timeout ?? stagehandConfig.timeout
+        options?.timeout,
+        options
       );
 
-      // Take screenshot if requested
-      await captureScreenshot(stagehand.page, options || {});
+      await captureScreenshot(page, options || {});
 
-      // Output result and messages
       yield formatOutput(result, options?.debug);
       for (const message of outputMessages(consoleMessages, networkMessages, options || {})) {
         yield message;
       }
 
-      // Output HTML content if requested
       if (options?.html) {
-        const htmlContent = await stagehand.page.content();
+        const htmlContent = await page.content();
         yield '\n--- Page HTML Content ---\n\n';
         yield htmlContent;
         yield '\n--- End of HTML Content ---\n';
@@ -165,8 +64,11 @@ export class ActCommand implements Command {
         yield `Screenshot saved to ${options.screenshot}\n`;
       }
     } catch (error) {
-      console.log('error in stagehand loop');
       yield 'error in stagehand: ' + handleBrowserError(error, options?.debug);
+    } finally {
+      if (stagehandInstance) {
+        await stagehandInstance.cleanup();
+      }
     }
   }
 
@@ -179,13 +81,20 @@ export class ActCommand implements Command {
       instruction: string;
       evaluate?: string;
     },
-    timeout = 120000
-  ): Promise<string> {
+    timeout: number = DEFAULT_TIMEOUTS.ACTION,
+    options?: SharedBrowserCommandOptions
+  ): Promise<{
+    success: boolean;
+    message: string;
+    startUrl: string;
+    endUrl: string;
+    instruction: string;
+  }> {
     try {
       // Get the current URL before the action
       const startUrl = await stagehand.page.url();
       let totalTimeout: ReturnType<typeof setTimeout> | undefined;
-      const totalTimeoutPromise = new Promise(
+      const totalTimeoutPromise = new Promise<void>(
         (_, reject) =>
           (totalTimeout = setTimeout(() => reject(new Error('Action timeout')), timeout))
       );
@@ -194,21 +103,58 @@ export class ActCommand implements Command {
         await Promise.race([stagehand.page.evaluate(evaluate), totalTimeoutPromise]);
       }
 
+      let resultMessages: Array<string> = [];
       // Perform action with timeout
+      const initialDomSettleTimeout = 30000;
+      let stepNumber = 0;
       for (const instruct of instruction.split('|')) {
+        stepNumber++;
         let stepTimeout: ReturnType<typeof setTimeout> | undefined;
-        const stepTimeoutPromise = new Promise((_, reject) => {
-          stepTimeout = setTimeout(() => reject(new Error('step timeout')), 90000);
+        const stepTimeoutPromise = new Promise<void>((_, reject) => {
+          stepTimeout = setTimeout(
+            () => reject(new Error('step timeout')),
+            DEFAULT_TIMEOUTS.ACTION_STEP
+          );
         });
-        await Promise.race([stagehand.page.act(instruct), totalTimeoutPromise, stepTimeoutPromise]);
+
+        // Execute the action and wait for it to complete
+        const result = await Promise.race([stagehand.page.act({
+          action: instruct,
+          domSettleTimeoutMs: stepNumber === 1 ? initialDomSettleTimeout : 100
+        }), totalTimeoutPromise, stepTimeoutPromise]);
         if (stepTimeout !== undefined) {
           clearTimeout(stepTimeout);
         }
+        if (!result) {
+          throw new ActionError(`Action timeout Failed to perform action: ${instruction}`, {
+            instruction,
+            error: new Error('Action timeout'),
+            startUrl: await stagehand.page.url(),
+          });
+        }
+        if (result.success === false) {
+          console.log('result situation', result);
+          throw new ActionError(`${result.message} Failed to perform action: ${result.action} for instruction ${instruction}`, {
+            instruction,
+            error: new Error(result.message),
+            startUrl: await stagehand.page.url(),
+          });
+        }
+        resultMessages.push(result.message);
+
+        // Wait for the DOM to be ready after the action
+        await Promise.race([
+          stagehand.page.waitForLoadState('domcontentloaded'),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('DOM load timeout')), DEFAULT_TIMEOUTS.ACTION_STEP)
+          ),
+        ]);
+
         console.log('step done', instruct);
       }
 
       // Wait for potential navigation
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       // Get the current URL after the action
       const endUrl = await stagehand.page.url();
@@ -219,16 +165,34 @@ export class ActCommand implements Command {
 
       // If the URL changed, consider the action successful
       if (endUrl !== startUrl) {
-        return `Successfully performed action: ${instruction} (final url ${endUrl})`;
+        return {
+          success: true,
+          message: `Successfully performed action: ${instruction} (final url ${endUrl})\n${resultMessages.join('\n')}`,
+          startUrl,
+          endUrl,
+          instruction,
+        };
       }
 
-      return `Successfully performed action: ${instruction}`;
+      return {
+        success: true,
+        message: `Successfully performed action: ${instruction}\n${resultMessages.join('\n')}`,
+        startUrl,
+        endUrl,
+        instruction,
+      };
     } catch (error) {
-      console.log('error in stagehand step', error);
+      // Log detailed error information in debug mode
+      if (options?.debug) {
+        console.error('Error in performAction:', error);
+      }
+
       if (error instanceof Error) {
         throw new ActionError(`${error.message} Failed to perform action: ${instruction}`, {
           instruction,
           error,
+          startUrl: await stagehand.page.url(),
+          pageContent: await stagehand.page.content(),
           availableElements: await stagehand.page.$$eval(
             'a, button, [role="button"], input, select, textarea',
             (elements: Element[]) =>

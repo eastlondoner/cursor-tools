@@ -1,0 +1,9 @@
+---
+description: Tasks involving git, version control, pull requests PRs
+globs: 
+---
+Store data related to Pull Requests (aka PRs) in a subditectory directory under the prs directory named with the PR number i.e. prs/<PR #>/  
+
+if asked to get a diff then download the diff using curl from github commands:
+curl https://github.com/eastlondoner/cursor-tools/pull/<PR #>.diff > prs/<PR #>/changes.diff
+

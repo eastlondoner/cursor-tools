@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>E-commerce Test</title>
+    <style>
+        body { 
+            font-family: sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .search-container {
+            margin: 20px 0;
+        }
+        #search-input {
+            padding: 8px;
+            font-size: 16px;
+            width: 300px;
+        }
+        #search-button {
+            padding: 8px 16px;
+            font-size: 16px;
+            background: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .product {
+            border: 1px solid #ddd;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .product-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .product-price {
+            color: #28a745;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        .product-description {
+            color: #666;
+            margin-bottom: 10px;
+        }
+        .view-details {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #17a2b8;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+        }
+        .view-details:hover {
+            background: #138496;
+        }
+        .no-results {
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            text-align: center;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <h1>E-commerce Test Site</h1>
+
+    <div class="search-container">
+        <input 
+            type="text" 
+            id="search-input" 
+            placeholder="Search for products..."
+            aria-label="Search for products"
+        >
+        <button id="search-button">Search</button>
+    </div>
+
+    <div id="search-results">
+        <!-- Products will be added here by JavaScript -->
+    </div>
+
+    <script>
+        const products = [
+            {
+                id: 1,
+                name: "Awesome Gadget",
+                price: "$29.99",
+                description: "This is an awesome gadget that will make your life easier.",
+                features: ["Wireless", "Rechargeable", "Smart controls"]
+            },
+            {
+                id: 2,
+                name: "Super Widget",
+                price: "$19.99",
+                description: "A super useful widget for all your widget needs.",
+                features: ["Compact", "Durable", "Easy to use"]
+            },
+            {
+                id: 3,
+                name: "Fantastic Thingamajig",
+                price: "$49.99",
+                description: "A fantastic thingamajig with amazing capabilities.",
+                features: ["Advanced tech", "Premium quality", "1-year warranty"]
+            }
+        ];
+
+        function displayProducts(results) {
+            const resultsContainer = document.getElementById('search-results');
+            resultsContainer.innerHTML = '';
+
+            if (results.length === 0) {
+                resultsContainer.innerHTML = `
+                    <div class="no-results">
+                        No products found matching your search.
+                    </div>
+                `;
+                return;
+            }
+
+            results.forEach(product => {
+                const productDiv = document.createElement('div');
+                productDiv.classList.add('product');
+                productDiv.innerHTML = `
+                    <div class="product-name">${product.name}</div>
+                    <div class="product-price">${product.price}</div>
+                    <div class="product-description">${product.description}</div>
+                    <a href="ecommerce-product-details.html?id=${product.id}" class="view-details">
+                        View Details
+                    </a>
+                `;
+                resultsContainer.appendChild(productDiv);
+            });
+        }
+
+        document.getElementById('search-button').addEventListener('click', () => {
+            const searchTerm = document.getElementById('search-input').value.toLowerCase();
+            const filteredProducts = products.filter(product =>
+                product.name.toLowerCase().includes(searchTerm) ||
+                product.description.toLowerCase().includes(searchTerm)
+            );
+            displayProducts(filteredProducts);
+        });
+
+        // Handle Enter key in search input
+        document.getElementById('search-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('search-button').click();
+            }
+        });
+
+        // Initially display all products
+        displayProducts(products);
+    </script>
+</body>
+</html> 
