@@ -1,30 +1,19 @@
 import type { Command, CommandGenerator } from '../../../types';
 import {
-  formatOutput,
-  handleBrowserError,
-  ObservationError,
-  NavigationError,
-} from './stagehandUtils';
-import { ConstructorParams, Stagehand, ObserveResult } from '@browserbasehq/stagehand';
-import { loadConfig } from '../../../config';
-import {
-  loadStagehandConfig,
-  validateStagehandConfig,
-  getStagehandApiKey,
-  getStagehandModel,
-} from './config';
+  createStagehand,
+  navigateToUrl,
+  DEFAULT_TIMEOUTS,
+} from './createStagehand';
+import { ObservationError } from './errors';
+import { Stagehand, ObserveResult } from '@browserbasehq/stagehand';
 import type { SharedBrowserCommandOptions } from '../browserOptions';
 import {
   setupConsoleLogging,
   setupNetworkMonitoring,
   captureScreenshot,
   outputMessages,
-  setupVideoRecording,
 } from '../utilsShared';
-import { stagehandLogger } from './initOverride';
-import { overrideStagehandInit } from './initOverride';
-
-overrideStagehandInit();
+import { formatOutput, handleBrowserError } from './stagehandUtils';
 
 interface ObservationResult {
   elements: Array<{
@@ -49,121 +38,33 @@ export class ObserveCommand implements Command {
       return;
     }
 
-    // Load and validate configuration
-    const config = loadConfig();
-    const stagehandConfig = loadStagehandConfig(config);
-    validateStagehandConfig(stagehandConfig);
-
-    let stagehand: Stagehand | undefined;
-    let consoleMessages: string[] = [];
-    let networkMessages: string[] = [];
-
+    let stagehandInstance;
     try {
-      const config = {
-        env: 'LOCAL',
-        headless: options?.headless ?? stagehandConfig.headless,
-        verbose: options?.debug || stagehandConfig.verbose ? 1 : 0,
-        debugDom: options?.debug ?? stagehandConfig.debugDom,
-        modelName: getStagehandModel(stagehandConfig, { model: options?.model }),
-        apiKey: getStagehandApiKey(stagehandConfig),
-        enableCaching: stagehandConfig.enableCaching,
-        logger: stagehandLogger(options?.debug ?? stagehandConfig.verbose),
-      } satisfies ConstructorParams;
+      stagehandInstance = await createStagehand(options);
+      const { stagehand, page } = stagehandInstance;
 
-      // Set default values for network and console options
-      options = {
-        ...options,
-        network: options?.network === undefined ? true : options.network,
-        console: options?.console === undefined ? true : options.console,
-      };
+      const consoleMessages = await setupConsoleLogging(page, options || {});
+      const networkMessages = await setupNetworkMonitoring(page, options || {});
 
-      console.log('using stagehand config', { ...config, apiKey: 'REDACTED' });
-      stagehand = new Stagehand(config);
+      await navigateToUrl(stagehand, url, options?.timeout);
 
-      await using _stagehand = {
-        [Symbol.asyncDispose]: async () => {
-          console.error('closing stagehand, this can take a while');
-          await Promise.race([
-            options?.connectTo ? undefined : stagehand?.page.close(),
-            stagehand?.close(),
-            new Promise((_, reject) =>
-              setTimeout(() => reject(new Error('Page close timeout')), 5000)
-            ),
-          ]);
-          console.log('stagehand closed');
-        },
-      };
-
-      // Initialize with timeout
-      const initPromise = stagehand.init({
-        ...options,
-        //@ts-ignore
-        recordVideo: options.video
-          ? {
-              dir: await setupVideoRecording(options),
-            }
-          : undefined,
-      });
-      const initTimeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Initialization timeout')), 30000)
-      );
-      await Promise.race([initPromise, initTimeoutPromise]);
-
-      // Setup console and network monitoring
-      consoleMessages = await setupConsoleLogging(stagehand.page, options);
-      networkMessages = await setupNetworkMonitoring(stagehand.page, options);
-
-      try {
-        // Skip navigation if url is 'current' or if current URL matches target URL
-        if (options.url && options.url !== 'current') {
-          const currentUrl = await stagehand.page.url();
-          if (currentUrl !== options.url) {
-            // Navigate with timeout
-            const gotoPromise = stagehand.page.goto(options.url);
-            const gotoTimeoutPromise = new Promise((_, reject) =>
-              setTimeout(
-                () => reject(new Error('Navigation timeout')),
-                stagehandConfig.timeout ?? 30000
-              )
-            );
-            await Promise.race([gotoPromise, gotoTimeoutPromise]);
-          } else {
-            console.log('Skipping navigation - already on correct page');
-          }
-        } else {
-          console.log('Skipping navigation - using current page');
-        }
-
-        // Execute custom JavaScript if provided
-        if (options?.evaluate) {
-          await stagehand.page.evaluate(options.evaluate);
-        }
-      } catch (error) {
-        throw new NavigationError(
-          `Failed to navigate to ${options.url}. Please check if the URL is correct and accessible.`,
-          error
-        );
+      // Execute custom JavaScript if provided
+      if (options?.evaluate) {
+        await page.evaluate(options.evaluate);
       }
 
-      // Use Stagehand's native observe method
-      const result = await this.performObservation(
-        stagehand,
-        query,
-        options?.timeout ?? stagehandConfig.timeout
-      );
+      const result = await this.performObservation(stagehand, query, options?.timeout, options);
 
-      // Take screenshot if requested
-      await captureScreenshot(stagehand.page, options);
+      await captureScreenshot(page, options || {});
 
-      // Output result and messages
+      // Output the structured result of the observation
       yield formatOutput(result, options?.debug);
-      for (const message of outputMessages(consoleMessages, networkMessages, options)) {
+      for (const message of outputMessages(consoleMessages, networkMessages, options || {})) {
         yield message;
       }
 
-      // Output HTML content if requested
       if (options?.html) {
-        const htmlContent = await stagehand.page.content();
+        const htmlContent = await page.content();
         yield '\n--- Page HTML Content ---\n\n';
         yield htmlContent;
         yield '\n--- End of HTML Content ---\n';
@@ -174,15 +75,32 @@ export class ObserveCommand implements Command {
       }
     } catch (error) {
       console.error(error);
-      yield handleBrowserError(error, options?.debug);
+      for await (const message of handleBrowserError(error, options?.debug)) {
+        yield message;
+      }
+    } finally {
+      if (stagehandInstance) {
+        await stagehandInstance.cleanup();
+      }
     }
   }
 
   private async performObservation(
     stagehand: Stagehand,
     instruction?: string,
-    timeout = 30000
-  ): Promise<ObservationResult> {
+    timeout: number = DEFAULT_TIMEOUTS.OBSERVATION,
+    options?: SharedBrowserCommandOptions
+  ): Promise<{
+    success: boolean;
+    message: string;
+    elements: Array<{
+      type: string;
+      description: string;
+      actions: string[];
+      location: string;
+    }>;
+    instruction: string;
+  }> {
     try {
       const timeoutPromise = new Promise<ObserveResult[]>((_, reject) =>
         setTimeout(() => reject(new Error('Observation timeout')), timeout)
@@ -190,7 +108,7 @@ export class ObserveCommand implements Command {
 
       const observeOptions = {
         instruction: instruction || 'Find interactive elements on this page',
-        onlyVisible: true,
+        onlyVisible: true, // Note: Only visible elements are included in the results
         timeout: Math.min(timeout, 5000), // Use a shorter timeout for DOM settling
       };
 
@@ -214,7 +132,7 @@ export class ObserveCommand implements Command {
         return acc;
       }, new Map<string, ObserveResult>());
 
-      // Helper to determine element type and actions
+      // Helper to determine element type and actions based on element properties
       const getTypeAndActions = async (obs: ObserveResult) => {
         const element = await stagehand.page.$(obs.selector);
         if (!element) return { type: 'unknown', actions: ['click'] };
@@ -261,10 +179,17 @@ export class ObserveCommand implements Command {
       );
 
       return {
+        success: true,
+        message: `Found ${elements.length} unique interactive elements on the page`,
         elements,
-        summary: `Found ${elements.length} unique interactive elements on the page`,
+        instruction: instruction || 'Find interactive elements on this page',
       };
     } catch (error) {
+      // Log detailed error information in debug mode
+      if (options?.debug) {
+        console.error('Error in performObservation:', error);
+      }
+
       if (error instanceof ObservationError) {
         throw error;
       }

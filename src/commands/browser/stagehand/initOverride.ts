@@ -1,17 +1,19 @@
 import { Stagehand } from '@browserbasehq/stagehand';
 import type { SharedBrowserCommandOptions } from '../browserOptions';
-import type { RecordVideoOptions } from './act';
+import { LogLine, BrowserResult } from '@browserbasehq/stagehand';
 import { once } from '../../../utils/once';
-
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { BrowserContext, chromium } from 'playwright';
 
 import { scriptContent } from './scriptContent';
-import { LogLine, BrowserResult } from '@browserbasehq/stagehand';
 
-const dumbMessages = new Set([
+export interface RecordVideoOptions {
+  dir: string;
+}
+
+const DUMB_MESSAGES = new Set([
   'clicked element',
   'running / continuing action',
   'looking at chunk',
@@ -19,7 +21,8 @@ const dumbMessages = new Set([
   'processing DOM',
   'transformed response',
 ]);
-const boringMessages = new Set([
+
+const BORING_MESSAGES = new Set([
   'launching local browser',
   'local browser started successfully.',
   'action completed successfully',
@@ -30,20 +33,24 @@ export function stagehandLogger(
   verbose: boolean
 ): ((message: LogLine) => void | Promise<void>) | undefined {
   return (message) => {
-    // fs.appendFileSync("stagehand-debug.log", JSON.stringify(message, null, 2));
-    if (dumbMessages.has(message.message)) {
-      // append these messages to a debug.log file
-      // fs.appendFileSync("stagehand-debug.log", JSON.stringify(message, null, 2));
+    if (process.env.DEBUG_LOG) {
+      fs.appendFileSync('stagehand-debug.log', JSON.stringify(message, null, 2));
+    }
+
+    if (DUMB_MESSAGES.has(message.message)) {
       return;
     }
-    if (boringMessages.has(message.message)) {
+
+    if (BORING_MESSAGES.has(message.message)) {
       console.log('Stagehand:', message.message);
       return;
     }
+
     if (message.message === 'received response from LLM') {
       console.log('Stagehand:', message.auxiliary?.response?.value);
       return;
     }
+
     if (message.message === 'response') {
       const value = message?.auxiliary?.response?.value;
       if (value) {
@@ -60,6 +67,7 @@ export function stagehandLogger(
         }
       }
     }
+
     if (verbose) {
       console.log('Stagehand:', message);
     } else {
@@ -80,108 +88,121 @@ export async function getBrowser(
   },
   logger: (message: LogLine) => void
 ): Promise<BrowserResult> {
-  logger({
-    category: 'init',
-    message: 'launching local browser',
-    level: 0,
-    auxiliary: options as any,
-  });
-
-  const tmpDirPath = path.join(os.tmpdir(), 'stagehand');
-  if (!fs.existsSync(tmpDirPath)) {
-    fs.mkdirSync(tmpDirPath, { recursive: true });
-  }
-
-  const tmpDir = fs.mkdtempSync(path.join(tmpDirPath, 'ctx_'));
-  fs.mkdirSync(path.join(tmpDir, 'userdir/Default'), { recursive: true });
-
-  const defaultPreferences = {
-    plugins: {
-      always_open_pdf_externally: true,
-    },
-  };
-
-  fs.writeFileSync(
-    path.join(tmpDir, 'userdir/Default/Preferences'),
-    JSON.stringify(defaultPreferences)
-  );
-
-  const downloadsPath = path.join(process.cwd(), 'downloads');
-  fs.mkdirSync(downloadsPath, { recursive: true });
-
-  let context: BrowserContext;
-  if (options.connectTo) {
-    const browser = await chromium.connectOverCDP(`http://localhost:${options.connectTo}`);
+  try {
     logger({
       category: 'init',
-      message: 'connected to existing browser',
+      message: 'launching local browser',
+      level: 0,
+      auxiliary: options as any,
     });
 
-    // Get or create context
-    context =
-      (await browser.contexts()[0]) ||
-      (await browser.newContext({
-        recordVideo: options.recordVideo,
-        acceptDownloads: true,
-        viewport: options.viewport,
-        locale: 'en-US',
-        timezoneId: 'America/New_York',
-        bypassCSP: true,
-        deviceScaleFactor: 1,
-        colorScheme: null,
-      }));
+    const tmpDirPath = path.join(os.tmpdir(), 'stagehand');
+    if (!fs.existsSync(tmpDirPath)) {
+      fs.mkdirSync(tmpDirPath, { recursive: true });
+    }
+    const tmpDir = fs.mkdtempSync(path.join(tmpDirPath, 'ctx_'));
+    fs.mkdirSync(path.join(tmpDir, 'userdir/Default'), { recursive: true });
+    const defaultPreferences = {
+      plugins: {
+        always_open_pdf_externally: true, // Prevent PDFs from opening in the built-in PDF viewer.
+      },
+    };
+    fs.writeFileSync(
+      path.join(tmpDir, 'userdir/Default/Preferences'),
+      JSON.stringify(defaultPreferences)
+    );
 
-    // Get existing pages
-    const pages = await context.pages();
-    if (pages.length > 0) {
+    const downloadsPath = path.join(process.cwd(), 'downloads');
+    fs.mkdirSync(downloadsPath, { recursive: true });
+
+    let context: BrowserContext;
+
+    if (options.connectTo) {
+      const browser = await chromium.connectOverCDP(`http://localhost:${options.connectTo}`);
       logger({
         category: 'init',
-        message: 'using existing page',
+        message: 'connected to existing browser',
         level: 1,
-        auxiliary: {
-          pageCount: {
-            value: pages.length.toString(),
-            type: 'integer',
-          },
-        },
       });
-      await Promise.all(pages.map((page) => page.evaluate(scriptContent())));
+
+      // Get or create context
+      context =
+        (await browser.contexts()[0]) ||
+        (await browser.newContext({
+          recordVideo: options.recordVideo,
+          acceptDownloads: true,
+          viewport: options.viewport,
+          locale: 'en-US',
+          timezoneId: 'America/New_York',
+          bypassCSP: true,
+          deviceScaleFactor: 1,
+          colorScheme: null, // Use system color scheme
+        }));
+
+      // Get existing pages
+      const pages = await context.pages();
+      if (pages.length > 0) {
+        logger({
+          category: 'init',
+          message: 'using existing page',
+          level: 1,
+          auxiliary: {
+            pageCount: {
+              value: pages.length.toString(),
+              type: 'integer',
+            },
+          },
+        });
+        await Promise.all(pages.map((page) => page.evaluate(scriptContent())));
+      }
+    } else {
+      context = await chromium.launchPersistentContext(path.join(tmpDir, 'userdir'), {
+        recordVideo: options.recordVideo,
+        acceptDownloads: true,
+        headless: options.headless,
+        viewport: options.viewport,
+        colorScheme: null,
+        locale: 'en-US',
+        timezoneId: 'America/New_York',
+        deviceScaleFactor: 1,
+        args: [
+          '--enable-webgl',
+          '--use-gl=swiftshader',
+          '--enable-accelerated-2d-canvas',
+          '--disable-blink-features=AutomationControlled',
+          '--disable-web-security',
+        ],
+        bypassCSP: true,
+        timeout: 30_000,
+      });
+      logger({
+        category: 'init',
+        message: 'local browser started successfully.',
+        level: 1,
+      });
     }
 
+    await applyStealthScripts(context);
+    return { context, contextPath: tmpDir, env: 'LOCAL' };
+  } catch (e) {
+    console.error('Error initializing browser:', e);
     logger({
       category: 'init',
-      message: 'connected to existing browser',
+      message: 'failed to launch local browser',
+      level: 2,
+      auxiliary: {
+        error: {
+          value: e instanceof Error ? e.message : String(e),
+          type: 'string',
+        },
+        trace: {
+          value: e instanceof Error && e.stack ? e.stack : '',
+          type: 'string',
+        },
+      },
     });
-  } else {
-    context = await chromium.launchPersistentContext(path.join(tmpDir, 'userdir'), {
-      recordVideo: options.recordVideo,
-      acceptDownloads: true,
-      headless: options.headless,
-      viewport: options.viewport,
-      colorScheme: null,
-      locale: 'en-US',
-      timezoneId: 'America/New_York',
-      deviceScaleFactor: 1,
-      args: [
-        '--enable-webgl',
-        '--use-gl=swiftshader',
-        '--enable-accelerated-2d-canvas',
-        '--disable-blink-features=AutomationControlled',
-        '--disable-web-security',
-      ],
-      bypassCSP: true,
-      timeout: 30_000,
-    });
-
-    logger({
-      category: 'init',
-      message: 'local browser started successfully.',
-    });
+    throw e;
   }
-
-  await applyStealthScripts(context);
-
-  return { context, contextPath: tmpDir, env: 'LOCAL' };
 }
 
 async function applyStealthScripts(context: BrowserContext) {
@@ -279,19 +300,22 @@ export function overrideStagehandInit() {
       this.logger
     ).catch((e) => {
       console.error('Error in init:', e);
-      return {
-        context: undefined,
-        debugUrl: undefined,
-        sessionUrl: undefined,
-        sessionId: undefined,
-        env: this.env,
-        contextPath: undefined,
-      };
+      this.logger({
+        category: 'init',
+        message: 'Stagehand initialization failed',
+        level: 2,
+        auxiliary: {
+          error: {
+            value: e instanceof Error ? e.message : String(e),
+            type: 'string',
+          },
+        },
+      });
+      throw e;
     });
 
     this['intEnv'] = browserResult.env;
     this['contextPath'] = browserResult.contextPath;
-
     if (!browserResult.context) {
       throw new Error('Failed to initialize browser context');
     }
