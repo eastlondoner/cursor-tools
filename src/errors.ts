@@ -62,7 +62,7 @@ export class ModelNotFoundError extends ProviderError {
           '\nSuggested models:\n- gemini-2.0-flash-thinking-exp\n- gemini-2.0-flash\n- gemini-2.0-pro-exp';
         break;
       case 'perplexity':
-        message += '\nSuggested models:\n- mistral-7b\n- codellama-34b';
+        message += '\nSuggested models:\n- sonar-pro\n- sonar-reasoning-pro';
         break;
       case 'openrouter':
         message +=
