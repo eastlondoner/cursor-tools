@@ -6,7 +6,6 @@ import {
   ModelNotFoundError,
   NetworkError,
   ProviderError,
-  GeminiRecitationError,
 } from '../errors';
 import { exhaustiveMatchGuard } from '../utils/exhaustiveMatchGuard';
 import { chunkMessage } from '../utils/messageChunker';
