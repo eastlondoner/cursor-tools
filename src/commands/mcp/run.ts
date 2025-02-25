@@ -247,6 +247,38 @@ HOWEVER if the server details show that you cannot run with uvx or npx, or if yo
       throw new Error('Query cannot be empty');
     }
 
+    // Extract provider option if specified
+    const provider = options.provider as 'anthropic' | 'openrouter' || 'anthropic';
+    const model = options.model as string;
+    
+    if (provider && provider !== 'anthropic' && provider !== 'openrouter') {
+      throw new Error(`Invalid provider: ${provider}. Supported providers are 'anthropic' and 'openrouter'`);
+    }
+    
+    if (provider === 'openrouter' && !process.env.OPENROUTER_API_KEY) {
+      throw new Error('OPENROUTER_API_KEY environment variable is required when using the OpenRouter provider');
+    }
+
+    // Log provider and model information
+    console.log(`Using provider: ${provider}`);
+    if (model) {
+      console.log(`Using model: ${model}`);
+    } else {
+      console.log(`Using default model for ${provider}`);
+    }
+
+    // Add warning for OpenRouter limitations
+    if (provider === 'openrouter') {
+      console.warn(`
+⚠️  WARNING: OpenRouter has significant limitations with MCP servers ⚠️
+- Only the Filesystem MCP server works reliably with OpenRouter
+- Code Interpreter, Browserbase, and other complex MCP servers WILL NOT work
+- This is due to fundamental differences in how OpenRouter handles tool calls
+- For complex MCP servers, use the Anthropic provider instead:
+  cursor-tools mcp run "${queryInput}" --provider=anthropic
+`);
+    }
+
     // Fetch marketplace data first
     const marketplaceData = await this.marketplaceManager.getMarketplaceData();
 
@@ -326,10 +358,11 @@ HOWEVER if the server details show that you cannot run with uvx or npx, or if yo
                 command: serverConfig.command,
                 args: serverConfig.args,
                 env: serverConfig.env,
+                provider: provider,
               },
               options.debug
             );
-            await client.start();
+            await client.start(provider);
             success = true;
             yields.push(`Successfully initialized ${server.name}\n`);
             return { type: 'success' as const, client, server, yields };
@@ -419,7 +452,7 @@ HOWEVER if the server details show that you cannot run with uvx or npx, or if yo
       const allMessages = await Promise.all(
         successfulClients.map(async ({ client, server }) => {
           try {
-            const messages = await client.processQuery(queryInput);
+            const messages = await client.processQuery(queryInput, provider, model);
             return { server, messages, error: null };
           } catch (error) {
             return {

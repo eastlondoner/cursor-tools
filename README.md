@@ -697,6 +697,57 @@ All commands support these general options:
 - `--help`: View all available options
 - `--provider`: AI provider to use. Valid values: openai, anthropic, perplexity, gemini, openrouter
 
+### MCP Command Options
+The MCP (Model Context Protocol) command supports these specific options:
+- `--provider`: AI provider to use. Valid values: anthropic (default), openrouter
+- `--model`: Model to use for MCP operations. Default depends on provider:
+  - For Anthropic: `claude-3-7-sonnet-thinking-latest`
+  - For OpenRouter: `anthropic/claude-3-sonnet`
+
+#### MCP Server Compatibility
+Based on extensive testing, we've found that OpenRouter has significant limitations with MCP servers:
+
+| MCP Server | Anthropic | OpenRouter | Notes |
+|------------|-----------|------------|-------|
+| Filesystem | ✅ Works  | ✅ Works   | Only reliable server for OpenRouter |
+| Time       | ❌ Fails  | ❌ Fails   | Timezone detection issues with both providers |
+| Git        | ⚠️ Requires env vars | ⚠️ Requires env vars | Works with both providers when env vars are set |
+| Playwright/Puppeteer | ✅ Works | ❌ Fails | Connection closed errors with OpenRouter |
+| Code Interpreter | ✅ Works | ❌ Fails | WILL NOT work with OpenRouter due to fundamental tool call handling differences |
+| Browserbase | ✅ Works | ❌ Fails | Connection closed errors with OpenRouter |
+| Riza | ⚠️ Requires env vars | ❌ Fails | Requires RIZA_API_KEY; connection issues with OpenRouter |
+
+**IMPORTANT**: OpenRouter WILL NOT work with most MCP servers due to fundamental differences in how it handles tool calls compared to Anthropic. The only MCP server that reliably works with OpenRouter is the Filesystem MCP server.
+
+For best results:
+- Use Anthropic provider for any MCP server that requires complex tool calls
+- Only use OpenRouter with the Filesystem MCP server
+- Do not attempt to use Code Interpreter, Browserbase, or other complex MCP servers with OpenRouter
+
+```bash
+# This will work - Filesystem MCP with OpenRouter
+cursor-tools mcp run "List files in the current directory" --provider=openrouter
+
+# This will NOT work - Code Interpreter with OpenRouter
+cursor-tools mcp run "Write and execute a Python script" --provider=openrouter
+
+# Use Anthropic instead for complex MCP servers
+cursor-tools mcp run "Write and execute a Python script" --provider=anthropic
+```
+
+#### Environment Variables for MCP
+MCP commands require API keys to be set in your environment:
+- For Anthropic: `ANTHROPIC_API_KEY`
+- For OpenRouter: `OPENROUTER_API_KEY`
+
+Add these to your `~/.cursor-tools/.env` file:
+```
+ANTHROPIC_API_KEY=your_anthropic_api_key
+OPENROUTER_API_KEY=your_openrouter_api_key
+```
+
+Some MCP servers may require additional environment variables.
+
 Documentation command specific options:
 - `--from-github`: Generate documentation for a remote GitHub repository (supports @branch syntax)
 - `--hint`: Provide additional context or focus for documentation generation
