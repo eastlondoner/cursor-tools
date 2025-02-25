@@ -15,13 +15,13 @@
   },
   "scripts": {
     "compile": "tsc -build",
-    "build": "node build.js",
+    "build": "bun build.js",
     "prepublish": "npm run compile && npm run lint && npm run build",
     "dev": "node --import=tsx src/index.ts",
     "serve-test": "bun --hot tests/commands/browser/serve.ts",
     "test": "vitest",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,md}\"",
-    "lint": "npm run format && eslint \"src/**/*.ts\"",
+    "lint": "bun format && eslint \"src/**/*.ts\"",
     "release": "node scripts/release.cjs"
   },
   "files": [
@@ -69,14 +69,9 @@
     "playwright": "1.50.1"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "bun": ">=1.2.3"
   },
   "overrides": {
     "punycode": "^2.3.1"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild"
-    ]
   }
 }

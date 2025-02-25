@@ -1,13 +1,13 @@
 import type { CommandMap } from '../types.ts';
-import { WebCommand } from './web.ts';
-import { InstallCommand } from './install.ts';
-import { GithubCommand } from './github.ts';
+import { AskCommand } from './ask.ts';
 import { BrowserCommand } from './browser/browserCommand.ts';
+import { DocCommand } from './doc.ts';
+import { GithubCommand } from './github.ts';
+import { InstallCommand } from './install.ts';
+import { MCPCommand } from './mcp/mcp.ts';
 import { PlanCommand } from './plan.ts';
 import { RepoCommand } from './repo.ts';
-import { DocCommand } from './doc.ts';
-import { AskCommand } from './ask.ts';
-import { MCPCommand } from './mcp/mcp.ts';
+import { WebCommand } from './web.ts';
 
 export const commands: CommandMap = {
   web: new WebCommand(),

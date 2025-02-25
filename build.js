@@ -1,7 +1,7 @@
 import * as esbuild from 'esbuild';
-import { argv } from 'node:process';
 import { chmod } from 'node:fs/promises';
 import { platform } from 'node:os';
+import { argv } from 'node:process';
 
 const watch = argv.includes('--watch');
 
@@ -11,20 +11,20 @@ const nodeBuiltinsPlugin = {
     // Handle punycode redirects
     build.onResolve({ filter: /^(node:)?punycode$/ }, () => ({
       path: 'punycode/',
-      external: true
+      external: true,
     }));
 
     // Handle other node builtins
-    build.onResolve({ filter: /^(util|http)$/ }, args => ({
+    build.onResolve({ filter: /^(util|http)$/ }, (args) => ({
       path: args.path,
-      namespace: 'node-builtin'
+      namespace: 'node-builtin',
     }));
 
-    build.onLoad({ filter: /.*/, namespace: 'node-builtin' }, args => ({
+    build.onLoad({ filter: /.*/, namespace: 'node-builtin' }, (args) => ({
       contents: `export * from 'node:${args.path}'; export { default } from 'node:${args.path}';`,
-      loader: 'js'
+      loader: 'js',
     }));
-  }
+  },
 };
 
 const buildOptions = {
@@ -40,7 +40,7 @@ const buildOptions = {
     js: `#!/usr/bin/env node
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
-`
+`,
   },
   resolveExtensions: ['.ts', '.js'],
   external: [
@@ -71,7 +71,7 @@ const require = createRequire(import.meta.url);
   keepNames: true,
   mainFields: ['module', 'main'],
   define: {},
-  plugins: [nodeBuiltinsPlugin]
+  plugins: [nodeBuiltinsPlugin],
 };
 
 if (watch) {
@@ -81,12 +81,12 @@ if (watch) {
   await context.watch();
 } else {
   await esbuild.build(buildOptions);
-  
+
   // Make the output file executable on Unix-like systems
   if (platform() !== 'win32') {
     await chmod('./dist/index.mjs', 0o755);
   }
-   
+
   // eslint-disable-next-line no-undef
   console.log('Build complete');
 }
