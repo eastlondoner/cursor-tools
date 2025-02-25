@@ -36,3 +36,6 @@ test-videos/
 screenshot.png
 screenshots/
 .specstory/
+
+.cursor/
+.cursor/rules/cursor-tools.mdc

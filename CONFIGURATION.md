@@ -280,3 +280,43 @@ You can configure both models and their providers:
 ```
 
 The OpenAI o3-mini model is chosen as the default thinking provider for its speed and efficiency in generating implementation plans. 
+
+### MCP Command
+The MCP (Model Context Protocol) command allows you to interact with MCP servers using different AI providers:
+
+```json
+{
+  "mcp": {
+    "provider": "anthropic",  // Default provider: "anthropic" or "openrouter"
+    "model": "claude-3-7-sonnet-thinking-latest",  // Default model for the selected provider
+    "maxTokens": 8000  // Maximum tokens for responses
+  }
+}
+```
+
+#### Provider Configuration
+- **Anthropic (Default)**: Requires `ANTHROPIC_API_KEY` in your environment
+  - Default model: `claude-3-7-sonnet-thinking-latest`
+  
+- **OpenRouter**: Requires `OPENROUTER_API_KEY` in your environment
+  - Default model: `anthropic/claude-3-sonnet`
+  - Supports various models through the OpenRouter API
+
+You can override these settings with command-line options:
+```bash
+# Use OpenRouter provider
+cursor-tools mcp run "list files" --provider=openrouter
+
+# Use OpenRouter with a specific model
+cursor-tools mcp run "list files" --provider=openrouter --model=anthropic/claude-3-opus-thinking
+```
+
+#### Environment Variables
+Add these to your `.cursor-tools/.env` file:
+```env
+# For Anthropic provider
+ANTHROPIC_API_KEY="your-anthropic-api-key"
+
+# For OpenRouter provider
+OPENROUTER_API_KEY="your-openrouter-api-key"
+``` 

@@ -310,9 +310,10 @@ async function main() {
 
   if (!command) {
     console.error(
-      'Usage: cursor-tools [--model=<model>] [--max-tokens=<number>] [--from-github=<github_url>] [--output=<filepath>] [--save-to=<filepath>] [--hint=<hint>] <command> "<query>"\n' +
+      'Usage: cursor-tools [--model=<model>] [--provider=<provider>] [--max-tokens=<number>] [--from-github=<github_url>] [--output=<filepath>] [--save-to=<filepath>] [--hint=<hint>] <command> "<query>"\n' +
         '       Note: Options can be specified in kebab-case (--max-tokens) or camelCase (--maxTokens)\n' +
-        '       Both --key=value and --key value formats are supported'
+        '       Both --key=value and --key value formats are supported\n' +
+        '       For MCP command, supported providers are: anthropic, openrouter'
     );
     process.exit(1);
   }
