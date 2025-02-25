@@ -1,8 +1,8 @@
 This is the cursor-tools repo. Here we build a cli tool that AI agents can use to execute commands and work with other AI agents.
 
-This repo uses pnpm as the package manager and script runner.
+This repo uses bun as the package manager and script runner.
 
-use pnpm dev <command> to run dev commands.
+use `bun dev <command>` to run dev commands.
 
 We add AI "teammates" as commands that can be asked questions.
 We add "skills" as commands that can be used to execute tasks.
@@ -33,7 +33,7 @@ yield should be used for the output of the command that contains the information
 There is a test server for browser command testing and a collection of test files in tests/commands/browser/
 
 Usage:
-1. Run with: pnpm serve-test
+1. Run with: bun serve-test
 2. Server starts at http://localhost:3000
 3. Place test HTML files in tests/commands/browser/
 4. Access files at http://localhost:3000/filename.html
@@ -42,7 +42,7 @@ remember that this will be a long running process that does not exit so you shou
 
 If it won't start because the port is busy run `lsof -i :3000 | grep LISTEN | awk '{print $2}' | xargs kill` to kill the process and free the port.
 
-to run test commands with latest code use `pnpm dev browser <commands>`
+to run test commands with latest code use `bun dev browser <commands>`
 
 For interactive debugging start chrome in debug mode using:
 ```

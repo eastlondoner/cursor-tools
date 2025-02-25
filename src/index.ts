@@ -1,10 +1,10 @@
-import { commands } from './commands/index.ts';
-import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
+import { promises as fsPromises, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { commands } from './commands/index.ts';
 import { checkCursorRules } from './cursorrules.ts';
 import type { CommandOptions, Provider } from './types';
-import { promises as fsPromises } from 'node:fs';
+
 // Get the directory name of the current module
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
