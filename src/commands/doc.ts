@@ -195,6 +195,10 @@ Please:
     throw new NetworkError('Failed to fetch GitHub repository context after all retries');
   }
 
+  getDescription(): string {
+    return 'Generate comprehensive documentation for this repository';
+  }
+
   async *execute(query: string, options: DocCommandOptions): CommandGenerator {
     try {
       console.error('Generating repository documentation...\n');

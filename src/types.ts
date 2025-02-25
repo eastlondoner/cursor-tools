@@ -11,6 +11,7 @@ export interface CommandOptions {
   debug: boolean;
   url?: string;
   json?: boolean; // Output results as JSON
+  help?: boolean; // Show help message
 
   // Output options
   saveTo?: string; // Path to save output to in addition to stdout
@@ -28,6 +29,8 @@ export interface CommandOptions {
 
 export interface Command {
   execute(query: string, options: CommandOptions): CommandGenerator;
+  getDescription?(): string;
+  getHelp?(): string;
 }
 
 export interface CommandMap {

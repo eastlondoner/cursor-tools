@@ -22,6 +22,10 @@ export class AskCommand implements Command {
     this.config = loadConfig();
   }
 
+  getDescription(): string {
+    return 'Ask any model from any provider a direct question';
+  }
+
   async *execute(query: string, options?: CommandOptions): CommandGenerator {
     // Get available providers
     const availableProviders = getAvailableProviders().filter((p) => p.available);

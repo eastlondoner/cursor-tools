@@ -20,6 +20,26 @@ function toKebabCase(str: string): string {
 }
 
 // CLI option types
+type CLIBooleanOption =
+  // Core options
+  | 'debug'
+  | 'help'
+  | 'json'
+  // Output options
+  | 'quiet'
+  // Browser options
+  | 'headless'
+  | 'console'
+  | 'network'
+  | 'html';
+
+type CLINumberOption =
+  // Core options
+  | 'maxTokens'
+  // Browser options
+  | 'timeout'
+  | 'connectTo';
+
 type CLIStringOption =
   // Core options
   | 'model'
@@ -44,45 +64,14 @@ type CLIStringOption =
   | 'fileModel'
   | 'thinkingModel';
 
-type CLINumberOption =
-  // Core options
-  | 'maxTokens'
-  // Browser options
-  | 'timeout'
-  | 'connectTo';
-
-type CLIBooleanOption =
-  // Core options
-  | 'debug'
-  // Output options
-  | 'quiet'
-  | 'json'
-  // Browser options
-  | 'console'
-  | 'html'
-  | 'network'
-  | 'headless'
-  | 'text';
-
 // Main CLI options interface
 interface CLIOptions {
-  // Core options
+  // String options
   model?: string;
-  provider?: string;
-  maxTokens?: number;
-  debug?: boolean;
-
-  // Output options
+  fromGithub?: string;
   output?: string;
   saveTo?: string;
-  quiet?: boolean;
-  json?: boolean;
-
-  // Context options
   hint?: string;
-  fromGithub?: string;
-
-  // Browser options
   url?: string;
   screenshot?: string;
   viewport?: string;
@@ -90,36 +79,42 @@ interface CLIOptions {
   wait?: string;
   video?: string;
   evaluate?: string;
-  timeout?: number;
-  connectTo?: number;
-  console?: boolean;
-  html?: boolean;
-  network?: boolean;
-  headless?: boolean;
-  text?: boolean;
-
-  // Plan options
+  // Plan command options
   fileProvider?: string;
   thinkingProvider?: string;
   fileModel?: string;
   thinkingModel?: string;
+  // Number options
+  maxTokens?: number;
+  timeout?: number;
+  connectTo?: number;
+  // Boolean options
+  debug?: boolean;
+  quiet?: boolean;
+  json?: boolean;
+  help?: boolean;
+  console?: boolean;
+  html?: boolean;
+  network?: boolean;
+  headless?: boolean;
 }
 
 type CLIOptionKey = CLIStringOption | CLINumberOption | CLIBooleanOption;
 
 // Map of normalized keys to their option names in the options object
-const OPTION_KEYS: Record<string, CLIOptionKey> = {
+const OPTION_KEYS: Record<string, CLIStringOption | CLINumberOption | CLIBooleanOption> = {
   // Core options
   model: 'model',
   provider: 'provider',
   maxtokens: 'maxTokens',
   debug: 'debug',
+  help: 'help',
+  json: 'json',
 
   // Output options
   output: 'output',
   saveto: 'saveTo',
   quiet: 'quiet',
-  json: 'json',
 
   // Context options
   hint: 'hint',
@@ -139,7 +134,6 @@ const OPTION_KEYS: Record<string, CLIOptionKey> = {
   html: 'html',
   network: 'network',
   headless: 'headless',
-  text: 'text',
 
   // Plan options
   fileprovider: 'fileProvider',
@@ -151,102 +145,55 @@ const OPTION_KEYS: Record<string, CLIOptionKey> = {
 // Set of option keys that are boolean flags
 const BOOLEAN_OPTIONS = new Set<CLIBooleanOption>([
   'debug',
-  'quiet',
+  'help',
   'json',
-  'console',
-  'html',
-  'network',
+  'quiet',
   'headless',
-  'text',
+  'console',
+  'network',
+  'html',
 ]);
 
 // Set of option keys that require numeric values
 const NUMERIC_OPTIONS = new Set<CLINumberOption>(['maxTokens', 'timeout', 'connectTo']);
 
 async function main() {
-  const [, , command, ...args] = process.argv;
-
-  // Handle version command
-  if (command === 'version' || command === '-v' || command === '--version') {
-    try {
-      const packageJsonPath = join(__dirname, '../package.json');
-      const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
-      console.log(`cursor-tools version ${packageJson.version}`);
-      process.exit(0);
-    } catch {
-      console.error('Error: Could not read package version');
-      process.exit(1);
-    }
-  }
-
-  // Parse options from args
-  const options: CLIOptions = {
-    // String options
-    model: undefined,
-    fromGithub: undefined,
-    output: undefined,
-    saveTo: undefined,
-    hint: undefined,
-    url: undefined,
-    screenshot: undefined,
-    viewport: undefined,
-    selector: undefined,
-    wait: undefined,
-    video: undefined,
-    evaluate: undefined,
-    // Plan command options
-    fileProvider: undefined,
-    thinkingProvider: undefined,
-    fileModel: undefined,
-    thinkingModel: undefined,
-    // Number options
-    maxTokens: undefined,
-    timeout: undefined,
-    connectTo: undefined,
-    // Boolean options
-    console: undefined,
-    html: undefined,
-    network: undefined,
-    headless: undefined,
-    text: undefined,
-    debug: undefined,
-    quiet: undefined,
-    json: undefined,
+  const args = process.argv.slice(2);
+  const options: Partial<CommandOptions> = {
+    debug: false,
+    quiet: false,
+    json: false,
+    help: false,
   };
   const queryArgs: string[] = [];
+  let command: string | undefined;
 
+  // Parse command line arguments
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
+    if (!command && !arg.startsWith('--')) {
+      command = arg;
+      continue;
+    }
     if (arg.startsWith('--')) {
       // Handle both --key=value and --key value formats
       let key: string;
       let value: string | undefined;
+      const isNoPrefix = arg.startsWith('--no-');
 
-      const equalIndex = arg.indexOf('=');
-      if (equalIndex !== -1) {
-        // --key=value format
-        key = arg.slice(2, equalIndex);
-        value = arg.slice(equalIndex + 1);
+      if (isNoPrefix) {
+        key = arg.slice(5); // Remove '--no-'
+        value = 'false';
       } else {
-        let isNoPrefix = false;
-        // Check for --no- prefix
-        if (arg.startsWith('--no-')) {
-          // --no-key format for boolean options
-          key = arg.slice(5); // Remove --no- prefix
-          const normalizedKey = normalizeArgKey(key.toLowerCase());
-          const optionKey = OPTION_KEYS[normalizedKey];
-          if (BOOLEAN_OPTIONS.has(optionKey as CLIBooleanOption)) {
-            value = 'false'; // Implicitly set boolean flag to false
-            isNoPrefix = true;
-          } else {
-            key = arg.slice(2); // Treat as normal key if not a boolean option
-          }
+        const equalsIndex = arg.indexOf('=');
+        if (equalsIndex !== -1) {
+          key = arg.slice(2, equalsIndex);
+          value = arg.slice(equalsIndex + 1);
         } else {
-          // --key value format
           key = arg.slice(2);
         }
 
-        // For boolean flags without --no- prefix, check next argument for explicit true/false
+        // Handle boolean options
         const normalizedKey = normalizeArgKey(key.toLowerCase());
         const optionKey = OPTION_KEYS[normalizedKey];
         if (!isNoPrefix && BOOLEAN_OPTIONS.has(optionKey as CLIBooleanOption)) {
@@ -292,34 +239,46 @@ async function main() {
           console.error(`Error: ${optionKey} must be a number`);
           process.exit(1);
         }
-        options[optionKey as CLINumberOption] = num;
+        (options as any)[optionKey] = num;
         continue;
       }
 
       if (BOOLEAN_OPTIONS.has(optionKey as CLIBooleanOption)) {
-        options[optionKey as CLIBooleanOption] = value === 'true';
+        (options as any)[optionKey] = value === 'true';
       } else if (value !== undefined && optionKey) {
-        options[optionKey as CLIStringOption] = value;
+        (options as any)[optionKey] = value;
       }
     } else {
       queryArgs.push(arg);
     }
   }
 
-  const query = command === 'install' && queryArgs.length === 0 ? '.' : queryArgs.join(' ');
-
   if (!command) {
-    console.error(
-      'Usage: cursor-tools [--model=<model>] [--max-tokens=<number>] [--from-github=<github_url>] [--output=<filepath>] [--save-to=<filepath>] [--hint=<hint>] <command> "<query>"\n' +
-        '       Note: Options can be specified in kebab-case (--max-tokens) or camelCase (--maxTokens)\n' +
-        '       Both --key=value and --key value formats are supported'
-    );
-    process.exit(1);
+    // If --help is provided without a command, show general help
+    if (options.help) {
+      command = 'help';
+    } else {
+      console.error(
+        'Usage: cursor-tools [--model=<model>] [--max-tokens=<number>] [--from-github=<github_url>] [--output=<filepath>] [--save-to=<filepath>] [--hint=<hint>] <command> "<query>"\n' +
+          '       Note: Options can be specified in kebab-case (--max-tokens) or camelCase (--maxTokens)\n' +
+          '       Both --key=value and --key value formats are supported'
+      );
+      process.exit(1);
+    }
   }
 
+  // If --help is provided with a command, show help for that command
+  if (options.help && command !== 'help') {
+    const originalCommand = command;
+    command = 'help';
+    queryArgs.unshift(originalCommand);
+  }
+
+  const query = command === 'install' && queryArgs.length === 0 ? '.' : queryArgs.join(' ');
+
   if (!query) {
-    if (command === 'doc') {
-      // no query for doc command is ok
+    if (command === 'doc' || command === 'help') {
+      // no query for doc and help commands is ok
     } else {
       console.error(`Error: No query provided for command: ${command}`);
       process.exit(1);
@@ -371,7 +330,7 @@ async function main() {
 
     // Execute the command and handle output
     const commandOptions: CommandOptions = {
-      ...options,
+      ...options as CommandOptions,
       debug: options.debug ?? false,
       provider: options.provider as Provider,
       fileProvider: options.fileProvider as Provider,

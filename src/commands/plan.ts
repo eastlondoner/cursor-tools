@@ -42,6 +42,10 @@ export class PlanCommand implements Command {
     this.config = loadConfig();
   }
 
+  getDescription(): string {
+    return 'Generate a focused implementation plan using AI';
+  }
+
   async *execute(query: string, options: PlanCommandOptions): CommandGenerator {
     try {
       // Check for conflicting model options

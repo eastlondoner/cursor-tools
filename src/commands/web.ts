@@ -20,6 +20,36 @@ export class WebCommand implements Command {
     this.config = loadConfig();
   }
 
+  getDescription(): string {
+    return 'Get answers from the web using Perplexity AI';
+  }
+
+  getHelp(): string {
+    return `Web Command - Get answers from the web using Perplexity AI
+
+Usage: cursor-tools web "<query>" [options]
+
+Options:
+  --provider=<provider>    AI provider to use (perplexity, gemini, modelbox, or openrouter)
+  --model=<model>         Model to use for web search (model name depends on provider)
+  --max-tokens=<number>   Maximum tokens for response
+  --save-to=<file path>   Save output to a file (in addition to stdout)
+
+Examples:
+  cursor-tools web "latest shadcn/ui installation instructions"
+  cursor-tools web "current weather in London" --provider perplexity
+  cursor-tools web "typescript best practices 2024" --save-to local-research/typescript.md
+
+Notes:
+- Uses Perplexity AI by default for web search
+- Supports multiple providers with web search capabilities
+- Can save complex research to files for later reference
+- Streams results in real-time for immediate feedback
+
+Dependencies:
+- Requires API key for chosen provider in .cursor-tools.env`;
+  }
+
   async *execute(query: string, options: CommandOptions): CommandGenerator {
     try {
       const provider = options?.provider || this.config.web?.provider || 'perplexity';

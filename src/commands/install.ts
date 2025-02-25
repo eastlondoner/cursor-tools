@@ -67,6 +67,10 @@ async function askForCursorRulesDirectory(): Promise<boolean> {
 }
 
 export class InstallCommand implements Command {
+  getDescription(): string {
+    return 'Install cursor-tools globally or locally';
+  }
+
   private async *setupApiKeys(): CommandGenerator {
     loadEnv(); // Load existing env files if any
 

@@ -25,6 +25,40 @@ export class RepoCommand implements Command {
     this.config = loadConfig();
   }
 
+  getDescription(): string {
+    return 'Get context-aware answers about this repository using Google Gemini';
+  }
+
+  getHelp(): string {
+    return `Repository Command - Get context-aware answers about this repository
+
+Usage: cursor-tools repo "<query>" [options]
+
+Options:
+  --provider=<provider>    AI provider to use (gemini, openai, openrouter, perplexity, or modelbox)
+  --model=<model>         Model to use for repository analysis
+  --max-tokens=<number>   Maximum tokens for response
+  --save-to=<file path>   Save output to a file (in addition to stdout)
+
+Examples:
+  cursor-tools repo "explain authentication flow"
+  cursor-tools repo "review recent changes to error handling"
+  cursor-tools repo "find security vulnerabilities in the codebase"
+  cursor-tools repo "suggest improvements to the API design"
+
+Notes:
+- Uses Google Gemini by default for repository analysis
+- Has a 2M token context window for large codebases
+- Context can be reduced using .repomixignore file
+- Provides code-aware responses with file references
+- Can analyze code patterns and suggest improvements
+- Ideal for code review and architecture discussions
+
+Dependencies:
+- Requires API key for chosen provider in .cursor-tools.env
+- Uses repomix for repository context management`;
+  }
+
   async *execute(query: string, options?: CommandOptions): CommandGenerator {
     try {
       yield 'Packing repository using Repomix...\n';
