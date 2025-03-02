@@ -9,6 +9,15 @@ import {
   getDefaultModel,
 } from '../utils/providerAvailability';
 
+const DEFAULT_WEB_MODELS: Record<Provider, string> = {
+  gemini: 'gemini-2.0-pro-exp',
+  openai: 'NO WEB SUPPORT',
+  perplexity: 'sonar-pro',
+  openrouter: 'google/gemini-2.0-pro-exp-02-05:free',
+  modelbox: 'google/gemini-2.0-pro-exp',
+  anthropic: 'NO WEB SUPPORT',
+};
+
 export class WebCommand implements Command {
   private config: Config;
 
@@ -76,6 +85,7 @@ export class WebCommand implements Command {
       options?.model ||
       this.config.web?.model ||
       (this.config as Record<string, any>)[provider]?.model ||
+      DEFAULT_WEB_MODELS[provider] ||
       getDefaultModel(provider);
 
     // Check web search capability

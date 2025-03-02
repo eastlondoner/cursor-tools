@@ -7,8 +7,14 @@ import { createProvider } from '../providers/base';
 import { FileError, ProviderError } from '../errors';
 import { ignorePatterns, includePatterns, outputOptions } from '../repomix/repomixConfig';
 
-type FileProvider = 'gemini' | 'openai' | 'openrouter' | 'perplexity' | 'modelbox';
-type ThinkingProvider = 'gemini' | 'openai' | 'openrouter' | 'perplexity' | 'modelbox';
+type FileProvider = 'gemini' | 'openai' | 'openrouter' | 'perplexity' | 'modelbox' | 'anthropic';
+type ThinkingProvider =
+  | 'gemini'
+  | 'openai'
+  | 'openrouter'
+  | 'perplexity'
+  | 'modelbox'
+  | 'anthropic';
 
 // Plan-specific options interface
 interface PlanCommandOptions extends CommandOptions {
@@ -23,7 +29,8 @@ const DEFAULT_FILE_MODELS: Record<FileProvider, string> = {
   openai: 'o3-mini', // largest context window (200k)
   perplexity: 'sonar-pro', // largest context window (200k tokens)
   openrouter: 'google/gemini-2.0-pro-exp-02-05:free', // largest context window (2M tokens)
-  modelbox: 'anthropic/claude-3-7-sonnet', // just for variety
+  modelbox: 'google/gemini-2.0-pro-exp',
+  anthropic: 'claude-3-7-sonnet-latest',
 };
 
 const DEFAULT_THINKING_MODELS: Record<ThinkingProvider, string> = {
@@ -32,6 +39,7 @@ const DEFAULT_THINKING_MODELS: Record<ThinkingProvider, string> = {
   perplexity: 'r1-1776',
   openrouter: 'openai/o3-mini',
   modelbox: 'anthropic/claude-3-7-sonnet-thinking',
+  anthropic: 'claude-3-7-sonnet-thinking-latest',
 };
 
 export class PlanCommand implements Command {

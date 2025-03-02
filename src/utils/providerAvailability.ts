@@ -12,8 +12,8 @@ const DEFAULT_MODELS: Record<Provider, string> = {
   gemini: 'gemini-2.0-flash-thinking-exp',
   openai: 'o3-mini',
   anthropic: 'claude-3-sonnet',
-  openrouter: 'anthropic/claude-3-sonnet',
-  modelbox: 'anthropic/claude-3-sonnet',
+  openrouter: 'anthropic/claude-3.7-sonnet',
+  modelbox: 'anthropic/claude-3-5-sonnet',
 };
 
 // Provider preference order for each command type
