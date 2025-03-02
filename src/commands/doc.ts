@@ -7,7 +7,11 @@ import type { ModelOptions, BaseModelProvider } from '../providers/base';
 import { createProvider } from '../providers/base';
 import { ModelNotFoundError } from '../errors';
 import { ignorePatterns, includePatterns, outputOptions } from '../repomix/repomixConfig';
-import { exhaustiveMatchGuard } from '../utils/exhaustiveMatchGuard';
+import {
+  getAvailableProviders,
+  getNextAvailableProvider,
+  getDefaultModel,
+} from '../utils/providerAvailability';
 
 interface DocCommandOptions extends CommandOptions {
   model: string;
@@ -15,7 +19,7 @@ interface DocCommandOptions extends CommandOptions {
   fromGithub?: string;
   hint?: string;
   debug: boolean;
-  provider?: 'gemini' | 'openai' | 'openrouter' | 'perplexity' | 'modelbox';
+  provider?: Provider;
 }
 
 export class DocCommand implements Command {
@@ -245,89 +249,49 @@ Please:
         }
       }
 
-      const provider = createProvider(options?.provider || this.config.doc?.provider || 'gemini');
-      const providerName = options?.provider || this.config.doc?.provider || 'gemini';
-
-      // Add default model handling
-      const getDefaultModel = (provider: Provider, tokenCount: number) => {
-        console.log('getting default docs model for ', provider, tokenCount);
-        if ((this.config as Record<string, any>)[provider]?.model) {
-          return (this.config as Record<string, any>)[provider]?.model;
+      // If provider is explicitly specified, try only that provider
+      if (options?.provider) {
+        const providerInfo = getAvailableProviders().find((p) => p.provider === options.provider);
+        if (!providerInfo?.available) {
+          throw new ProviderError(
+            `Provider ${options.provider} is not available. Please check your API key configuration.`
+          );
         }
-        switch (provider) {
-          case 'gemini':
-            if (tokenCount < 800_000) {
-              // 1M is the limit but token counts are very approximate so play it safe
-              return 'gemini-2.0-flash-thinking-exp';
-            }
-            return 'gemini-2.0-pro-exp';
-          case 'openai':
-            return 'o3-mini';
-          case 'openrouter':
-            if (tokenCount < 150_000) {
-              // 200k is the limit but token counts are very approximate so play it safe
-              return 'anthropic/claude-3.7-sonnet-thinking'; // its 3.7 rather than 3-7 on openrouter
-            }
-            if (tokenCount < 800_000) {
-              return 'google/gemini-2.0-flash-thinking-exp:free';
-            }
-            return 'google/gemini-2.0-pro-exp-02-05:free';
-          case 'perplexity':
-            return 'sonar-pro';
-          case 'modelbox':
-            if (tokenCount < 150_000) {
-              // 200k is the limit but token counts are very approximate so play it safe
-              return 'anthropic/claude-3-7-sonnet-thinking'; // updated to 3.7 on modelbox without -latest
-            }
-            return 'google/gemini-2.0-flash-thinking';
-          case 'anthropic':
-            return 'claude-3-7-sonnet-thinking-latest';
-          default:
-            throw exhaustiveMatchGuard(provider);
-        }
-      };
+        yield* this.tryProvider(options.provider, query, repoContext, options);
+        return;
+      }
 
-      // Add provider-specific token limits
-      const getMaxTokens = (provider: Provider, requestedTokens?: number) => {
-        const maxTokens =
-          requestedTokens ||
-          this.config.doc?.maxTokens ||
-          (this.config as Record<string, any>)[provider]?.maxTokens ||
-          defaultMaxTokens;
-
-        return maxTokens;
-      };
-
+      const providerName = options?.provider || this.config.doc?.provider || 'openai';
       const model =
         options?.model ||
         this.config.doc?.model ||
-        getDefaultModel(providerName, repoContext.tokenCount);
+        (this.config as Record<string, any>)[providerName]?.model ||
+        getDefaultModel(providerName);
 
       if (!model) {
         throw new ModelNotFoundError(providerName);
       }
 
-      console.error(`Generating documentation using ${model}...\n`);
-      let documentation: string;
-      try {
-        documentation = await generateDocumentation(query, provider, repoContext, {
-          model,
-          maxTokens: getMaxTokens(providerName, options?.maxTokens),
-          debug: options?.debug,
-        });
-      } catch (error) {
-        throw new ProviderError(
-          error instanceof Error ? error.message : 'Unknown error during generation',
-          error
-        );
+      // Otherwise try providers in preference order
+      let currentProvider = getNextAvailableProvider('doc');
+      while (currentProvider) {
+        try {
+          yield* this.tryProvider(currentProvider, query, repoContext, options);
+          return; // If successful, we're done
+        } catch (error) {
+          console.error(
+            `Provider ${currentProvider} failed:`,
+            error instanceof Error ? error.message : error
+          );
+          yield `Provider ${currentProvider} failed, trying next available provider...\n`;
+          currentProvider = getNextAvailableProvider('doc', currentProvider);
+        }
       }
 
-      // Always yield documentation - quiet mode is handled at top level
-      yield '\n--- Repository Documentation ---\n\n';
-      yield documentation;
-      yield '\n\n--- End of Documentation ---\n';
-
-      console.error('Documentation generation completed!\n');
+      // If we get here, no providers worked
+      throw new ProviderError(
+        'No suitable AI provider available for doc command. Please ensure at least one of the following API keys are set: GEMINI_API_KEY, OPENAI_API_KEY, OPENROUTER_API_KEY, PERPLEXITY_API_KEY, MODELBOX_API_KEY.'
+      );
     } catch (error) {
       // console.error errors and then throw
       if (error instanceof Error) {
@@ -340,6 +304,51 @@ Please:
         console.error('An unknown error occurred in doc command:', error);
         throw new Error('An unknown error occurred in doc command');
       }
+    }
+  }
+
+  private async *tryProvider(
+    provider: Provider,
+    query: string,
+    repoContext: { text: string; tokenCount: number },
+    options: DocCommandOptions
+  ): CommandGenerator {
+    const modelProvider = createProvider(provider);
+    const model =
+      options?.model ||
+      this.config.doc?.model ||
+      (this.config as Record<string, any>)[provider]?.model ||
+      getDefaultModel(provider);
+
+    if (!model) {
+      throw new ProviderError(`No model specified for ${provider}`);
+    }
+
+    console.error(`Generating documentation using ${model}...\n`);
+
+    const maxTokens =
+      options?.maxTokens ||
+      this.config.doc?.maxTokens ||
+      (this.config as Record<string, any>)[provider]?.maxTokens ||
+      defaultMaxTokens;
+
+    try {
+      const response = await generateDocumentation(query, modelProvider, repoContext, {
+        ...options,
+        model,
+        maxTokens,
+      });
+
+      yield '\n--- Repository Documentation ---\n\n';
+      yield response;
+      yield '\n\n--- End of Documentation ---\n';
+
+      console.error('Documentation generation completed!\n');
+    } catch (error) {
+      throw new ProviderError(
+        error instanceof Error ? error.message : 'Unknown error during generation',
+        error
+      );
     }
   }
 }

@@ -73,4 +73,4 @@ export function findXcodeProject(dir: string): XcodeProject | null {
   }
 
   return null;
-} 
+}

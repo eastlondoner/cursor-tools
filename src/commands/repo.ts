@@ -7,15 +7,11 @@ import { FileError, ProviderError } from '../errors';
 import type { ModelOptions, BaseModelProvider } from '../providers/base';
 import { createProvider } from '../providers/base';
 import { ignorePatterns, includePatterns, outputOptions } from '../repomix/repomixConfig';
-
-const DEFAULT_REPO_MODELS: Record<Provider, string> = {
-  gemini: 'gemini-2.0-flash-thinking-exp',
-  openai: 'o3-mini',
-  anthropic: 'claude-3-7-sonnet-latest',
-  modelbox: 'google/gemini-2.0-flash-thinking',
-  openrouter: 'google/gemini-2.0-pro-exp-02-05:free',
-  perplexity: 'sonar-reasoning-pro',
-};
+import {
+  getAvailableProviders,
+  getNextAvailableProvider,
+  getDefaultModel,
+} from '../utils/providerAvailability';
 
 export class RepoCommand implements Command {
   private config: Config;
@@ -25,7 +21,7 @@ export class RepoCommand implements Command {
     this.config = loadConfig();
   }
 
-  async *execute(query: string, options?: CommandOptions): CommandGenerator {
+  async *execute(query: string, options: CommandOptions): CommandGenerator {
     try {
       yield 'Packing repository using Repomix...\n';
 
@@ -66,7 +62,6 @@ export class RepoCommand implements Command {
       let cursorRules =
         'If generating code observe rules from the .cursorrules file and contents of the .cursor/rules folder';
 
-      const provider = createProvider(options?.provider || this.config.repo?.provider || 'gemini');
       const providerName = options?.provider || this.config.repo?.provider || 'gemini';
 
       // Configuration hierarchy
@@ -74,33 +69,50 @@ export class RepoCommand implements Command {
         options?.model ||
         this.config.repo?.model ||
         (this.config as Record<string, any>)[providerName]?.model ||
-        DEFAULT_REPO_MODELS[providerName];
-      const maxTokens =
-        options?.maxTokens ||
-        this.config.repo?.maxTokens ||
-        (this.config as Record<string, any>)[providerName]?.maxTokens ||
-        defaultMaxTokens;
+        getDefaultModel(providerName);
 
       if (!model) {
         throw new ProviderError(`No model specified for ${providerName}`);
       }
 
-      yield `Analyzing repository using ${model}...\n`;
-      try {
-        const response = await analyzeRepository(provider, query, repoContext, cursorRules, {
-          model,
-          maxTokens,
-          debug: options?.debug,
-          systemPrompt:
-            "You are an expert software developer analyzing a repository. Follow user instructions exactly and satisfy the user's request.",
-        });
-        yield response;
-      } catch (error) {
-        throw new ProviderError(
-          error instanceof Error ? error.message : 'Unknown error during analysis',
-          error
+      // If provider is explicitly specified, try only that provider
+      if (options?.provider) {
+        const providerInfo = getAvailableProviders().find((p) => p.provider === options.provider);
+        if (!providerInfo?.available) {
+          throw new ProviderError(
+            `Provider ${options.provider} is not available. Please check your API key configuration.`
+          );
+        }
+        yield* this.tryProvider(
+          options.provider as Provider,
+          query,
+          repoContext,
+          cursorRules,
+          options
         );
+        return;
       }
+
+      // Otherwise try providers in preference order
+      let currentProvider = getNextAvailableProvider('repo');
+      while (currentProvider) {
+        try {
+          yield* this.tryProvider(currentProvider, query, repoContext, cursorRules, options);
+          return; // If successful, we're done
+        } catch (error) {
+          console.error(
+            `Provider ${currentProvider} failed:`,
+            error instanceof Error ? error.message : error
+          );
+          yield `Provider ${currentProvider} failed, trying next available provider...\n`;
+          currentProvider = getNextAvailableProvider('repo', currentProvider);
+        }
+      }
+
+      // If we get here, no providers worked
+      throw new ProviderError(
+        'No suitable AI provider available for repo command. Please ensure at least one of the following API keys are set: GEMINI_API_KEY, OPENAI_API_KEY, OPENROUTER_API_KEY, PERPLEXITY_API_KEY, MODELBOX_API_KEY.'
+      );
     } catch (error) {
       if (error instanceof FileError || error instanceof ProviderError) {
         yield error.formatUserMessage(options?.debug);
@@ -111,14 +123,64 @@ export class RepoCommand implements Command {
       }
     }
   }
+
+  private async *tryProvider(
+    provider: Provider,
+    query: string,
+    repoContext: string,
+    cursorRules: string,
+    options: CommandOptions
+  ): CommandGenerator {
+    const modelProvider = createProvider(provider);
+    const model =
+      options?.model ||
+      this.config.repo?.model ||
+      (this.config as Record<string, any>)[provider]?.model ||
+      getDefaultModel(provider);
+
+    if (!model) {
+      throw new ProviderError(`No model specified for ${provider}`);
+    }
+
+    yield `Analyzing repository using ${model}...\n`;
+    try {
+      const maxTokens =
+        options?.maxTokens ||
+        this.config.repo?.maxTokens ||
+        (this.config as Record<string, any>)[provider]?.maxTokens ||
+        defaultMaxTokens;
+
+      const response = await analyzeRepository(
+        modelProvider,
+        {
+          query,
+          repoContext,
+          cursorRules,
+        },
+        {
+          ...options,
+          model,
+          maxTokens,
+        }
+      );
+      yield response;
+    } catch (error) {
+      throw new ProviderError(
+        error instanceof Error ? error.message : 'Unknown error during analysis',
+        error
+      );
+    }
+  }
 }
 
 async function analyzeRepository(
   provider: BaseModelProvider,
-  query: string,
-  repoContext: string,
-  cursorRules: string,
-  options?: ModelOptions
+  props: { query: string; repoContext: string; cursorRules: string },
+  options: Omit<ModelOptions, 'systemPrompt'>
 ): Promise<string> {
-  return provider.executePrompt(`${cursorRules}\n\n${repoContext}\n\n${query}`, options);
+  return provider.executePrompt(`${props.cursorRules}\n\n${props.repoContext}\n\n${props.query}`, {
+    ...options,
+    systemPrompt:
+      "You are an expert software developer analyzing a repository. Follow user instructions exactly and satisfy the user's request.",
+  });
 }

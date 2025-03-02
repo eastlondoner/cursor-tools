@@ -31,10 +31,10 @@ export class BuildCommand implements Command {
 
   // Default build path relative to project directory
   private defaultBuildPath = './.build/DerivedData';
-  
+
   // Default destination for simulator
   private defaultDestination = 'platform=iOS Simulator,name=iPhone 16 Pro';
-  
+
   private async getBuildOutput(
     dir: string,
     options: BuildCommandOptions = {}
@@ -48,14 +48,12 @@ export class BuildCommand implements Command {
 
       // Use provided build path or default
       const buildPath = options.buildPath || this.defaultBuildPath;
-      
+
       // Use provided destination or default
       const destination = options.destination || this.defaultDestination;
-      
+
       // Create absolute path for the build directory
-      const absoluteBuildPath = buildPath.startsWith('/')
-        ? buildPath
-        : `${dir}/${buildPath}`;
+      const absoluteBuildPath = buildPath.startsWith('/') ? buildPath : `${dir}/${buildPath}`;
 
       // Build the project/workspace
       const args = [
@@ -180,7 +178,7 @@ export class BuildCommand implements Command {
       // Format: [buildPath=path] [destination=platform,name=Device]
       const buildPathMatch = query.match(/buildPath=([^\s]+)/);
       const destinationMatch = query.match(/destination=([^\s]+)/);
-      
+
       const buildOptions: BuildCommandOptions = {
         buildPath: buildPathMatch ? buildPathMatch[1] : this.defaultBuildPath,
         destination: destinationMatch ? destinationMatch[1] : this.defaultDestination,
@@ -193,7 +191,7 @@ export class BuildCommand implements Command {
 
       // Store build path in global state for the run command to use
       process.env.XCODE_BUILD_PATH = buildPath;
-      
+
       // Group errors by type
       const buildErrors = errors.filter((e) => e.type === 'error');
       const warnings = errors.filter((e) => e.type === 'warning');
