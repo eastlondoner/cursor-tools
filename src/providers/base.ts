@@ -236,10 +236,6 @@ export class GeminiProvider extends BaseProvider {
           prompt = 'Something went wrong, try again:\n' + prompt;
         }
 
-        if (attempt > 1) {
-          prompt = 'Something went wrong, try again:\n' + prompt;
-        }
-
         try {
           const requestBody: any = {
             contents: [{ parts: [{ text: prompt }] }],
