@@ -109,10 +109,10 @@ The \`run\` command will automatically download, checkout or clone MCP servers a
 - DO NOT ask browser act to "wait" for anything, the wait command is currently disabled in Stagehand.
 
 **Tool Recommendations:**
-- \`cursor-tools web\` is best for general web information not specific to the repository
-- \`cursor-tools repo\` is ideal for repository-specific questions, planning, code review and debugging. E.g. \`cursor-tools repo "Review recent changes to command error handling looking for mistakes, omissions and improvements"
-- \`cursor-tools plan\` is ideal for planning tasks. E.g. \`cursor-tools plan "Adding authentication with social login using Google and Github"\`
-- \`cursor-tools doc\` generates documentation for local or remote repositories
+- \`cursor-tools web\` is best for general web information not specific to the repository. Generally call this without additional arguments.
+- \`cursor-tools repo\` is ideal for repository-specific questions, planning, code review and debugging. E.g. \`cursor-tools repo "Review recent changes to command error handling looking for mistakes, omissions and improvements"\`. Generally call this without additional arguments.
+- \`cursor-tools plan\` is ideal for planning tasks. E.g. \`cursor-tools plan "Adding authentication with social login using Google and Github"\`. Generally call this without additional arguments.
+- \`cursor-tools doc\` generates documentation for local or remote repositories.
 - \`cursor-tools browser\` is useful for testing and debugging web apps and uses Stagehand
 - \`cursor-tools mcp\` enables interaction with specialized tools through MCP servers (e.g., for Git operations, file system tasks, or custom tools)
 
