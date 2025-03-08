@@ -92,7 +92,7 @@ export class WebCommand implements Command {
     const SAFETY_OVERRIDE = process.env.OVERRIDE_SAFETY_CHECKS?.toLowerCase();
     const isOverridden = SAFETY_OVERRIDE === 'true' || SAFETY_OVERRIDE === '1';
 
-    const webSearchSupport = modelProvider.supportsWebSearch(model);
+    const webSearchSupport = await modelProvider.supportsWebSearch(model);
     if (!isOverridden && !webSearchSupport.supported) {
       if (webSearchSupport.model) {
         console.log(`Using ${webSearchSupport.model} instead of ${model} for web search`);

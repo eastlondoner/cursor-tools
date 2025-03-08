@@ -48,21 +48,24 @@ export function stringSimilarity(str1: string, str2: string): number {
  * Returns top 5 most similar models
  */
 export function getSimilarModels(model: string, availableModels: Set<string>): string[] {
-  const modelParts = model.split('/');
-  const provider = modelParts[0];
-  const modelName = modelParts[1];
+  const modelParts = model.split('/', 2);
+  const provider = modelParts.length > 1 ? modelParts[0] : null;
+  const modelName = modelParts.length > 1 ? modelParts[1] : model;
 
-  // Find models from the same provider
+  // Find models from the same provider if provider is provided
   const similarModels = Array.from(availableModels).filter((m) => {
-    const [mProvider] = m.split('/');
-    return mProvider === provider;
+    if (provider) {
+      const [mProvider] = m.split('/');
+      return mProvider === provider;
+    }
+    return true;
   });
 
   // Sort by similarity to the requested model name
   return similarModels
     .sort((a, b) => {
-      const [, aName] = a.split('/');
-      const [, bName] = b.split('/');
+      const [, aName] = provider ? a.split('/') : [null, a];
+      const [, bName] = provider ? b.split('/') : [null, b];
       const aSimilarity = stringSimilarity(modelName, aName);
       const bSimilarity = stringSimilarity(modelName, bName);
       return bSimilarity - aSimilarity;

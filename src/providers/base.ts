@@ -5,7 +5,9 @@ import { ApiKeyMissingError, ModelNotFoundError, NetworkError, ProviderError } f
 import { exhaustiveMatchGuard } from '../utils/exhaustiveMatchGuard';
 import { chunkMessage } from '../utils/messageChunker';
 import Anthropic from '@anthropic-ai/sdk';
-import { stringSimilarity } from '../utils/stringSimilarity';
+import { stringSimilarity, getSimilarModels } from '../utils/stringSimilarity';
+import { AuthClient, GoogleAuth } from 'google-auth-library';
+import { existsSync } from 'fs';
 
 const TEN_MINUTES = 600000;
 // Interfaces for Gemini response types
@@ -30,6 +32,21 @@ interface GeminiGroundingMetadata {
   groundingChunks: GeminiGroundingChunk[];
   groundingSupports: GeminiGroundingSupport[];
   webSearchQueries?: string[];
+}
+
+// Request body types for Google APIs
+interface GoogleVertexAIRequestBody {
+  contents: { role: string; parts: { text: string }[] }[];
+  generationConfig: { maxOutputTokens: number };
+  system_instruction?: { parts: { text: string }[] };
+  tools?: { google_search: Record<string, never> }[];
+}
+
+interface GoogleGenerativeLanguageRequestBody {
+  contents: { parts: { text: string }[] }[];
+  generationConfig: { maxOutputTokens: number };
+  system_instruction?: { parts: { text: string }[] };
+  tools?: { google_search: Record<string, never> }[];
 }
 
 // Common options for all providers
@@ -58,23 +75,121 @@ export interface ProviderConfig {
 // Base provider interface that all specific provider interfaces will extend
 export interface BaseModelProvider {
   executePrompt(prompt: string, options?: ModelOptions): Promise<string>;
-  supportsWebSearch(model: string): { supported: boolean; model?: string; error?: string };
+  supportsWebSearch(
+    modelName: string
+  ): Promise<{ supported: boolean; model?: string; error?: string }>;
 }
 
 // Base provider class with common functionality
 export abstract class BaseProvider implements BaseModelProvider {
   protected config: Config;
+  protected availableModels?: Promise<Set<string>>;
 
   constructor() {
     loadEnv();
     this.config = loadConfig();
   }
 
-  protected getModel(options: ModelOptions | undefined): string {
+  protected async getModel(options: ModelOptions | undefined): Promise<string> {
     if (!options?.model) {
       throw new ModelNotFoundError(this.constructor.name.replace('Provider', ''));
     }
-    return options.model;
+    let model = options.model;
+    if (!this.availableModels) {
+      return model;
+    }
+    const availableModels = await this.availableModels;
+
+    // First try exact match with prefix
+    if (availableModels.has(model)) {
+      return model;
+    }
+
+    // If no prefix, try to find exact match within any provider namespace
+    if (!model.includes('/')) {
+      const exactMatchWithProvider = Array.from(availableModels).find(m => {
+        const parts = m.split('/');
+        return parts.length === 2 && parts[1] === model;
+      });
+
+      if (exactMatchWithProvider) {
+        console.log(
+          `[${this.constructor.name}] Using fully qualified model name '${exactMatchWithProvider}' for '${model}'.`
+        );
+        return exactMatchWithProvider;
+      }
+    }
+
+    // Try prefix matching - sort in descending order
+    const prefixMatches = Array.from(availableModels)
+      .filter((m: string) => m.startsWith(model))
+      .sort((a: string, b: string) => b.localeCompare(a));
+
+    if (prefixMatches.length > 0) {
+      const resolvedModel = prefixMatches[prefixMatches.length - 1];
+      console.log(
+        `[${this.constructor.name}] Model '${model}' not found. Using prefix match '${resolvedModel}'.`
+      );
+      return resolvedModel;
+    }
+
+    // Try removing -latest suffix
+    if (model.endsWith('-latest')) {
+      const modelWithoutLatest = model.slice(0, -'-latest'.length);
+      const latestMatches = Array.from(availableModels)
+        .filter((m: string) => m.startsWith(modelWithoutLatest))
+        .sort((a: string, b: string) => b.localeCompare(a));
+
+      if (latestMatches.length > 0) {
+        const resolvedModel = latestMatches[latestMatches.length - 1];
+        console.log(
+          `[${this.constructor.name}] Model '${model}' not found. Using latest match '${resolvedModel}'.`
+        );
+        return resolvedModel;
+      }
+    }
+
+    // Try removing -exp or -exp-* suffix
+    const expMatch = model.match(/^(.*?)(?:-exp(?:-.*)?$)/);
+    if (expMatch) {
+      const modelWithoutExp = expMatch[1];
+      const expMatches = Array.from(availableModels)
+        .filter((m: string) => m.startsWith(modelWithoutExp))
+        .sort((a: string, b: string) => b.localeCompare(a));
+
+      if (expMatches.length > 0) {
+        const resolvedModel = expMatches[expMatches.length - 1];
+        console.log(
+          `[${this.constructor.name}] Model '${model}' not found. Using non-experimental match '${resolvedModel}'.`
+        );
+        return resolvedModel;
+      }
+    }
+
+    // If all resolution attempts fail, first try to find similar models
+    const similarModels = getSimilarModels(model, availableModels);
+    
+    // If we found similar models, show those first
+    if (similarModels.length > 0) {
+      throw new ModelNotFoundError(
+        `Model '${model}' not found in ${this.constructor.name.replace('Provider', '')}.\n\n` +
+        `You requested: ${model}\n` +
+        `Similar available models:\n${similarModels.map((m) => `- ${m}`).join('\n')}\n\n` +
+        `Use --model with one of the above models.` +
+        (this.constructor.name === 'ModelBoxProvider' ? ' Note: ModelBox requires provider prefixes (e.g., \'openai/gpt-4\' instead of just \'gpt-4\').' : '')
+      );
+    }
+
+    // If no similar models found, show all available models sorted by recency
+    const recentModels = Array.from(availableModels)
+      .sort((a: string, b: string) => b.localeCompare(a)) // Sort in descending order
+
+    throw new ModelNotFoundError(
+      `Model '${model}' not found in ${this.constructor.name.replace('Provider', '')}.\n\n` +
+        `You requested: ${model}\n` +
+        `Recent available models:\n${recentModels.map((m) => `- ${m}`).join('\n')}\n\n` +
+        `Use --model with one of the above models.`
+    );
   }
 
   protected getSystemPrompt(options?: ModelOptions): string | undefined {
@@ -99,12 +214,29 @@ export abstract class BaseProvider implements BaseModelProvider {
     if (systemPrompt) {
       this.debugLog(options, 'System prompt:', this.truncateForLogging(systemPrompt));
     }
-    // User prompts is logged elsewhere and it is long so skip it here
-    // this.debugLog(options, 'User prompt:', this.truncateForLogging(prompt));
   }
 
   protected handleLargeTokenCount(tokenCount: number): { model?: string; error?: string } {
-    return {}; // Default implementation - no token count handling
+    if (tokenCount > 800_000 && tokenCount < 2_000_000) {
+      // 1M is the limit but token counts are very approximate so play it safe
+      console.error(
+        `Repository content is large (${Math.round(tokenCount / 1000)}K tokens), switching to gemini-2.0-pro-exp model...`
+      );
+      return { model: 'gemini-2.0-pro-exp' };
+    }
+
+    if (tokenCount >= 2_000_000) {
+      return {
+        error:
+          'Repository content is too large for Vertex AI API.\n' +
+          'Please try:\n' +
+          '1. Using a more specific query to document a particular feature or module\n' +
+          '2. Running the documentation command on a specific directory or file\n' +
+          '3. Cloning the repository locally and using .gitignore to exclude non-essential files',
+      };
+    }
+
+    return {};
   }
 
   protected debugLog(options: ModelOptions | undefined, message: string, ...args: any[]): void {
@@ -125,7 +257,9 @@ export abstract class BaseProvider implements BaseModelProvider {
     return str.slice(0, effectiveMaxLength) + '... (truncated)';
   }
 
-  abstract supportsWebSearch(model: string): { supported: boolean; model?: string; error?: string };
+  abstract supportsWebSearch(
+    modelName: string
+  ): Promise<{ supported: boolean; model?: string; error?: string }>;
   abstract executePrompt(prompt: string, options: ModelOptions): Promise<string>;
 }
 
@@ -149,239 +283,6 @@ async function retryWithBackoff<T>(
       await new Promise((resolve) => setTimeout(resolve, delay));
       attempt++;
     }
-  }
-}
-
-// Gemini provider implementation
-export class GeminiProvider extends BaseProvider {
-  private readonly maxRecitationRetries = 2;
-
-  protected handleLargeTokenCount(tokenCount: number): { model?: string; error?: string } {
-    if (tokenCount > 800_000 && tokenCount < 2_000_000) {
-      // 1M is the limit but token counts are very approximate so play it save
-      console.error(
-        `Repository content is large (${Math.round(tokenCount / 1000)}K tokens), switching to gemini-2.0-pro-exp model...`
-      );
-      return { model: 'gemini-2.0-pro-exp' };
-    }
-
-    if (tokenCount >= 2_000_000) {
-      return {
-        error:
-          'Repository content is too large for Gemini API.\n' +
-          'Please try:\n' +
-          '1. Using a more specific query to document a particular feature or module\n' +
-          '2. Running the documentation command on a specific directory or file\n' +
-          '3. Cloning the repository locally and using .gitignore to exclude non-essential files',
-      };
-    }
-
-    return {};
-  }
-
-  supportsWebSearch(model: string): { supported: boolean; model?: string; error?: string } {
-    const unsupportedModels = new Set([
-      'gemini-2.0-flash-thinking-exp-01-21',
-      'gemini-2.0-flash-thinking-exp',
-    ]);
-    if (unsupportedModels.has(model)) {
-      return {
-        supported: false,
-        model: 'gemini-2.0-pro-exp',
-        error: `Model ${model} does not support web search.`,
-      };
-    }
-
-    return {
-      supported: true,
-    };
-  }
-
-  async executePrompt(prompt: string, options: ModelOptions): Promise<string> {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      throw new ApiKeyMissingError('Gemini');
-    }
-
-    let attempt = 0;
-    return retryWithBackoff(
-      async () => {
-        attempt++;
-        // Handle token count if provided
-        let finalOptions = { ...options };
-        if (options?.tokenCount) {
-          const { model: tokenModel, error } = this.handleLargeTokenCount(options.tokenCount);
-          if (error) {
-            throw new ProviderError(error);
-          }
-          if (tokenModel) {
-            finalOptions = { ...finalOptions, model: tokenModel ?? options.model };
-          }
-        }
-
-        const model = this.getModel(finalOptions);
-        const maxTokens = finalOptions.maxTokens;
-        const systemPrompt = this.getSystemPrompt(options);
-        const startTime = Date.now();
-
-        this.logRequestStart(
-          options,
-          model,
-          maxTokens,
-          systemPrompt,
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`
-        );
-
-        if (attempt > 1) {
-          prompt = 'Something went wrong, try again:\n' + prompt;
-        }
-
-        try {
-          const requestBody: any = {
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { maxOutputTokens: maxTokens },
-            system_instruction: {
-              parts: [
-                {
-                  text: systemPrompt,
-                },
-              ],
-            },
-          };
-
-          // Add web search tool only when explicitly requested
-          if (options?.webSearch) {
-            requestBody.tools = [
-              // this is how it is documented on google but it doesn't work
-              // {
-              //   google_search_retrieval: {
-              //     "dynamic_retrieval_config": {
-              //       mode: 'MODE_DYNAMIC',
-              //       dynamic_threshold: 0, // always use grounding
-              //     },
-              //   },
-              // },
-              // this is undocumented but works
-              {
-                google_search: {},
-              },
-            ];
-          }
-
-          this.debugLog(options, 'Request body:', this.truncateForLogging(requestBody));
-
-          const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(requestBody),
-            }
-          );
-
-          const endTime = Date.now();
-          this.debugLog(options, `API call completed in ${endTime - startTime}ms`);
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            if (response.status === 429) {
-              console.warn(
-                'Received 429 error from Google API. This can occur due to token limits on free accounts. ' +
-                  'For more information, see: https://github.com/eastlondoner/cursor-tools/issues/35'
-              );
-            }
-            throw new NetworkError(`Gemini API HTTP error (${response.status}): ${errorText}`);
-          }
-
-          const data = await response.json();
-          if (data.error) {
-            throw new ProviderError(`Gemini API error: ${JSON.stringify(data.error)}`);
-          }
-
-          this.debugLog(options, 'Response:', this.truncateForLogging(data));
-
-          const content = data.candidates[0]?.content?.parts
-            .map((part: any) => part.text)
-            .filter(Boolean)
-            .join('\n');
-
-          const grounding = data.candidates[0]?.groundingMetadata as GeminiGroundingMetadata;
-          const webSearchQueries = grounding?.webSearchQueries;
-
-          let webSearchText = '';
-          if (webSearchQueries && webSearchQueries.length > 0) {
-            webSearchText = '\nWeb search queries:\n';
-            for (const query of webSearchQueries) {
-              webSearchText += `- ${query}\n`;
-            }
-            webSearchText += '\n';
-          }
-          // Format response with citations if grounding metadata exists
-          let formattedContent = content;
-          if (grounding?.groundingSupports?.length > 0 && grounding?.groundingChunks?.length > 0) {
-            const citationSources = new Map<number, { uri: string; title?: string }>();
-
-            // Build citation sources from groundingChunks
-            grounding.groundingChunks.forEach((chunk: GeminiGroundingChunk, idx: number) => {
-              if (chunk.web) {
-                citationSources.set(idx, {
-                  uri: chunk.web.uri,
-                  title: chunk.web.title,
-                });
-              }
-            });
-
-            // Format text with citations
-            let formattedText = '';
-            grounding.groundingSupports.forEach((support: GeminiGroundingSupport) => {
-              const segment = support.segment;
-              const citations = support.groundingChunkIndices
-                .map((idx: number) => {
-                  const source = citationSources.get(idx);
-                  return source ? `[${idx + 1}]` : '';
-                })
-                .filter(Boolean)
-                .join('');
-
-              formattedText += segment.text + (citations ? ` ${citations}` : '') + ' ';
-            });
-
-            // Add citations list
-            if (citationSources.size > 0) {
-              let citationsText = '\nCitations:\n';
-              citationSources.forEach((source, idx) => {
-                citationsText += `[${idx + 1}]: ${source.uri}${source.title ? ` ${source.title}` : ''}\n`;
-              });
-              formattedText = citationsText + '\n' + webSearchText + formattedText;
-            } else {
-              formattedText = webSearchText + formattedText;
-            }
-            // replace the original content with the formatted text
-            formattedContent = formattedText.trim();
-          }
-
-          if (!formattedContent) {
-            throw new ProviderError('Gemini returned an empty response');
-          }
-
-          return formattedContent;
-        } catch (error) {
-          if (error instanceof ProviderError) {
-            throw error;
-          }
-          throw new NetworkError('Failed to communicate with Gemini API', error);
-        }
-      },
-      5,
-      1000,
-      (error) => {
-        if (error instanceof NetworkError) {
-          const errorText = error.message.toLowerCase();
-          return errorText.includes('429') || errorText.includes('resource exhausted');
-        }
-        return false;
-      }
-    );
   }
 }
 
@@ -419,7 +320,9 @@ abstract class OpenAIBase extends BaseProvider {
     return this.defaultClient;
   }
 
-  supportsWebSearch(model: string): { supported: boolean; model?: string; error?: string } {
+  async supportsWebSearch(
+    modelName: string
+  ): Promise<{ supported: boolean; model?: string; error?: string }> {
     return {
       supported: false,
       error: 'OpenAI does not support web search capabilities',
@@ -427,7 +330,7 @@ abstract class OpenAIBase extends BaseProvider {
   }
 
   async executePrompt(prompt: string, options: ModelOptions): Promise<string> {
-    const model = this.getModel(options);
+    const model = await this.getModel(options);
     const maxTokens = options.maxTokens;
     const systemPrompt = this.getSystemPrompt(options);
     const client = this.getClient(options);
@@ -475,6 +378,566 @@ abstract class OpenAIBase extends BaseProvider {
   }
 }
 
+// Google Vertex AI provider implementation
+export class GoogleVertexAIProvider extends BaseProvider {
+  constructor() {
+    super();
+    // Initialize the promise in constructor
+    this.availableModels = this.initializeModels();
+    this.availableModels.catch((error) => {
+      console.error('Error fetching Vertex AI models:', error);
+    });
+  }
+
+  private async initializeModels(): Promise<Set<string>> {
+    try {
+      const authClient = await this.getAuthClient();
+      const token = await authClient.getAccessToken();
+
+      const response = await fetch(
+        'https://us-central1-aiplatform.googleapis.com/v1beta1/publishers/google/models',
+        {
+          headers: {
+            Authorization: `Bearer ${token.token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new NetworkError(`Failed to fetch Vertex AI models: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      if (!data?.publisherModels) {
+        console.warn('Unexpected API response format:', data);
+        return new Set();
+      }
+      return new Set(
+        data.publisherModels.map((model: any) => {
+          // Extract just the model name without the publishers/google/models/ prefix
+          const name = model.name.replace('publishers/google/models/', '');
+          return name;
+        })
+      );
+    } catch (error) {
+      console.error('Error fetching Vertex AI models:', error);
+      throw new NetworkError('Failed to fetch available Vertex AI models', error as Error);
+    }
+  }
+
+  async supportsWebSearch(
+    modelName: string
+  ): Promise<{ supported: boolean; model?: string; error?: string }> {
+    try {
+      const availableModels = await this.availableModels;
+      if (!availableModels) {
+        throw new Error('Models not initialized. Call initializeModels() first.');
+      }
+      // Extract model name without provider prefix if present
+      const modelWithoutPrefix = modelName.includes('/') ? modelName.split('/')[1] : modelName;
+
+      if (!availableModels.has(modelWithoutPrefix)) {
+        const similarModels = getSimilarModels(modelWithoutPrefix, availableModels);
+        const webSearchModels = similarModels.filter(
+          (m) => m.includes('sonar') || m.includes('online') || m.includes('gemini')
+        );
+
+        if (webSearchModels.length > 0) {
+          return {
+            supported: false,
+            model: webSearchModels[0],
+            error: `Model '${modelName}' not found. Consider using ${webSearchModels[0]} for web search instead.`,
+          };
+        }
+
+        return {
+          supported: false,
+          error: `Model '${modelName}' not found.\n\nAvailable web search models:\n${Array.from(
+            availableModels
+          )
+            .filter((m) => m.includes('sonar') || m.includes('online') || m.includes('gemini'))
+            .slice(0, 5)
+            .map((m) => `- ${m}`)
+            .join('\n')}`,
+        };
+      }
+
+      // Check if the model supports web search
+      if (isWebSearchSupportedModelOnModelBox(modelWithoutPrefix)) {
+        return { supported: true };
+      }
+
+      // Suggest a web search capable model
+      const webSearchModels = Array.from(availableModels)
+        .filter((m) => m.includes('sonar') || m.includes('online') || m.includes('gemini'))
+        .slice(0, 5);
+
+      return {
+        supported: false,
+        model: webSearchModels[0],
+        error: `Model ${modelName} does not support web search. Try one of these models:\n${webSearchModels.map((m) => `- ${m}`).join('\n')}`,
+      };
+    } catch (error) {
+      console.error('Error checking web search support:', error);
+      return {
+        supported: false,
+        error: 'Failed to check web search support. Please try again.',
+      };
+    }
+  }
+
+  async executePrompt(prompt: string, options: ModelOptions): Promise<string> {
+    const model = await this.getModel(options);
+
+    // Handle token count if provided
+    if (options?.tokenCount) {
+      const { model: tokenModel, error } = this.handleLargeTokenCount(options.tokenCount);
+      if (error) {
+        throw new ProviderError(error);
+      }
+      if (tokenModel) {
+        options = { ...options, model: tokenModel };
+      }
+    }
+
+    // Validate model name if we have the list
+    const availableModels = await this.availableModels;
+    if (!availableModels) {
+      throw new Error('Models not initialized. Call initializeModels() first.');
+    }
+    if (!availableModels.has(model)) {
+      const similarModels = getSimilarModels(model, availableModels);
+      throw new ModelNotFoundError(
+        `Model '${model}' not found in Vertex AI.\n\n` +
+          `You requested: ${model}\n` +
+          `Similar available models:\n${similarModels.map((m) => `- ${m}`).join('\n')}\n\n` +
+          `Use --model with one of the above models.`
+      );
+    }
+
+    const maxTokens = options.maxTokens;
+    const systemPrompt = this.getSystemPrompt(options);
+    const startTime = Date.now();
+
+    const projectId = 'prime-elf-451813-c9'; // TODO: Make this configurable
+    const location = 'us-central1'; // TODO: Make this configurable
+    const baseURL = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/${model}:generateContent`;
+
+    this.logRequestStart(options, model, maxTokens, systemPrompt, baseURL);
+
+    return retryWithBackoff(
+      async () => {
+        try {
+          const requestBody: GoogleVertexAIRequestBody = {
+            contents: [
+              {
+                role: 'user',
+                parts: [{ text: prompt }],
+              },
+            ],
+            generationConfig: { maxOutputTokens: maxTokens },
+            ...(systemPrompt
+              ? {
+                  system_instruction: {
+                    parts: [{ text: systemPrompt }],
+                  },
+                }
+              : {}),
+          };
+
+          // Add web search tool only when explicitly requested
+          if (options?.webSearch) {
+            requestBody.tools = [
+              {
+                google_search: {},
+              },
+            ];
+          }
+
+          this.debugLog(options, 'Request body:', this.truncateForLogging(requestBody));
+
+          const authClient = await this.getAuthClient();
+          const token = await authClient.getAccessToken();
+
+          const response = await fetch(baseURL, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token.token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestBody),
+          });
+
+          const endTime = Date.now();
+          this.debugLog(options, `API call completed in ${endTime - startTime}ms`);
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            if (response.status === 429) {
+              console.warn(
+                'Received 429 error from Google API. This can occur due to token limits on free accounts. ' +
+                  'For more information, see: https://github.com/eastlondoner/cursor-tools/issues/35'
+              );
+            }
+            throw new NetworkError(`Google Vertex AI API error (${response.status}): ${errorText}`);
+          }
+
+          const data = await response.json();
+          this.debugLog(options, 'Response:', this.truncateForLogging(data));
+
+          const content = data.candidates[0]?.content?.parts[0]?.text;
+          const grounding = data.candidates[0]?.groundingMetadata as GeminiGroundingMetadata;
+          const webSearchQueries = grounding?.webSearchQueries;
+
+          let webSearchText = '';
+          if (webSearchQueries && webSearchQueries.length > 0) {
+            webSearchText = '\nWeb search queries:\n';
+            for (const query of webSearchQueries) {
+              webSearchText += `- ${query}\n`;
+            }
+            webSearchText += '\n';
+          }
+
+          // Format response with citations if grounding metadata exists
+          let formattedContent = content;
+          if (grounding?.groundingSupports?.length > 0 && grounding?.groundingChunks?.length > 0) {
+            const citationSources = new Map<number, { uri: string; title?: string }>();
+
+            // Build citation sources from groundingChunks
+            grounding.groundingChunks.forEach((chunk: GeminiGroundingChunk, idx: number) => {
+              if (chunk.web) {
+                citationSources.set(idx, {
+                  uri: chunk.web.uri,
+                  title: chunk.web.title,
+                });
+              }
+            });
+
+            // Format text with citations
+            let formattedText = '';
+            grounding.groundingSupports.forEach((support: GeminiGroundingSupport) => {
+              const segment = support.segment;
+              const citations = support.groundingChunkIndices
+                .map((idx: number) => {
+                  const source = citationSources.get(idx);
+                  return source ? `[${idx + 1}]` : '';
+                })
+                .filter(Boolean)
+                .join('');
+
+              formattedText += segment.text + (citations ? ` ${citations}` : '') + ' ';
+            });
+
+            // Add citations list
+            if (citationSources.size > 0) {
+              let citationsText = '\nCitations:\n';
+              citationSources.forEach((source, idx) => {
+                citationsText += `[${idx + 1}]: ${source.uri}${source.title ? ` ${source.title}` : ''}\n`;
+              });
+              formattedText = citationsText + '\n' + webSearchText + formattedText;
+            } else {
+              formattedText = webSearchText + formattedText;
+            }
+            // replace the original content with the formatted text
+            formattedContent = formattedText.trim();
+          }
+
+          if (!formattedContent) {
+            throw new ProviderError('Google Vertex AI returned an empty response');
+          }
+
+          return formattedContent;
+        } catch (error) {
+          if (error instanceof ProviderError) {
+            throw error;
+          }
+          throw new NetworkError('Failed to communicate with Google Vertex AI API', error as Error);
+        }
+      },
+      5,
+      1000,
+      (error) => {
+        if (error instanceof NetworkError) {
+          const errorText = error.message.toLowerCase();
+          return errorText.includes('429') || errorText.includes('resource exhausted');
+        }
+        return false;
+      }
+    );
+  }
+
+  private async getAuthClient(): Promise<AuthClient> {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new ApiKeyMissingError('Google Vertex AI');
+    }
+
+    // Check if the value is a path to a JSON key file
+    if (apiKey.endsWith('.json')) {
+      if (!existsSync(apiKey)) {
+        throw new Error(`Google Vertex AI JSON key file not found at: ${apiKey}`);
+      }
+      console.log(`Using service account JSON key from: ${apiKey}`);
+      return new GoogleAuth({
+        keyFile: apiKey,
+        scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+      }).getClient();
+    }
+
+    // Check if the value is "adc" to use Application Default Credentials
+    if (apiKey.toLowerCase() === 'adc') {
+      console.log('Using Application Default Credentials for Google Vertex AI');
+      return new GoogleAuth({
+        scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+      }).getClient();
+    }
+
+    throw new Error(
+      'Google Vertex AI requires service account authentication. Please provide a JSON key file or use ADC.'
+    );
+  }
+}
+
+// Google Generative Language provider implementation
+export class GoogleGenerativeLanguageProvider extends BaseProvider {
+  constructor() {
+    super();
+    // Initialize the promise in constructor
+    this.availableModels = this.initializeModels();
+    this.availableModels.catch((error) => {
+      console.error('Error fetching Google Generative Language models:', error);
+    });
+  }
+
+  private async initializeModels(): Promise<Set<string>> {
+    try {
+      const apiKey = await this.getAPIKey();
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
+      );
+
+      if (!response.ok) {
+        throw new NetworkError(`Failed to fetch Gemini models: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
+      if (!data?.models) {
+        console.warn('Unexpected API response format:', data);
+        return new Set();
+      }
+
+      const models = new Set<string>(
+        data.models
+          .map((model: any) => model.name.replace('models/', ''))
+          .filter((name: string) => name.includes('gemini'))
+      );
+
+      return models;
+    } catch (error) {
+      console.error('Error fetching Gemini models:', error);
+      throw new NetworkError('Failed to fetch available Gemini models', error as Error);
+    }
+  }
+
+  private async getAPIKey(): Promise<string> {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new ApiKeyMissingError('Google Generative Language');
+    }
+
+    // If it's a JSON key or ADC, use Vertex AI instead
+    if (apiKey.endsWith('.json') || apiKey.toLowerCase() === 'adc') {
+      throw new Error(
+        'Service account authentication is not supported for Google Generative Language API. Please use an API key.'
+      );
+    }
+
+    return apiKey;
+  }
+
+  async supportsWebSearch(
+    modelName: string
+  ): Promise<{ supported: boolean; model?: string; error?: string }> {
+    const unsupportedModels = new Set([
+      'gemini-2.0-flash-thinking-exp-01-21',
+      'gemini-2.0-flash-thinking-exp',
+    ]);
+    if (unsupportedModels.has(modelName)) {
+      return {
+        supported: false,
+        model: 'gemini-2.0-pro-exp',
+        error: `Model ${modelName} does not support web search.`,
+      };
+    }
+
+    return {
+      supported: true,
+    };
+  }
+
+  async executePrompt(prompt: string, options: ModelOptions): Promise<string> {
+    // Handle token count if provided
+    if (options?.tokenCount) {
+      const { model: tokenModel, error } = this.handleLargeTokenCount(options.tokenCount);
+      if (error) {
+        throw new ProviderError(error);
+      }
+      if (tokenModel) {
+        options = { ...options, model: tokenModel };
+      }
+    }
+
+    const model = await this.getModel(options);
+    const maxTokens = options.maxTokens;
+    const systemPrompt = this.getSystemPrompt(options);
+    const startTime = Date.now();
+
+    const baseURL = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+
+    this.logRequestStart(options, model, maxTokens, systemPrompt, baseURL);
+
+    return retryWithBackoff(
+      async () => {
+        try {
+          const requestBody: GoogleGenerativeLanguageRequestBody = {
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { maxOutputTokens: maxTokens },
+            ...(systemPrompt
+              ? {
+                  system_instruction: {
+                    parts: [{ text: systemPrompt }],
+                  },
+                }
+              : {}),
+          };
+
+          // Add web search tool only when explicitly requested
+          if (options?.webSearch) {
+            requestBody.tools = [
+              {
+                google_search: {},
+              },
+            ];
+          }
+
+          this.debugLog(options, 'Request body:', this.truncateForLogging(requestBody));
+
+          const apiKey = await this.getAPIKey();
+          const url = `${baseURL}?key=${apiKey}`;
+
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestBody),
+          });
+
+          const endTime = Date.now();
+          this.debugLog(options, `API call completed in ${endTime - startTime}ms`);
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            if (response.status === 429) {
+              console.warn(
+                'Received 429 error from Google API. This can occur due to token limits on free accounts. ' +
+                  'For more information, see: https://github.com/eastlondoner/cursor-tools/issues/35'
+              );
+            }
+            throw new NetworkError(
+              `Google Generative Language API error (${response.status}): ${errorText}`
+            );
+          }
+
+          const data = await response.json();
+          this.debugLog(options, 'Response:', this.truncateForLogging(data));
+
+          const content = data.candidates[0]?.content?.parts[0]?.text;
+          const grounding = data.candidates[0]?.groundingMetadata as GeminiGroundingMetadata;
+          const webSearchQueries = grounding?.webSearchQueries;
+
+          let webSearchText = '';
+          if (webSearchQueries && webSearchQueries.length > 0) {
+            webSearchText = '\nWeb search queries:\n';
+            for (const query of webSearchQueries) {
+              webSearchText += `- ${query}\n`;
+            }
+            webSearchText += '\n';
+          }
+
+          // Format response with citations if grounding metadata exists
+          let formattedContent = content;
+          if (grounding?.groundingSupports?.length > 0 && grounding?.groundingChunks?.length > 0) {
+            const citationSources = new Map<number, { uri: string; title?: string }>();
+
+            // Build citation sources from groundingChunks
+            grounding.groundingChunks.forEach((chunk: GeminiGroundingChunk, idx: number) => {
+              if (chunk.web) {
+                citationSources.set(idx, {
+                  uri: chunk.web.uri,
+                  title: chunk.web.title,
+                });
+              }
+            });
+
+            // Format text with citations
+            let formattedText = '';
+            grounding.groundingSupports.forEach((support: GeminiGroundingSupport) => {
+              const segment = support.segment;
+              const citations = support.groundingChunkIndices
+                .map((idx: number) => {
+                  const source = citationSources.get(idx);
+                  return source ? `[${idx + 1}]` : '';
+                })
+                .filter(Boolean)
+                .join('');
+
+              formattedText += segment.text + (citations ? ` ${citations}` : '') + ' ';
+            });
+
+            // Add citations list
+            if (citationSources.size > 0) {
+              let citationsText = '\nCitations:\n';
+              citationSources.forEach((source, idx) => {
+                citationsText += `[${idx + 1}]: ${source.uri}${source.title ? ` ${source.title}` : ''}\n`;
+              });
+              formattedText = citationsText + '\n' + webSearchText + formattedText;
+            } else {
+              formattedText = webSearchText + formattedText;
+            }
+            // replace the original content with the formatted text
+            formattedContent = formattedText.trim();
+          }
+
+          if (!formattedContent) {
+            throw new ProviderError('Google Generative Language returned an empty response');
+          }
+
+          return formattedContent;
+        } catch (error) {
+          if (error instanceof ProviderError) {
+            throw error;
+          }
+          throw new NetworkError(
+            'Failed to communicate with Google Generative Language API',
+            error as Error
+          );
+        }
+      },
+      5,
+      1000,
+      (error) => {
+        if (error instanceof NetworkError) {
+          const errorText = error.message.toLowerCase();
+          return errorText.includes('429') || errorText.includes('resource exhausted');
+        }
+        return false;
+      }
+    );
+  }
+}
+
 // OpenAI provider implementation
 export class OpenAIProvider extends OpenAIBase {
   constructor() {
@@ -485,7 +948,9 @@ export class OpenAIProvider extends OpenAIBase {
     super(apiKey);
   }
 
-  supportsWebSearch(model: string): { supported: boolean; model?: string; error?: string } {
+  async supportsWebSearch(
+    modelName: string
+  ): Promise<{ supported: boolean; model?: string; error?: string }> {
     return {
       supported: false,
       error: 'OpenAI does not support web search capabilities',
@@ -493,7 +958,7 @@ export class OpenAIProvider extends OpenAIBase {
   }
 
   async executePrompt(prompt: string, options: ModelOptions): Promise<string> {
-    const model = this.getModel(options);
+    const model = await this.getModel(options);
     const maxTokens = options.maxTokens;
     const systemPrompt = this.getSystemPrompt(options);
     const messageLimit = 1048576; // OpenAI's character limit
@@ -568,7 +1033,7 @@ export class OpenRouterProvider extends OpenAIBase {
   }
 
   async executePrompt(prompt: string, options: ModelOptions): Promise<string> {
-    const model = this.getModel(options);
+    const model = await this.getModel(options);
     const maxTokens = options.maxTokens;
     const systemPrompt = this.getSystemPrompt(options);
     const client = this.getClient(options);
@@ -616,7 +1081,9 @@ export class OpenRouterProvider extends OpenAIBase {
     }
   }
 
-  supportsWebSearch(model: string): { supported: boolean; model?: string; error?: string } {
+  async supportsWebSearch(
+    modelName: string
+  ): Promise<{ supported: boolean; model?: string; error?: string }> {
     return {
       supported: false,
       error: 'OpenRouter does not support web search capabilities',
@@ -626,14 +1093,16 @@ export class OpenRouterProvider extends OpenAIBase {
 
 // Perplexity provider implementation
 export class PerplexityProvider extends BaseProvider {
-  supportsWebSearch(model: string): { supported: boolean; model?: string; error?: string } {
-    if (model.startsWith('sonar')) {
+  async supportsWebSearch(
+    modelName: string
+  ): Promise<{ supported: boolean; model?: string; error?: string }> {
+    if (modelName.startsWith('sonar')) {
       return { supported: true };
     }
     return {
       supported: false,
       model: 'sonar-pro',
-      error: `Model ${model} does not support web search. Use a model with -online suffix instead.`,
+      error: `Model ${modelName} does not support web search. Use a model with -online suffix instead.`,
     };
   }
 
@@ -645,7 +1114,7 @@ export class PerplexityProvider extends BaseProvider {
 
     return retryWithBackoff(
       async () => {
-        const model = this.getModel(options);
+        const model = await this.getModel(options);
         const maxTokens = options.maxTokens;
         const systemPrompt = this.getSystemPrompt(options);
         const startTime = Date.now();
@@ -724,7 +1193,6 @@ export class ModelBoxProvider extends OpenAIBase {
   private static readonly webSearchHeaders: Record<string, string> = {
     'x-feature-search-internet': 'true',
   };
-  private availableModels: Set<string> | null = null;
 
   constructor() {
     const apiKey = process.env.MODELBOX_API_KEY;
@@ -741,13 +1209,14 @@ export class ModelBoxProvider extends OpenAIBase {
         defaultHeaders: ModelBoxProvider.webSearchHeaders,
       }
     );
+    // Initialize the promise in constructor
+    this.availableModels = this.initializeModels();
+    this.availableModels.catch((error) => {
+      console.error('Error fetching ModelBox models:', error);
+    });
   }
 
-  public async fetchAvailableModels(): Promise<Set<string>> {
-    if (this.availableModels) {
-      return this.availableModels;
-    }
-
+  private async initializeModels(): Promise<Set<string>> {
     try {
       const response = await fetch('https://api.model.box/v1/models', {
         headers: {
@@ -760,67 +1229,96 @@ export class ModelBoxProvider extends OpenAIBase {
       }
 
       const data = await response.json();
-      this.availableModels = new Set(data.data.map((model: any) => model.id));
-      return this.availableModels;
+      if (!data?.data) {
+        console.warn('Unexpected API response format:', data);
+        return new Set();
+      }
+      // Keep the full model ID including provider prefix
+      return new Set(data.data.map((model: any) => model.id));
     } catch (error) {
       console.error('Error fetching ModelBox models:', error);
       throw new NetworkError('Failed to fetch available ModelBox models', error);
     }
   }
 
-  supportsWebSearch(model: string): { supported: boolean; model?: string; error?: string } {
+  async supportsWebSearch(
+    modelName: string
+  ): Promise<{ supported: boolean; model?: string; error?: string }> {
     try {
-      const availableModels = this.availableModels;
+      const availableModels = await this.availableModels;
+      if (!availableModels) {
+        throw new Error('Models not initialized. Call initializeModels() first.');
+      }
 
-      if (availableModels) {
-        // First check if the model exists
-        if (!availableModels.has(model)) {
-          const similarModels = getProviderSimilarModels(model, availableModels);
-          const webSearchModels = similarModels.filter(
-            (m) => m.includes('sonar') || m.includes('online') || m.includes('gemini')
-          );
+      // Try to find the model with or without prefix
+      const modelWithoutPrefix = modelName.includes('/') ? modelName.split('/')[1] : modelName;
+      const matchingModels = Array.from(availableModels).filter(
+        (m) =>
+          m === modelName || // Exact match with prefix
+          m === `openai/${modelName}` || // Try with openai prefix
+          m.endsWith(`/${modelWithoutPrefix}`) || // Match with any prefix
+          m === modelWithoutPrefix // Exact match without prefix
+      );
 
-          if (webSearchModels.length > 0) {
-            return {
-              supported: false,
-              model: webSearchModels[0],
-              error: `Model '${model}' not found. Consider using ${webSearchModels[0]} for web search instead.`,
-            };
-          }
+      if (matchingModels.length === 0) {
+        // Find similar models by comparing against both prefixed and unprefixed versions
+        const similarModels = Array.from(availableModels)
+          .filter((m) => {
+            const mWithoutPrefix = m.includes('/') ? m.split('/')[1] : m;
+            return stringSimilarity(modelWithoutPrefix, mWithoutPrefix) > 0.5;
+          })
+          .sort((a, b) => {
+            const aWithoutPrefix = a.includes('/') ? a.split('/')[1] : a;
+            const bWithoutPrefix = b.includes('/') ? b.split('/')[1] : b;
+            return (
+              stringSimilarity(modelWithoutPrefix, bWithoutPrefix) -
+              stringSimilarity(modelWithoutPrefix, aWithoutPrefix)
+            );
+          });
 
+        const webSearchModels = similarModels.filter(
+          (m) => m.includes('sonar') || m.includes('online') || m.includes('gemini')
+        );
+
+        if (webSearchModels.length > 0) {
           return {
             supported: false,
-            error: `Model '${model}' not found.\n\nAvailable web search models:\n${Array.from(
-              availableModels
-            )
-              .filter((m) => m.includes('sonar') || m.includes('online') || m.includes('gemini'))
-              .slice(0, 5)
-              .map((m) => `- ${m}`)
-              .join('\n')}`,
+            model: webSearchModels[0],
+            error: `Model '${modelName}' not found. Consider using ${webSearchModels[0]} for web search instead.\nNote: ModelBox requires provider prefixes (e.g., 'openai/gpt-4' instead of just 'gpt-4').`,
           };
         }
 
-        // Check if the model supports web search
-        if (isWebSearchSupportedModelOnModelBox(model)) {
-          return { supported: true };
-        }
-
-        // Suggest a web search capable model
-        const webSearchModels = Array.from(availableModels)
-          .filter((m) => m.includes('sonar') || m.includes('online') || m.includes('gemini'))
-          .slice(0, 5);
-
         return {
           supported: false,
-          model: webSearchModels[0],
-          error: `Model ${model} does not support web search. Try one of these models:\n${webSearchModels.map((m) => `- ${m}`).join('\n')}`,
+          error: `Model '${modelName}' not found.\n\nAvailable web search models:\n${Array.from(
+            availableModels
+          )
+            .filter((m) => m.includes('sonar') || m.includes('online') || m.includes('gemini'))
+            .slice(0, 5)
+            .map((m) => `- ${m}`)
+            .join(
+              '\n'
+            )}\n\nNote: ModelBox requires provider prefixes (e.g., 'openai/gpt-4' instead of just 'gpt-4').`,
         };
       }
 
-      // If we don't have the model list yet, just check if it's a web search model by name
+      // Use the first matching model (prioritizing exact matches)
+      const resolvedModel = matchingModels[0];
+
+      // Check if the model supports web search
+      if (isWebSearchSupportedModelOnModelBox(resolvedModel)) {
+        return { supported: true };
+      }
+
+      // Suggest a web search capable model
+      const webSearchModels = Array.from(availableModels)
+        .filter((m) => m.includes('sonar') || m.includes('online') || m.includes('gemini'))
+        .slice(0, 5);
+
       return {
-        supported: isWebSearchSupportedModelOnModelBox(model),
-        error: 'Failed to check web search support. Please try again.',
+        supported: false,
+        model: webSearchModels[0],
+        error: `Model ${resolvedModel} does not support web search. Try one of these models:\n${webSearchModels.map((m) => `- ${m}`).join('\n')}`,
       };
     } catch (error) {
       console.error('Error checking web search support:', error);
@@ -832,57 +1330,79 @@ export class ModelBoxProvider extends OpenAIBase {
   }
 
   async executePrompt(prompt: string, options: ModelOptions): Promise<string> {
-    const model = this.getModel(options);
+    const model = await this.getModel(options);
     const maxTokens = options.maxTokens;
     const systemPrompt = this.getSystemPrompt(options);
     const client = this.getClient(options);
 
     try {
       // Check if model exists
-      const availableModels = await this.fetchAvailableModels();
-      if (!availableModels.has(model)) {
-        const similarModels = getProviderSimilarModels(model, availableModels);
+      const availableModels = await this.availableModels;
+      if (!availableModels) {
+        throw new Error('Models not initialized. Call initializeModels() first.');
+      }
+
+      // Try to find the model with or without prefix
+      const modelWithoutPrefix = model.includes('/') ? model.split('/')[1] : model;
+      
+      // First try exact match with prefix
+      if (availableModels.has(model)) {
+        return await this.executeWithModel(model, prompt, maxTokens, systemPrompt, options, client);
+      }
+
+      // Then try to find exact match within any provider namespace
+      const exactMatchWithProvider = Array.from(availableModels).find(m => {
+        const parts = m.split('/');
+        return parts.length === 2 && parts[1] === modelWithoutPrefix;
+      });
+
+      if (exactMatchWithProvider) {
+        console.log(
+          `[${this.constructor.name}] Using fully qualified model name '${exactMatchWithProvider}' for '${model}'.`
+        );
+        return await this.executeWithModel(exactMatchWithProvider, prompt, maxTokens, systemPrompt, options, client);
+      }
+
+      // If no exact match, try prefix matches
+      const matchingModels = Array.from(availableModels).filter(
+        (m) =>
+          m === model || // Exact match with prefix
+          m === `openai/${model}` || // Try with openai prefix
+          m.endsWith(`/${modelWithoutPrefix}`) || // Match with any prefix
+          m === modelWithoutPrefix // Exact match without prefix
+      );
+
+      if (matchingModels.length === 0) {
+        // Find similar models by comparing against both prefixed and unprefixed versions
+        const similarModels = Array.from(availableModels)
+          .filter((m) => {
+            const mWithoutPrefix = m.includes('/') ? m.split('/')[1] : m;
+            return stringSimilarity(modelWithoutPrefix, mWithoutPrefix) > 0.5;
+          })
+          .sort((a, b) => {
+            const aWithoutPrefix = a.includes('/') ? a.split('/')[1] : a;
+            const bWithoutPrefix = b.includes('/') ? b.split('/')[1] : b;
+            return (
+              stringSimilarity(modelWithoutPrefix, bWithoutPrefix) -
+              stringSimilarity(modelWithoutPrefix, aWithoutPrefix)
+            );
+          });
+
         throw new ModelNotFoundError(
           `Model '${model}' not found in ModelBox.\n\n` +
             `You requested: ${model}\n` +
-            `Similar available models:\n${similarModels.map((m) => `- ${m}`).join('\n')}\n\n` +
-            `Use --model with one of the above models.`
+            `Similar available models:\n${similarModels
+              .slice(0, 5)
+              .map((m) => `- ${m}`)
+              .join('\n')}\n\n` +
+            `Use --model with one of the above models. Note: ModelBox requires provider prefixes (e.g., 'openai/gpt-4' instead of just 'gpt-4').`
         );
       }
 
-      const messages = [
-        ...(systemPrompt ? [{ role: 'system' as const, content: systemPrompt }] : []),
-        { role: 'user' as const, content: prompt },
-      ];
+      // Use the first matching model (prioritizing exact matches)
+      const resolvedModel = matchingModels[0];
+      return await this.executeWithModel(resolvedModel, prompt, maxTokens, systemPrompt, options, client);
 
-      this.logRequestStart(
-        options,
-        model,
-        maxTokens,
-        systemPrompt,
-        `${client.baseURL ?? 'https://api.model.box/v1'}/chat/completions`,
-        options.webSearch ? ModelBoxProvider.webSearchHeaders : ModelBoxProvider.defaultHeaders
-      );
-
-      const response = await client.chat.completions.create(
-        {
-          model,
-          messages,
-          max_tokens: maxTokens,
-        },
-        {
-          timeout: Math.floor(options?.timeout ?? TEN_MINUTES),
-          maxRetries: 3,
-        }
-      );
-
-      this.debugLog(options, 'Response:', JSON.stringify(response, null, 2));
-
-      const content = response.choices[0].message.content;
-      if (!content) {
-        throw new ProviderError(`${this.constructor.name} returned an empty response`);
-      }
-      return content;
     } catch (error) {
       console.error('ModelBox Provider: Error during API call:', error);
       if (error instanceof ProviderError || error instanceof NetworkError) {
@@ -891,41 +1411,50 @@ export class ModelBoxProvider extends OpenAIBase {
       throw new NetworkError(`Failed to communicate with ${this.constructor.name} API`, error);
     }
   }
-}
 
-function isWebSearchSupportedModelOnModelBox(model: string): boolean {
-  return model.includes('sonar') || model.includes('online') || model.includes('gemini');
-}
+  // Helper method to execute the actual API call
+  private async executeWithModel(
+    model: string,
+    prompt: string,
+    maxTokens: number,
+    systemPrompt: string | undefined,
+    options: ModelOptions,
+    client: OpenAI
+  ): Promise<string> {
+    const messages = [
+      ...(systemPrompt ? [{ role: 'system' as const, content: systemPrompt }] : []),
+      { role: 'user' as const, content: prompt },
+    ];
 
-/**
- * Find similar models from a list of available models within the same provider namespace
- * 1. Filters models to only those from the same provider (e.g., 'openai/', 'anthropic/')
- * 2. Uses string similarity to find similar model names within that provider
- *
- * @deprecated Consider using the generic implementation in src/utils/stringSimilarity.ts
- * This version is kept for backward compatibility and its provider-specific filtering
- */
-function getProviderSimilarModels(model: string, availableModels: Set<string>): string[] {
-  const modelParts = model.split('/');
-  const [provider, modelName] = modelParts.length > 1 ? modelParts : [null, modelParts[0]];
+    this.logRequestStart(
+      options,
+      model,
+      maxTokens,
+      systemPrompt,
+      `${client.baseURL ?? 'https://api.model.box/v1'}/chat/completions`,
+      options.webSearch ? ModelBoxProvider.webSearchHeaders : ModelBoxProvider.defaultHeaders
+    );
 
-  // Find models from the same provider or all models if no provider specified
-  const similarModels = Array.from(availableModels).filter((m) => {
-    if (!provider) return true;
-    const [mProvider] = m.split('/');
-    return mProvider === provider;
-  });
+    const response = await client.chat.completions.create(
+      {
+        model,
+        messages,
+        max_tokens: maxTokens,
+      },
+      {
+        timeout: Math.floor(options?.timeout ?? TEN_MINUTES),
+        maxRetries: 3,
+      }
+    );
 
-  // Sort by similarity to the requested model name
-  return similarModels
-    .sort((a, b) => {
-      const [, aName = a] = a.split('/'); // Use full string if no provider prefix
-      const [, bName = b] = b.split('/');
-      const aSimilarity = stringSimilarity(modelName, aName);
-      const bSimilarity = stringSimilarity(modelName, bName);
-      return bSimilarity - aSimilarity;
-    })
-    .slice(0, 5); // Return top 5 most similar models
+    this.debugLog(options, 'Response:', JSON.stringify(response, null, 2));
+
+    const content = response.choices[0].message.content;
+    if (!content) {
+      throw new ProviderError(`${this.constructor.name} returned an empty response`);
+    }
+    return content;
+  }
 }
 
 // Anthropic provider implementation
@@ -943,7 +1472,9 @@ export class AnthropicProvider extends BaseProvider {
     });
   }
 
-  supportsWebSearch(model: string): { supported: boolean; model?: string; error?: string } {
+  async supportsWebSearch(
+    modelName: string
+  ): Promise<{ supported: boolean; model?: string; error?: string }> {
     return {
       supported: false,
       error: 'Anthropic does not support web search capabilities',
@@ -951,7 +1482,7 @@ export class AnthropicProvider extends BaseProvider {
   }
 
   async executePrompt(prompt: string, options: ModelOptions): Promise<string> {
-    const model = this.getModel(options);
+    const model = await this.getModel(options);
     const maxTokens = options.maxTokens;
     const systemPrompt = this.getSystemPrompt(options);
     const startTime = Date.now();
@@ -1001,8 +1532,22 @@ export function createProvider(
   provider: 'gemini' | 'openai' | 'openrouter' | 'perplexity' | 'modelbox' | 'anthropic'
 ): BaseModelProvider {
   switch (provider) {
-    case 'gemini':
-      return new GeminiProvider();
+    case 'gemini': {
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new ApiKeyMissingError('Gemini');
+      }
+
+      // Choose between Vertex AI and Generative Language based on credentials
+      if (apiKey.endsWith('.json') || apiKey.toLowerCase() === 'adc') {
+        console.log('Using Google Vertex AI provider');
+        const vertexProvider = new GoogleVertexAIProvider();
+        return vertexProvider;
+      } else {
+        console.log('Using Google Generative Language provider');
+        return new GoogleGenerativeLanguageProvider();
+      }
+    }
     case 'openai':
       return new OpenAIProvider();
     case 'openrouter':
@@ -1011,10 +1556,7 @@ export function createProvider(
       return new PerplexityProvider();
     case 'modelbox': {
       const provider = new ModelBoxProvider();
-      // background init task
-      provider.fetchAvailableModels().catch((error) => {
-        console.error('Error fetching ModelBox models:', error);
-      });
+
       return provider;
     }
     case 'anthropic':
@@ -1022,4 +1564,14 @@ export function createProvider(
     default:
       throw exhaustiveMatchGuard(provider);
   }
+}
+
+function isWebSearchSupportedModelOnModelBox(model: string): boolean {
+  // Extract model name without provider prefix if present
+  const modelWithoutPrefix = model.includes('/') ? model.split('/')[1] : model;
+  return (
+    modelWithoutPrefix.includes('sonar') ||
+    modelWithoutPrefix.includes('online') ||
+    modelWithoutPrefix.includes('gemini')
+  );
 }

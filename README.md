@@ -266,6 +266,39 @@ Note: The ask command requires both --provider and --model parameters to be spec
    GEMINI_API_KEY="your-gemini-api-key"
    ```
 
+### Google Gemini API Authentication
+
+`cursor-tools` supports multiple authentication methods for accessing the Google Gemini API, providing flexibility for different environments and security requirements. You can choose from the following methods:
+
+1. **API Key (Default)**
+   - This is the simplest method and continues to be supported for backward compatibility.
+   - Set the `GEMINI_API_KEY` environment variable to your API key string obtained from Google AI Studio.
+   - **Example:**
+     ```env
+     GEMINI_API_KEY="your-api-key-here"
+     ```
+
+2. **Service Account JSON Key File**
+   - For enhanced security, especially in production environments, use a service account JSON key file.
+   - Set the `GEMINI_API_KEY` environment variable to the **path** of your downloaded service account JSON key file.
+   - **Example:**
+     ```env
+     GEMINI_API_KEY="./path/to/service-account.json"
+     ```
+   - This method enables access to the latest Gemini models available through Vertex AI, such as `gemini-2.0-flash`.
+
+3. **Application Default Credentials (ADC) (Recommended for Google Cloud Environments)**
+   - ADC is ideal when running `cursor-tools` within Google Cloud environments (e.g., Compute Engine, Kubernetes Engine) or for local development using `gcloud`.
+   - Set the `GEMINI_API_KEY` environment variable to `adc`.
+   - **Example:**
+     ```env
+     GEMINI_API_KEY="adc"
+     ```
+   - **Setup Instructions:** First, authenticate locally using gcloud:
+     ```bash
+     gcloud auth application-default login
+     ```
+
 
 ## AI Team Features
 
@@ -801,6 +834,11 @@ cursor-tools web "What's new in TypeScript 5.7?"
     - Run `cursor-tools install` to reconfigure API keys
     - Check that your API keys have the necessary permissions
     - For GitHub operations, ensure your token has the required scopes (repo, read:user)
+    - For Google Vertex AI authentication:
+      - If using a JSON key file, verify the file path is correct and the file is readable
+      - If using ADC, ensure you've run `gcloud auth application-default login` and the account has appropriate permissions
+      - Verify your service account has the necessary roles in Google Cloud Console (typically "Vertex AI User")
+      - For troubleshooting ADC: Run `gcloud auth application-default print-access-token` to check if ADC is working
 
 3. **Model Errors**
     - Check your internet connection

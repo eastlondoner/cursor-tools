@@ -2,10 +2,46 @@
 
 All notable changes to this project will be documented in this file.
 
-
-## [0.6.0-alpha.7] - 2025-02-25
+## [Unreleased]
 
 ### Added
+- **Improved Model Name Resolution**: Enhanced model name handling across providers to better handle experimental and latest model versions:
+  - Automatically resolves `-exp-*` suffixes to find stable model versions
+  - Resolves `-latest` suffixes to the most recent compatible model
+  - For ModelBox: automatically finds models across providers without requiring provider prefixes (e.g. `gpt-4o` will find `openai/gpt-4o`)
+  - Provides helpful suggestions when models aren't found, showing similar available models
+
+## [0.6.0-alpha.7] - 2025-03-05
+
+### Added
+- **Google Vertex AI Authentication**: Added support for Google Vertex AI authentication using JSON key files or Application Default Credentials (ADC). This update maintains backward compatibility, continuing to support the direct API key string method, while adding additional authentication options. To use this feature, set the `GEMINI_API_KEY` environment variable to the path of your JSON key file or to `adc` to use Application Default Credentials. This enables access to gemini models such as `gemini-2.0-flash` via the Vertex AI. This feature introduces a new dependency: `google-auth-library`.
+  - **Example: Using Service Account JSON Key**
+    Set `GEMINI_API_KEY` to the path of your service account JSON key file:
+    ```env
+    GEMINI_API_KEY="./path/to/service-account.json"
+    ```
+  - **Example: Using Application Default Credentials (ADC)**
+    First, authenticate locally using gcloud:
+    ```bash
+    gcloud auth application-default login
+    ```
+    Then set `GEMINI_API_KEY` to `adc` to use Application Default Credentials:
+    ```env
+    GEMINI_API_KEY="adc"
+    ```
+- **Improved ModelBox Provider**: Enhanced the ModelBox provider with improved model name handling. If a requested model is not found, cursor-tools now provides helpful suggestions for similar models. Error messages have also been clarified to better guide users on the requirement for provider prefixes when specifying ModelBox models.
+  - **Example: Improved Error Message**
+    If you use an invalid model with ModelBox, you will now receive suggestions:
+    ```text
+    Error: Model 'invalid-model' not found in ModelBox.
+
+    You requested: invalid-model
+    Similar available models:
+    - openai/gpt-4o
+    - anthropic/claude-3-5-sonnet
+
+    Use --model with one of the above models. Note: ModelBox requires provider prefixes (e.g., 'openai/gpt-4' instead of just 'gpt-4').
+    ```
 - Added support for MCP server overrides in the marketplace
   - Implemented hardcoded overrides in `MCP_OVERRIDES` map
   - Added override for google-calendar-mcp to use eastlondoner fork
