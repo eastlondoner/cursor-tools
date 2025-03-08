@@ -74,6 +74,7 @@ export interface BaseModelProvider {
 // Base provider class with common functionality
 export abstract class BaseProvider implements BaseModelProvider {
   protected config: Config;
+  protected availableModels?: Promise<Set<string>>;
 
   constructor() {
     loadEnv();
@@ -84,7 +85,102 @@ export abstract class BaseProvider implements BaseModelProvider {
     if (!options?.model) {
       throw new ModelNotFoundError(this.constructor.name.replace('Provider', ''));
     }
-    return options.model;
+    let model = options.model;
+    if (!this.availableModels) {
+      return model;
+    }
+    const availableModels = await this.availableModels;
+
+    // First try exact match with prefix
+    if (availableModels.has(model)) {
+      return model;
+    }
+
+    // If no prefix, try to find exact match within any provider namespace
+    if (!model.includes('/')) {
+      const exactMatchWithProvider = Array.from(availableModels).find(m => {
+        const parts = m.split('/');
+        return parts.length === 2 && parts[1] === model;
+      });
+
+      if (exactMatchWithProvider) {
+        console.log(
+          `[${this.constructor.name}] Using fully qualified model name '${exactMatchWithProvider}' for '${model}'.`
+        );
+        return exactMatchWithProvider;
+      }
+    }
+
+    // Try prefix matching - sort in descending order
+    const prefixMatches = Array.from(availableModels)
+      .filter((m: string) => m.startsWith(model))
+      .sort((a: string, b: string) => b.localeCompare(a));
+
+    if (prefixMatches.length > 0) {
+      const resolvedModel = prefixMatches[prefixMatches.length - 1];
+      console.log(
+        `[${this.constructor.name}] Model '${model}' not found. Using prefix match '${resolvedModel}'.`
+      );
+      return resolvedModel;
+    }
+
+    // Try removing -latest suffix
+    if (model.endsWith('-latest')) {
+      const modelWithoutLatest = model.slice(0, -'-latest'.length);
+      const latestMatches = Array.from(availableModels)
+        .filter((m: string) => m.startsWith(modelWithoutLatest))
+        .sort((a: string, b: string) => b.localeCompare(a));
+
+      if (latestMatches.length > 0) {
+        const resolvedModel = latestMatches[latestMatches.length - 1];
+        console.log(
+          `[${this.constructor.name}] Model '${model}' not found. Using latest match '${resolvedModel}'.`
+        );
+        return resolvedModel;
+      }
+    }
+
+    // Try removing -exp or -exp-* suffix
+    const expMatch = model.match(/^(.*?)(?:-exp(?:-.*)?$)/);
+    if (expMatch) {
+      const modelWithoutExp = expMatch[1];
+      const expMatches = Array.from(availableModels)
+        .filter((m: string) => m.startsWith(modelWithoutExp))
+        .sort((a: string, b: string) => b.localeCompare(a));
+
+      if (expMatches.length > 0) {
+        const resolvedModel = expMatches[expMatches.length - 1];
+        console.log(
+          `[${this.constructor.name}] Model '${model}' not found. Using non-experimental match '${resolvedModel}'.`
+        );
+        return resolvedModel;
+      }
+    }
+
+    // If all resolution attempts fail, first try to find similar models
+    const similarModels = getSimilarModels(model, availableModels);
+    
+    // If we found similar models, show those first
+    if (similarModels.length > 0) {
+      throw new ModelNotFoundError(
+        `Model '${model}' not found in ${this.constructor.name.replace('Provider', '')}.\n\n` +
+        `You requested: ${model}\n` +
+        `Similar available models:\n${similarModels.map((m) => `- ${m}`).join('\n')}\n\n` +
+        `Use --model with one of the above models.` +
+        (this.constructor.name === 'ModelBoxProvider' ? ' Note: ModelBox requires provider prefixes (e.g., \'openai/gpt-4\' instead of just \'gpt-4\').' : '')
+      );
+    }
+
+    // If no similar models found, show all available models sorted by recency
+    const recentModels = Array.from(availableModels)
+      .sort((a: string, b: string) => b.localeCompare(a)) // Sort in descending order
+
+    throw new ModelNotFoundError(
+      `Model '${model}' not found in ${this.constructor.name.replace('Provider', '')}.\n\n` +
+        `You requested: ${model}\n` +
+        `Recent available models:\n${recentModels.map((m) => `- ${m}`).join('\n')}\n\n` +
+        `Use --model with one of the above models.`
+    );
   }
 
   protected getSystemPrompt(options?: ModelOptions): string | undefined {
@@ -202,7 +298,7 @@ abstract class OpenAIBase extends BaseProvider {
   async supportsWebSearch(
     modelName: string
   ): Promise<{ supported: boolean; model?: string; error?: string }> {
-      return {
+    return {
       supported: false,
       error: 'OpenAI does not support web search capabilities',
     };
@@ -267,12 +363,13 @@ interface GoogleGenerativeLanguageRequestBody {
 
 // Google Vertex AI provider implementation
 export class GoogleVertexAIProvider extends BaseProvider {
-  private availableModels: Promise<Set<string>>;
-
   constructor() {
     super();
     // Initialize the promise in constructor
     this.availableModels = this.initializeModels();
+    this.availableModels.catch((error) => {
+      console.error('Error fetching Vertex AI models:', error);
+    });
   }
 
   private async initializeModels(): Promise<Set<string>> {
@@ -299,12 +396,11 @@ export class GoogleVertexAIProvider extends BaseProvider {
         return new Set();
       }
       return new Set(
-        data.publisherModels
-          .map((model: any) => {
-            // Extract just the model name without the publishers/google/models/ prefix
-            const name = model.name.replace('publishers/google/models/', '');
-            return name;
-          })
+        data.publisherModels.map((model: any) => {
+          // Extract just the model name without the publishers/google/models/ prefix
+          const name = model.name.replace('publishers/google/models/', '');
+          return name;
+        })
       );
     } catch (error) {
       console.error('Error fetching Vertex AI models:', error);
@@ -312,57 +408,56 @@ export class GoogleVertexAIProvider extends BaseProvider {
     }
   }
 
-  public async fetchAvailableModels(): Promise<Set<string>> {
-    return this.availableModels;
-  }
-
   async supportsWebSearch(
     modelName: string
   ): Promise<{ supported: boolean; model?: string; error?: string }> {
     try {
       const availableModels = await this.availableModels;
+      if (!availableModels) {
+        throw new Error('Models not initialized. Call initializeModels() first.');
+      }
       // Extract model name without provider prefix if present
       const modelWithoutPrefix = modelName.includes('/') ? modelName.split('/')[1] : modelName;
 
       if (!availableModels.has(modelWithoutPrefix)) {
         const similarModels = getSimilarModels(modelWithoutPrefix, availableModels);
-          const webSearchModels = similarModels.filter(
-            (m) => m.includes('sonar') || m.includes('online') || m.includes('gemini')
-          );
+        const webSearchModels = similarModels.filter(
+          (m) => m.includes('sonar') || m.includes('online') || m.includes('gemini')
+        );
 
-          if (webSearchModels.length > 0) {
-            return {
-              supported: false,
-              model: webSearchModels[0],
-              error: `Model '${modelName}' not found. Consider using ${webSearchModels[0]} for web search instead.`,
-            };
-          }
-
+        if (webSearchModels.length > 0) {
           return {
             supported: false,
-            error: `Model '${modelName}' not found.\n\nAvailable web search models:\n${Array.from(
-              availableModels
-            )
-              .filter((m) => m.includes('sonar') || m.includes('online') || m.includes('gemini'))
-              .slice(0, 5)
-              .map((m) => `- ${m}`)
-              .join('\n')}`,
+            model: webSearchModels[0],
+            error: `Model '${modelName}' not found. Consider using ${webSearchModels[0]} for web search instead.`,
           };
         }
 
-        // Check if the model supports web search
-        if (isWebSearchSupportedModelOnModelBox(modelWithoutPrefix)) {
-          return { supported: true };
-        }
-
-        // Suggest a web search capable model
-        const webSearchModels = Array.from(availableModels)
-          .filter((m) => m.includes('sonar') || m.includes('online') || m.includes('gemini'))
-          .slice(0, 5);
-
         return {
           supported: false,
-          model: webSearchModels[0],
+          error: `Model '${modelName}' not found.\n\nAvailable web search models:\n${Array.from(
+            availableModels
+          )
+            .filter((m) => m.includes('sonar') || m.includes('online') || m.includes('gemini'))
+            .slice(0, 5)
+            .map((m) => `- ${m}`)
+            .join('\n')}`,
+        };
+      }
+
+      // Check if the model supports web search
+      if (isWebSearchSupportedModelOnModelBox(modelWithoutPrefix)) {
+        return { supported: true };
+      }
+
+      // Suggest a web search capable model
+      const webSearchModels = Array.from(availableModels)
+        .filter((m) => m.includes('sonar') || m.includes('online') || m.includes('gemini'))
+        .slice(0, 5);
+
+      return {
+        supported: false,
+        model: webSearchModels[0],
         error: `Model ${modelName} does not support web search. Try one of these models:\n${webSearchModels.map((m) => `- ${m}`).join('\n')}`,
       };
     } catch (error) {
@@ -379,6 +474,9 @@ export class GoogleVertexAIProvider extends BaseProvider {
 
     // Validate model name if we have the list
     const availableModels = await this.availableModels;
+    if (!availableModels) {
+      throw new Error('Models not initialized. Call initializeModels() first.');
+    }
     if (!availableModels.has(model)) {
       const similarModels = getSimilarModels(model, availableModels);
       throw new ModelNotFoundError(
@@ -390,8 +488,8 @@ export class GoogleVertexAIProvider extends BaseProvider {
     }
 
     const maxTokens = options.maxTokens;
-        const systemPrompt = this.getSystemPrompt(options);
-        const startTime = Date.now();
+    const systemPrompt = this.getSystemPrompt(options);
+    const startTime = Date.now();
 
     const projectId = 'prime-elf-451813-c9'; // TODO: Make this configurable
     const location = 'us-central1'; // TODO: Make this configurable
@@ -417,30 +515,30 @@ export class GoogleVertexAIProvider extends BaseProvider {
           : {}),
       };
 
-          this.debugLog(options, 'Request body:', this.truncateForLogging(requestBody));
+      this.debugLog(options, 'Request body:', this.truncateForLogging(requestBody));
 
       const authClient = await this.getAuthClient();
       const token = await authClient.getAccessToken();
 
       const response = await fetch(baseURL, {
-              method: 'POST',
+        method: 'POST',
         headers: {
           Authorization: `Bearer ${token.token}`,
           'Content-Type': 'application/json',
         },
-              body: JSON.stringify(requestBody),
+        body: JSON.stringify(requestBody),
       });
 
-          const endTime = Date.now();
-          this.debugLog(options, `API call completed in ${endTime - startTime}ms`);
+      const endTime = Date.now();
+      this.debugLog(options, `API call completed in ${endTime - startTime}ms`);
 
-          if (!response.ok) {
-            const errorText = await response.text();
+      if (!response.ok) {
+        const errorText = await response.text();
         throw new NetworkError(`Google Vertex AI API error (${response.status}): ${errorText}`);
-          }
+      }
 
-          const data = await response.json();
-          this.debugLog(options, 'Response:', this.truncateForLogging(data));
+      const data = await response.json();
+      this.debugLog(options, 'Response:', this.truncateForLogging(data));
 
       const content = data.candidates[0]?.content?.parts[0]?.text;
       if (!content) {
@@ -486,77 +584,50 @@ export class GoogleVertexAIProvider extends BaseProvider {
       'Google Vertex AI requires service account authentication. Please provide a JSON key file or use ADC.'
     );
   }
-
-  protected async getModel(options: ModelOptions | undefined): Promise<string> {
-    if (!options?.model) {
-      throw new ModelNotFoundError(this.constructor.name.replace('Provider', ''));
-    }
-    let model = options.model;
-    const availableModels = await this.availableModels;
-
-    // First try exact match
-    if (availableModels.has(model)) {
-      return model;
-    }
-
-    // Try prefix matching - sort in descending order and take the last one
-    const prefixMatches = Array.from(availableModels)
-      .filter((m) => m.startsWith(model))
-      .sort((a, b) => b.localeCompare(a));
-
-    if (prefixMatches.length > 0) {
-      const resolvedModel = prefixMatches[prefixMatches.length - 1];
-      console.log(
-        `[${this.constructor.name}] Model '${model}' not found. Using prefix match '${resolvedModel}'.`
-      );
-      return resolvedModel;
-    }
-
-    // Try removing -latest suffix
-    if (model.endsWith('-latest')) {
-      const modelWithoutLatest = model.slice(0, -'-latest'.length);
-      const latestMatches = Array.from(availableModels)
-        .filter((m) => m.startsWith(modelWithoutLatest))
-        .sort((a, b) => b.localeCompare(a));
-
-      if (latestMatches.length > 0) {
-        const resolvedModel = latestMatches[latestMatches.length - 1];
-        console.log(
-          `[${this.constructor.name}] Model '${model}' not found. Using latest match '${resolvedModel}'.`
-        );
-        return resolvedModel;
-      }
-    }
-
-    // Try removing -exp- and everything after it
-    if (model.includes('-exp-')) {
-      const modelWithoutExp = model.split('-exp-')[0];
-      const expMatches = Array.from(availableModels)
-        .filter((m) => m.startsWith(modelWithoutExp))
-        .sort((a, b) => b.localeCompare(a));
-
-      if (expMatches.length > 0) {
-        const resolvedModel = expMatches[expMatches.length - 1];
-        console.log(
-          `[${this.constructor.name}] Model '${model}' not found. Using non-exp match '${resolvedModel}'.`
-        );
-        return resolvedModel;
-      }
-    }
-
-    // If all resolution attempts fail, throw error with similar models
-    const similarModels = getSimilarModels(model, availableModels);
-    throw new ModelNotFoundError(
-      `Model '${model}' not found in Vertex AI.\n\n` +
-        `You requested: ${model}\n` +
-        `Similar available models:\n${similarModels.map((m) => `- ${m}`).join('\n')}\n\n` +
-        `Use --model with one of the above models.`
-    );
-  }
 }
 
 // Google Generative Language provider implementation
 export class GoogleGenerativeLanguageProvider extends BaseProvider {
+  constructor() {
+    super();
+    // Initialize the promise in constructor
+    this.availableModels = this.initializeModels();
+    this.availableModels.catch((error) => {
+      console.error('Error fetching Google Generative Language models:', error);
+    });
+  }
+
+  private async initializeModels(): Promise<Set<string>> {
+    try {
+      const apiKey = await this.getAPIKey();
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
+      );
+
+      if (!response.ok) {
+        throw new NetworkError(`Failed to fetch Gemini models: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
+      if (!data?.models) {
+        console.warn('Unexpected API response format:', data);
+        return new Set();
+      }
+
+      const models = new Set<string>(
+        data.models
+          .map((model: any) => model.name.replace('models/', ''))
+          .filter((name: string) => name.includes('gemini'))
+      );
+
+      return models;
+    } catch (error) {
+      console.error('Error fetching Gemini models:', error);
+      throw new NetworkError('Failed to fetch available Gemini models', error as Error);
+    }
+  }
+
   private async getAPIKey(): Promise<string> {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -570,8 +641,6 @@ export class GoogleGenerativeLanguageProvider extends BaseProvider {
       );
     }
 
-    // Use API key
-    console.log('Using API key for Google Generative Language');
     return apiKey;
   }
 
@@ -583,8 +652,8 @@ export class GoogleGenerativeLanguageProvider extends BaseProvider {
       'gemini-2.0-flash-thinking-exp',
     ]);
     if (unsupportedModels.has(modelName)) {
-    return {
-      supported: false,
+      return {
+        supported: false,
         model: 'gemini-2.0-pro-exp',
         error: `Model ${modelName} does not support web search.`,
       };
@@ -928,7 +997,6 @@ export class ModelBoxProvider extends OpenAIBase {
   private static readonly webSearchHeaders: Record<string, string> = {
     'x-feature-search-internet': 'true',
   };
-  private availableModels: Promise<Set<string>>;
 
   constructor() {
     const apiKey = process.env.MODELBOX_API_KEY;
@@ -947,6 +1015,9 @@ export class ModelBoxProvider extends OpenAIBase {
     );
     // Initialize the promise in constructor
     this.availableModels = this.initializeModels();
+    this.availableModels.catch((error) => {
+      console.error('Error fetching ModelBox models:', error);
+    });
   }
 
   private async initializeModels(): Promise<Set<string>> {
@@ -974,35 +1045,40 @@ export class ModelBoxProvider extends OpenAIBase {
     }
   }
 
-  public async fetchAvailableModels(): Promise<Set<string>> {
-    return this.availableModels;
-  }
-
   async supportsWebSearch(
     modelName: string
   ): Promise<{ supported: boolean; model?: string; error?: string }> {
     try {
       const availableModels = await this.availableModels;
-      
+      if (!availableModels) {
+        throw new Error('Models not initialized. Call initializeModels() first.');
+      }
+
       // Try to find the model with or without prefix
       const modelWithoutPrefix = modelName.includes('/') ? modelName.split('/')[1] : modelName;
-      const matchingModels = Array.from(availableModels).filter(m => 
-        m === modelName || // Exact match with prefix
-        m === `openai/${modelName}` || // Try with openai prefix
-        m.endsWith(`/${modelWithoutPrefix}`) || // Match with any prefix
-        m === modelWithoutPrefix // Exact match without prefix
+      const matchingModels = Array.from(availableModels).filter(
+        (m) =>
+          m === modelName || // Exact match with prefix
+          m === `openai/${modelName}` || // Try with openai prefix
+          m.endsWith(`/${modelWithoutPrefix}`) || // Match with any prefix
+          m === modelWithoutPrefix // Exact match without prefix
       );
 
       if (matchingModels.length === 0) {
         // Find similar models by comparing against both prefixed and unprefixed versions
-        const similarModels = Array.from(availableModels).filter(m => {
-          const mWithoutPrefix = m.includes('/') ? m.split('/')[1] : m;
-          return stringSimilarity(modelWithoutPrefix, mWithoutPrefix) > 0.5;
-        }).sort((a, b) => {
-          const aWithoutPrefix = a.includes('/') ? a.split('/')[1] : a;
-          const bWithoutPrefix = b.includes('/') ? b.split('/')[1] : b;
-          return stringSimilarity(modelWithoutPrefix, bWithoutPrefix) - stringSimilarity(modelWithoutPrefix, aWithoutPrefix);
-        });
+        const similarModels = Array.from(availableModels)
+          .filter((m) => {
+            const mWithoutPrefix = m.includes('/') ? m.split('/')[1] : m;
+            return stringSimilarity(modelWithoutPrefix, mWithoutPrefix) > 0.5;
+          })
+          .sort((a, b) => {
+            const aWithoutPrefix = a.includes('/') ? a.split('/')[1] : a;
+            const bWithoutPrefix = b.includes('/') ? b.split('/')[1] : b;
+            return (
+              stringSimilarity(modelWithoutPrefix, bWithoutPrefix) -
+              stringSimilarity(modelWithoutPrefix, aWithoutPrefix)
+            );
+          });
 
         const webSearchModels = similarModels.filter(
           (m) => m.includes('sonar') || m.includes('online') || m.includes('gemini')
@@ -1024,7 +1100,9 @@ export class ModelBoxProvider extends OpenAIBase {
             .filter((m) => m.includes('sonar') || m.includes('online') || m.includes('gemini'))
             .slice(0, 5)
             .map((m) => `- ${m}`)
-            .join('\n')}\n\nNote: ModelBox requires provider prefixes (e.g., 'openai/gpt-4' instead of just 'gpt-4').`,
+            .join(
+              '\n'
+            )}\n\nNote: ModelBox requires provider prefixes (e.g., 'openai/gpt-4' instead of just 'gpt-4').`,
         };
       }
 
@@ -1064,72 +1142,71 @@ export class ModelBoxProvider extends OpenAIBase {
     try {
       // Check if model exists
       const availableModels = await this.availableModels;
-      
+      if (!availableModels) {
+        throw new Error('Models not initialized. Call initializeModels() first.');
+      }
+
       // Try to find the model with or without prefix
       const modelWithoutPrefix = model.includes('/') ? model.split('/')[1] : model;
-      const matchingModels = Array.from(availableModels).filter(m => 
-        m === model || // Exact match with prefix
-        m === `openai/${model}` || // Try with openai prefix
-        m.endsWith(`/${modelWithoutPrefix}`) || // Match with any prefix
-        m === modelWithoutPrefix // Exact match without prefix
+      
+      // First try exact match with prefix
+      if (availableModels.has(model)) {
+        return await this.executeWithModel(model, prompt, maxTokens, systemPrompt, options, client);
+      }
+
+      // Then try to find exact match within any provider namespace
+      const exactMatchWithProvider = Array.from(availableModels).find(m => {
+        const parts = m.split('/');
+        return parts.length === 2 && parts[1] === modelWithoutPrefix;
+      });
+
+      if (exactMatchWithProvider) {
+        console.log(
+          `[${this.constructor.name}] Using fully qualified model name '${exactMatchWithProvider}' for '${model}'.`
+        );
+        return await this.executeWithModel(exactMatchWithProvider, prompt, maxTokens, systemPrompt, options, client);
+      }
+
+      // If no exact match, try prefix matches
+      const matchingModels = Array.from(availableModels).filter(
+        (m) =>
+          m === model || // Exact match with prefix
+          m === `openai/${model}` || // Try with openai prefix
+          m.endsWith(`/${modelWithoutPrefix}`) || // Match with any prefix
+          m === modelWithoutPrefix // Exact match without prefix
       );
 
       if (matchingModels.length === 0) {
         // Find similar models by comparing against both prefixed and unprefixed versions
-        const similarModels = Array.from(availableModels).filter(m => {
-          const mWithoutPrefix = m.includes('/') ? m.split('/')[1] : m;
-          return stringSimilarity(modelWithoutPrefix, mWithoutPrefix) > 0.5;
-        }).sort((a, b) => {
-          const aWithoutPrefix = a.includes('/') ? a.split('/')[1] : a;
-          const bWithoutPrefix = b.includes('/') ? b.split('/')[1] : b;
-          return stringSimilarity(modelWithoutPrefix, bWithoutPrefix) - stringSimilarity(modelWithoutPrefix, aWithoutPrefix);
-        });
+        const similarModels = Array.from(availableModels)
+          .filter((m) => {
+            const mWithoutPrefix = m.includes('/') ? m.split('/')[1] : m;
+            return stringSimilarity(modelWithoutPrefix, mWithoutPrefix) > 0.5;
+          })
+          .sort((a, b) => {
+            const aWithoutPrefix = a.includes('/') ? a.split('/')[1] : a;
+            const bWithoutPrefix = b.includes('/') ? b.split('/')[1] : b;
+            return (
+              stringSimilarity(modelWithoutPrefix, bWithoutPrefix) -
+              stringSimilarity(modelWithoutPrefix, aWithoutPrefix)
+            );
+          });
 
         throw new ModelNotFoundError(
           `Model '${model}' not found in ModelBox.\n\n` +
             `You requested: ${model}\n` +
-            `Similar available models:\n${similarModels.slice(0, 5).map((m) => `- ${m}`).join('\n')}\n\n` +
+            `Similar available models:\n${similarModels
+              .slice(0, 5)
+              .map((m) => `- ${m}`)
+              .join('\n')}\n\n` +
             `Use --model with one of the above models. Note: ModelBox requires provider prefixes (e.g., 'openai/gpt-4' instead of just 'gpt-4').`
         );
       }
 
       // Use the first matching model (prioritizing exact matches)
       const resolvedModel = matchingModels[0];
+      return await this.executeWithModel(resolvedModel, prompt, maxTokens, systemPrompt, options, client);
 
-      const messages = [
-        ...(systemPrompt ? [{ role: 'system' as const, content: systemPrompt }] : []),
-        { role: 'user' as const, content: prompt },
-      ];
-
-      this.logRequestStart(
-        options,
-        resolvedModel,
-        maxTokens,
-        systemPrompt,
-        `${client.baseURL ?? 'https://api.model.box/v1'}/chat/completions`,
-        prompt,
-        options.webSearch ? ModelBoxProvider.webSearchHeaders : ModelBoxProvider.defaultHeaders
-      );
-
-      const response = await client.chat.completions.create(
-        {
-          model: resolvedModel,
-          messages,
-          max_tokens: maxTokens,
-        },
-        {
-          timeout: Math.floor(options?.timeout ?? TEN_MINUTES),
-          maxRetries: 3,
-        }
-      );
-
-      this.debugLog(options, 'Response:', JSON.stringify(response, null, 2));
-
-      const content = response.choices[0].message.content;
-      if (!content) {
-        throw new ProviderError(`${this.constructor.name} returned an empty response`);
-      }
-      return content;
     } catch (error) {
       console.error('ModelBox Provider: Error during API call:', error);
       if (error instanceof ProviderError || error instanceof NetworkError) {
@@ -1137,6 +1214,51 @@ export class ModelBoxProvider extends OpenAIBase {
       }
       throw new NetworkError(`Failed to communicate with ${this.constructor.name} API`, error);
     }
+  }
+
+  // Helper method to execute the actual API call
+  private async executeWithModel(
+    model: string,
+    prompt: string,
+    maxTokens: number,
+    systemPrompt: string | undefined,
+    options: ModelOptions,
+    client: OpenAI
+  ): Promise<string> {
+    const messages = [
+      ...(systemPrompt ? [{ role: 'system' as const, content: systemPrompt }] : []),
+      { role: 'user' as const, content: prompt },
+    ];
+
+    this.logRequestStart(
+      options,
+      model,
+      maxTokens,
+      systemPrompt,
+      `${client.baseURL ?? 'https://api.model.box/v1'}/chat/completions`,
+      prompt,
+      options.webSearch ? ModelBoxProvider.webSearchHeaders : ModelBoxProvider.defaultHeaders
+    );
+
+    const response = await client.chat.completions.create(
+      {
+        model,
+        messages,
+        max_tokens: maxTokens,
+      },
+      {
+        timeout: Math.floor(options?.timeout ?? TEN_MINUTES),
+        maxRetries: 3,
+      }
+    );
+
+    this.debugLog(options, 'Response:', JSON.stringify(response, null, 2));
+
+    const content = response.choices[0].message.content;
+    if (!content) {
+      throw new ProviderError(`${this.constructor.name} returned an empty response`);
+    }
+    return content;
   }
 }
 
@@ -1226,10 +1348,6 @@ export function createProvider(
       if (apiKey.endsWith('.json') || apiKey.toLowerCase() === 'adc') {
         console.log('Using Google Vertex AI provider');
         const vertexProvider = new GoogleVertexAIProvider();
-        // background init task
-        vertexProvider.fetchAvailableModels().catch((error) => {
-          console.error('Error fetching Vertex AI models:', error);
-        });
         return vertexProvider;
       } else {
         console.log('Using Google Generative Language provider');
@@ -1244,10 +1362,7 @@ export function createProvider(
       return new PerplexityProvider();
     case 'modelbox': {
       const provider = new ModelBoxProvider();
-      // background init task
-      provider.fetchAvailableModels().catch((error) => {
-        console.error('Error fetching ModelBox models:', error);
-      });
+
       return provider;
     }
     case 'anthropic':
@@ -1260,5 +1375,9 @@ export function createProvider(
 function isWebSearchSupportedModelOnModelBox(model: string): boolean {
   // Extract model name without provider prefix if present
   const modelWithoutPrefix = model.includes('/') ? model.split('/')[1] : model;
-  return modelWithoutPrefix.includes('sonar') || modelWithoutPrefix.includes('online') || modelWithoutPrefix.includes('gemini');
+  return (
+    modelWithoutPrefix.includes('sonar') ||
+    modelWithoutPrefix.includes('online') ||
+    modelWithoutPrefix.includes('gemini')
+  );
 }
