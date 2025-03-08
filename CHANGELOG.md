@@ -11,9 +11,6 @@ All notable changes to this project will be documented in this file.
   - For ModelBox: automatically finds models across providers without requiring provider prefixes (e.g. `gpt-4o` will find `openai/gpt-4o`)
   - Provides helpful suggestions when models aren't found, showing similar available models
 
-## [0.6.0-alpha.7] - 2025-03-05
-
-### Added
 - **Google Vertex AI Authentication**: Added support for Google Vertex AI authentication using JSON key files or Application Default Credentials (ADC). This update maintains backward compatibility, continuing to support the direct API key string method, while adding additional authentication options. To use this feature, set the `GEMINI_API_KEY` environment variable to the path of your JSON key file or to `adc` to use Application Default Credentials. This enables access to gemini models such as `gemini-2.0-flash` via the Vertex AI. This feature introduces a new dependency: `google-auth-library`.
   - **Example: Using Service Account JSON Key**
     Set `GEMINI_API_KEY` to the path of your service account JSON key file:
@@ -29,6 +26,10 @@ All notable changes to this project will be documented in this file.
     ```env
     GEMINI_API_KEY="adc"
     ```
+
+## [0.6.0-alpha.7] - 2025-03-05
+
+### Added
 - **Improved ModelBox Provider**: Enhanced the ModelBox provider with improved model name handling. If a requested model is not found, cursor-tools now provides helpful suggestions for similar models. Error messages have also been clarified to better guide users on the requirement for provider prefixes when specifying ModelBox models.
   - **Example: Improved Error Message**
     If you use an invalid model with ModelBox, you will now receive suggestions:
