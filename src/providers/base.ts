@@ -217,26 +217,7 @@ export abstract class BaseProvider implements BaseModelProvider {
   }
 
   protected handleLargeTokenCount(tokenCount: number): { model?: string; error?: string } {
-    if (tokenCount > 800_000 && tokenCount < 2_000_000) {
-      // 1M is the limit but token counts are very approximate so play it safe
-      console.error(
-        `Repository content is large (${Math.round(tokenCount / 1000)}K tokens), switching to gemini-2.0-pro-exp model...`
-      );
-      return { model: 'gemini-2.0-pro-exp' };
-    }
-
-    if (tokenCount >= 2_000_000) {
-      return {
-        error:
-          'Repository content is too large for Vertex AI API.\n' +
-          'Please try:\n' +
-          '1. Using a more specific query to document a particular feature or module\n' +
-          '2. Running the documentation command on a specific directory or file\n' +
-          '3. Cloning the repository locally and using .gitignore to exclude non-essential files',
-      };
-    }
-
-    return {};
+    return {}; // Default implementation - no token count handling
   }
 
   protected debugLog(options: ModelOptions | undefined, message: string, ...args: any[]): void {
@@ -666,6 +647,30 @@ export class GoogleVertexAIProvider extends BaseProvider {
     );
   }
 
+  protected handleLargeTokenCount(tokenCount: number): { model?: string; error?: string } {
+
+    if (tokenCount > 800_000 && tokenCount < 2_000_000) {
+      // 1M is the limit but token counts are very approximate so play it safe
+      console.error(
+        `Repository content is large (${Math.round(tokenCount / 1000)}K tokens), switching to gemini-2.0-pro-exp model...`
+      );
+      return { model: 'gemini-2.0-pro-exp-02-05' }; // correct name for vertex ai
+    }
+
+    if (tokenCount >= 2_000_000) {
+      return {
+        error:
+          'Repository content is too large for Vertex AI API.\n' +
+          'Please try:\n' +
+          '1. Using a more specific query to document a particular feature or module\n' +
+          '2. Running the documentation command on a specific directory or file\n' +
+          '3. Cloning the repository locally and using .gitignore to exclude non-essential files',
+      };
+    }
+
+    return {};
+  }
+
   private async getAuthClient(): Promise<AuthClient> {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -935,6 +940,30 @@ export class GoogleGenerativeLanguageProvider extends BaseProvider {
         return false;
       }
     );
+  }
+
+  protected handleLargeTokenCount(tokenCount: number): { model?: string; error?: string } {
+
+    if (tokenCount > 800_000 && tokenCount < 2_000_000) {
+      // 1M is the limit but token counts are very approximate so play it safe
+      console.error(
+        `Repository content is large (${Math.round(tokenCount / 1000)}K tokens), switching to gemini-2.0-pro-exp model...`
+      );
+      return { model: 'gemini-2.0-pro-exp' };
+    }
+
+    if (tokenCount >= 2_000_000) {
+      return {
+        error:
+          'Repository content is too large for Vertex AI API.\n' +
+          'Please try:\n' +
+          '1. Using a more specific query to document a particular feature or module\n' +
+          '2. Running the documentation command on a specific directory or file\n' +
+          '3. Cloning the repository locally and using .gitignore to exclude non-essential files',
+      };
+    }
+
+    return {};
   }
 }
 
