@@ -45,7 +45,7 @@ All notable changes to this project will be documented in this file.
 - **Improved Model Name Resolution**: Enhanced model name handling across providers to better handle experimental and latest model versions:
   - Automatically resolves `-exp-*` suffixes to find stable model versions
   - Resolves `-latest` suffixes to the most recent compatible model
-  - For ModelBox: automatically finds models across providers without requiring provider prefixes (e.g. `gpt-4` will find `openai/gpt-4`)
+  - For ModelBox: automatically finds models across providers without requiring provider prefixes (e.g. `gpt-4o` will find `openai/gpt-4o`)
   - Provides helpful suggestions when models aren't found, showing similar available models
 
 ## [0.6.0-alpha.5] - 2024-03-22
