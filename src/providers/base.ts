@@ -90,50 +90,161 @@ export abstract class BaseProvider implements BaseModelProvider {
     this.config = loadConfig();
   }
 
+  /**
+   * Resolves a model name to an available model from the provider.
+   * This method implements a multi-step resolution process:
+   * 1. Try exact match with provider prefix
+   * 2. Try exact match within any provider namespace
+   * 3. Try prefix matching with various provider prefixes
+   * 4. Try handling special suffixes like -latest or -exp
+   * 5. Try finding similar models based on string similarity
+   * 
+   * If no match is found, it throws a ModelNotFoundError with helpful suggestions.
+   * 
+   * @param options The model options containing the requested model name
+   * @returns The resolved model name that can be used with the provider's API
+   * @throws ModelNotFoundError if no matching model is found
+   */
   protected async getModel(options: ModelOptions | undefined): Promise<string> {
     if (!options?.model) {
       throw new ModelNotFoundError(this.constructor.name.replace('Provider', ''));
     }
-    let model = options.model;
+    
+    const model = options.model;
+    
+    // If models aren't initialized yet, return the requested model as-is
     if (!this.availableModels) {
       return model;
     }
+    
     const availableModels = await this.availableModels;
+    const modelWithoutPrefix = model.includes('/') ? model.split('/')[1] : model;
+    
+    // Try each resolution strategy in sequence
+    const resolvedModel = 
+      this.tryExactMatch(model, availableModels) || 
+      this.tryProviderNamespaceMatch(model, modelWithoutPrefix, availableModels) ||
+      this.tryPrefixMatch(model, modelWithoutPrefix, availableModels) ||
+      this.trySuffixHandling(model, availableModels) ||
+      this.tryExperimentalSuffixHandling(model, availableModels);
+    
+    if (resolvedModel) {
+      return resolvedModel;
+    }
+    
+    // If all resolution attempts fail, try to find similar models
+    const similarModels = this.findSimilarModels(model, modelWithoutPrefix, availableModels);
+    
+    // If we found similar models, check if any contain the exact model string
+    if (similarModels.length > 0) {
+      // Check if the first similar model contains our exact model string
+      if (similarModels[0].includes(model)) {
+        console.log(
+          `[${this.constructor.name}] Model '${model}' not found. Using similar model '${similarModels[0]}' that contains requested model string.`
+        );
+        return similarModels[0];
+      }
 
-    // First try exact match with prefix
+      throw new ModelNotFoundError(
+        `Model '${model}' not found in ${this.constructor.name.replace('Provider', '')}.\n\n` +
+        `You requested: ${model}\n` +
+        `Similar available models:\n${similarModels.map((m) => `- ${m}`).join('\n')}\n\n` +
+        `Use --model with one of the above models.` +
+        (this.constructor.name === 'ModelBoxProvider' || this.constructor.name === 'OpenRouterProvider' ? 
+          ' Note: This provider requires provider prefixes (e.g., \'openai/gpt-4\' instead of just \'gpt-4\').' : '')
+      );
+    }
+
+    // If no similar models found, show all available models sorted by recency
+    const recentModels = Array.from(availableModels)
+      .sort((a: string, b: string) => b.localeCompare(a)) // Sort in descending order
+
+    throw new ModelNotFoundError(
+      `Model '${model}' not found in ${this.constructor.name.replace('Provider', '')}.\n\n` +
+        `You requested: ${model}\n` +
+        `Recent available models:\n${recentModels.map((m) => `- ${m}`).join('\n')}\n\n` +
+        `Use --model with one of the above models.` +
+        (this.constructor.name === 'ModelBoxProvider' || this.constructor.name === 'OpenRouterProvider' ? 
+          ' Note: This provider requires provider prefixes (e.g., \'openai/gpt-4\' instead of just \'gpt-4\').' : '')
+    );
+  }
+
+  /**
+   * Try to find an exact match for the model in the available models.
+   * @param model The requested model name
+   * @param availableModels Set of available models
+   * @returns The matched model name or undefined if no match found
+   */
+  private tryExactMatch(model: string, availableModels: Set<string>): string | undefined {
     if (availableModels.has(model)) {
       return model;
     }
+    return undefined;
+  }
 
-    // If no prefix, try to find exact match within any provider namespace
-    if (!model.includes('/')) {
-      const exactMatchWithProvider = Array.from(availableModels).find(m => {
-        const parts = m.split('/');
-        return parts.length === 2 && parts[1] === model;
-      });
+  /**
+   * Try to find a match for the model within any provider namespace.
+   * @param model The requested model name
+   * @param modelWithoutPrefix The model name without provider prefix
+   * @param availableModels Set of available models
+   * @returns The matched model name or undefined if no match found
+   */
+  private tryProviderNamespaceMatch(
+    model: string, 
+    modelWithoutPrefix: string, 
+    availableModels: Set<string>
+  ): string | undefined {
+    const exactMatchWithProvider = Array.from(availableModels).find(m => {
+      const parts = m.split('/');
+      return parts.length >= 2 && parts[1] === modelWithoutPrefix;
+    });
 
-      if (exactMatchWithProvider) {
-        console.log(
-          `[${this.constructor.name}] Using fully qualified model name '${exactMatchWithProvider}' for '${model}'.`
-        );
-        return exactMatchWithProvider;
-      }
-    }
-
-    // Try prefix matching - sort in descending order
-    const prefixMatches = Array.from(availableModels)
-      .filter((m: string) => m.startsWith(model))
-      .sort((a: string, b: string) => b.localeCompare(a));
-
-    if (prefixMatches.length > 0) {
-      const resolvedModel = prefixMatches[prefixMatches.length - 1];
+    if (exactMatchWithProvider) {
       console.log(
-        `[${this.constructor.name}] Model '${model}' not found. Using prefix match '${resolvedModel}'.`
+        `[${this.constructor.name}] Using fully qualified model name '${exactMatchWithProvider}' for '${model}'.`
+      );
+      return exactMatchWithProvider;
+    }
+    return undefined;
+  }
+
+  /**
+   * Try to find a match using various prefix matching strategies.
+   * @param model The requested model name
+   * @param modelWithoutPrefix The model name without provider prefix
+   * @param availableModels Set of available models
+   * @returns The matched model name or undefined if no match found
+   */
+  private tryPrefixMatch(
+    model: string, 
+    modelWithoutPrefix: string, 
+    availableModels: Set<string>
+  ): string | undefined {
+    const matchingModels = Array.from(availableModels).filter(
+      (m) =>
+        m === model || // Exact match with prefix
+        m.startsWith(`openai/${model}`) || // Try with openai prefix (allow for versions like openai/o3-mini-v1)
+        m.endsWith(`/${modelWithoutPrefix}`) || // Match with any prefix
+        m === modelWithoutPrefix // Exact match without prefix
+    );
+
+    if (matchingModels.length > 0) {
+      const resolvedModel = matchingModels[0];
+      console.log(
+        `[${this.constructor.name}] Using prefix match '${resolvedModel}' for '${model}'.`
       );
       return resolvedModel;
     }
+    return undefined;
+  }
 
-    // Try removing -latest suffix
+  /**
+   * Try to handle models with -latest suffix by finding the latest version.
+   * @param model The requested model name
+   * @param availableModels Set of available models
+   * @returns The matched model name or undefined if no match found
+   */
+  private trySuffixHandling(model: string, availableModels: Set<string>): string | undefined {
     if (model.endsWith('-latest')) {
       const modelWithoutLatest = model.slice(0, -'-latest'.length);
       const latestMatches = Array.from(availableModels)
@@ -148,8 +259,16 @@ export abstract class BaseProvider implements BaseModelProvider {
         return resolvedModel;
       }
     }
+    return undefined;
+  }
 
-    // Try removing -exp or -exp-* suffix
+  /**
+   * Try to handle models with -exp or -exp-* suffix by finding a non-experimental version.
+   * @param model The requested model name
+   * @param availableModels Set of available models
+   * @returns The matched model name or undefined if no match found
+   */
+  private tryExperimentalSuffixHandling(model: string, availableModels: Set<string>): string | undefined {
     const expMatch = model.match(/^(.*?)(?:-exp(?:-.*)?$)/);
     if (expMatch) {
       const modelWithoutExp = expMatch[1];
@@ -165,31 +284,22 @@ export abstract class BaseProvider implements BaseModelProvider {
         return resolvedModel;
       }
     }
+    return undefined;
+  }
 
-    // If all resolution attempts fail, first try to find similar models
-    const similarModels = getSimilarModels(model, availableModels);
-    
-    // If we found similar models, show those first
-    if (similarModels.length > 0) {
-      throw new ModelNotFoundError(
-        `Model '${model}' not found in ${this.constructor.name.replace('Provider', '')}.\n\n` +
-        `You requested: ${model}\n` +
-        `Similar available models:\n${similarModels.map((m) => `- ${m}`).join('\n')}\n\n` +
-        `Use --model with one of the above models.` +
-        (this.constructor.name === 'ModelBoxProvider' ? ' Note: ModelBox requires provider prefixes (e.g., \'openai/gpt-4\' instead of just \'gpt-4\').' : '')
-      );
-    }
-
-    // If no similar models found, show all available models sorted by recency
-    const recentModels = Array.from(availableModels)
-      .sort((a: string, b: string) => b.localeCompare(a)) // Sort in descending order
-
-    throw new ModelNotFoundError(
-      `Model '${model}' not found in ${this.constructor.name.replace('Provider', '')}.\n\n` +
-        `You requested: ${model}\n` +
-        `Recent available models:\n${recentModels.map((m) => `- ${m}`).join('\n')}\n\n` +
-        `Use --model with one of the above models.`
-    );
+  /**
+   * Find similar models based on string similarity.
+   * @param model The requested model name
+   * @param modelWithoutPrefix The model name without provider prefix
+   * @param availableModels Set of available models
+   * @returns Array of similar model names
+   */
+  private findSimilarModels(
+    model: string, 
+    modelWithoutPrefix: string, 
+    availableModels: Set<string>
+  ): string[] {
+    return getSimilarModels(model, availableModels);
   }
 
   protected getSystemPrompt(options?: ModelOptions): string | undefined {
@@ -468,7 +578,6 @@ export class GoogleVertexAIProvider extends BaseProvider {
   }
 
   async executePrompt(prompt: string, options: ModelOptions): Promise<string> {
-    const model = await this.getModel(options);
 
     // Handle token count if provided
     if (options?.tokenCount) {
@@ -481,6 +590,8 @@ export class GoogleVertexAIProvider extends BaseProvider {
       }
     }
 
+    const model = await this.getModel(options);
+    
     // Validate model name if we have the list
     const availableModels = await this.availableModels;
     if (!availableModels) {
@@ -845,6 +956,9 @@ export class GoogleGenerativeLanguageProvider extends BaseProvider {
           if (!response.ok) {
             const errorText = await response.text();
             if (response.status === 429) {
+              if(options.debug) {
+                console.log('Response:', errorText, response);
+              }
               console.warn(
                 'Received 429 error from Google API. This can occur due to token limits on free accounts. ' +
                   'For more information, see: https://github.com/eastlondoner/cursor-tools/issues/35'
@@ -1059,6 +1173,37 @@ export class OpenRouterProvider extends OpenAIBase {
       defaultHeaders: headers,
     });
     this.headers = headers;
+    // Initialize the promise in constructor
+    this.availableModels = this.initializeModels();
+    this.availableModels.catch((error) => {
+      console.error('Error fetching OpenRouter models:', error);
+    });
+  }
+
+  private async initializeModels(): Promise<Set<string>> {
+    try {
+      const response = await fetch('https://openrouter.ai/api/v1/models', {
+        headers: {
+          Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          ...this.headers,
+        },
+      });
+
+      if (!response.ok) {
+        throw new NetworkError(`Failed to fetch OpenRouter models: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      if (!data?.data) {
+        console.warn('Unexpected API response format:', data);
+        return new Set();
+      }
+      // Each model in the response has an 'id' field that we can use
+      return new Set(data.data.map((model: any) => model.id));
+    } catch (error) {
+      console.error('Error fetching OpenRouter models:', error);
+      throw new NetworkError('Failed to fetch available OpenRouter models', error);
+    }
   }
 
   async executePrompt(prompt: string, options: ModelOptions): Promise<string> {
@@ -1365,73 +1510,39 @@ export class ModelBoxProvider extends OpenAIBase {
     const client = this.getClient(options);
 
     try {
-      // Check if model exists
-      const availableModels = await this.availableModels;
-      if (!availableModels) {
-        throw new Error('Models not initialized. Call initializeModels() first.');
-      }
+      const messages = [
+        ...(systemPrompt ? [{ role: 'system' as const, content: systemPrompt }] : []),
+        { role: 'user' as const, content: prompt },
+      ];
 
-      // Try to find the model with or without prefix
-      const modelWithoutPrefix = model.includes('/') ? model.split('/')[1] : model;
-      
-      // First try exact match with prefix
-      if (availableModels.has(model)) {
-        return await this.executeWithModel(model, prompt, maxTokens, systemPrompt, options, client);
-      }
-
-      // Then try to find exact match within any provider namespace
-      const exactMatchWithProvider = Array.from(availableModels).find(m => {
-        const parts = m.split('/');
-        return parts.length === 2 && parts[1] === modelWithoutPrefix;
-      });
-
-      if (exactMatchWithProvider) {
-        console.log(
-          `[${this.constructor.name}] Using fully qualified model name '${exactMatchWithProvider}' for '${model}'.`
-        );
-        return await this.executeWithModel(exactMatchWithProvider, prompt, maxTokens, systemPrompt, options, client);
-      }
-
-      // If no exact match, try prefix matches
-      const matchingModels = Array.from(availableModels).filter(
-        (m) =>
-          m === model || // Exact match with prefix
-          m === `openai/${model}` || // Try with openai prefix
-          m.endsWith(`/${modelWithoutPrefix}`) || // Match with any prefix
-          m === modelWithoutPrefix // Exact match without prefix
+      this.logRequestStart(
+        options,
+        model,
+        maxTokens,
+        systemPrompt,
+        `${client.baseURL ?? 'https://api.model.box/v1'}/chat/completions`,
+        options.webSearch ? ModelBoxProvider.webSearchHeaders : ModelBoxProvider.defaultHeaders
       );
 
-      if (matchingModels.length === 0) {
-        // Find similar models by comparing against both prefixed and unprefixed versions
-        const similarModels = Array.from(availableModels)
-          .filter((m) => {
-            const mWithoutPrefix = m.includes('/') ? m.split('/')[1] : m;
-            return stringSimilarity(modelWithoutPrefix, mWithoutPrefix) > 0.5;
-          })
-          .sort((a, b) => {
-            const aWithoutPrefix = a.includes('/') ? a.split('/')[1] : a;
-            const bWithoutPrefix = b.includes('/') ? b.split('/')[1] : b;
-            return (
-              stringSimilarity(modelWithoutPrefix, bWithoutPrefix) -
-              stringSimilarity(modelWithoutPrefix, aWithoutPrefix)
-            );
-          });
+      const response = await client.chat.completions.create(
+        {
+          model,
+          messages,
+          max_tokens: maxTokens,
+        },
+        {
+          timeout: Math.floor(options?.timeout ?? TEN_MINUTES),
+          maxRetries: 3,
+        }
+      );
 
-        throw new ModelNotFoundError(
-          `Model '${model}' not found in ModelBox.\n\n` +
-            `You requested: ${model}\n` +
-            `Similar available models:\n${similarModels
-              .slice(0, 5)
-              .map((m) => `- ${m}`)
-              .join('\n')}\n\n` +
-            `Use --model with one of the above models. Note: ModelBox requires provider prefixes (e.g., 'openai/gpt-4' instead of just 'gpt-4').`
-        );
+      this.debugLog(options, 'Response:', JSON.stringify(response, null, 2));
+
+      const content = response.choices[0].message.content;
+      if (!content) {
+        throw new ProviderError(`${this.constructor.name} returned an empty response`);
       }
-
-      // Use the first matching model (prioritizing exact matches)
-      const resolvedModel = matchingModels[0];
-      return await this.executeWithModel(resolvedModel, prompt, maxTokens, systemPrompt, options, client);
-
+      return content;
     } catch (error) {
       console.error('ModelBox Provider: Error during API call:', error);
       if (error instanceof ProviderError || error instanceof NetworkError) {
@@ -1439,50 +1550,6 @@ export class ModelBoxProvider extends OpenAIBase {
       }
       throw new NetworkError(`Failed to communicate with ${this.constructor.name} API`, error);
     }
-  }
-
-  // Helper method to execute the actual API call
-  private async executeWithModel(
-    model: string,
-    prompt: string,
-    maxTokens: number,
-    systemPrompt: string | undefined,
-    options: ModelOptions,
-    client: OpenAI
-  ): Promise<string> {
-    const messages = [
-      ...(systemPrompt ? [{ role: 'system' as const, content: systemPrompt }] : []),
-      { role: 'user' as const, content: prompt },
-    ];
-
-    this.logRequestStart(
-      options,
-      model,
-      maxTokens,
-      systemPrompt,
-      `${client.baseURL ?? 'https://api.model.box/v1'}/chat/completions`,
-      options.webSearch ? ModelBoxProvider.webSearchHeaders : ModelBoxProvider.defaultHeaders
-    );
-
-    const response = await client.chat.completions.create(
-      {
-        model,
-        messages,
-        max_tokens: maxTokens,
-      },
-      {
-        timeout: Math.floor(options?.timeout ?? TEN_MINUTES),
-        maxRetries: 3,
-      }
-    );
-
-    this.debugLog(options, 'Response:', JSON.stringify(response, null, 2));
-
-    const content = response.choices[0].message.content;
-    if (!content) {
-      throw new ProviderError(`${this.constructor.name} returned an empty response`);
-    }
-    return content;
   }
 }
 
