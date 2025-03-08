@@ -1,0 +1,10 @@
+---
+description: 
+globs: CHANGELOG.md
+alwaysApply: false
+---
+The changelog should focus on the user-facing changes and user-facing effects of changes.
+
+We do not need to record the internal details of changes in the changelog.
+
+When updating the changelog stick to the existing writing style and formatting.
