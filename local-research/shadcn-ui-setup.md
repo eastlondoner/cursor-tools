@@ -1,1 +1,0 @@
-Querying perplexity using sonar-pro for: go to https://ui.shadcn.com/docs and extract detailed setup instructions for a new project, including installation steps, configuration, and initial setup. Focus on the getting started and installation sections. with maxTokens: 8000

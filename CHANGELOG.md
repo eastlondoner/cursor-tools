@@ -6,6 +6,34 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Google Vertex AI Authentication**: Added support for Google Vertex AI authentication using JSON key files or Application Default Credentials (ADC). To use this feature, set the `GEMINI_API_KEY` environment variable to the path of your JSON key file or to `adc` to use Application Default Credentials. This enables access to the latest Gemini models available through Vertex AI, such as `gemini-1.5-pro`.
+  - **Example: Using Service Account JSON Key**
+    Set `GEMINI_API_KEY` to the path of your service account JSON key file:
+    ```env
+    GEMINI_API_KEY="./path/to/service-account.json"
+    ```
+  - **Example: Using Application Default Credentials (ADC)**
+    First, authenticate locally using gcloud:
+    ```bash
+    gcloud auth application-default login
+    ```
+    Then set `GEMINI_API_KEY` to `adc` to use Application Default Credentials:
+    ```env
+    GEMINI_API_KEY="adc"
+    ```
+- **Improved ModelBox Provider**: Enhanced the ModelBox provider with improved model name handling. If a requested model is not found, cursor-tools now provides helpful suggestions for similar models. Error messages have also been clarified to better guide users on the requirement for provider prefixes when specifying ModelBox models.
+  - **Example: Improved Error Message**
+    If you use an invalid model with ModelBox, you will now receive suggestions:
+    ```text
+    Error: Model 'invalid-model' not found in ModelBox.
+
+    You requested: invalid-model
+    Similar available models:
+    - openai/gpt-4o
+    - anthropic/claude-3-5-sonnet
+
+    Use --model with one of the above models. Note: ModelBox requires provider prefixes (e.g., 'openai/gpt-4' instead of just 'gpt-4').
+    ```
 - Added support for MCP server overrides in the marketplace
   - Implemented hardcoded overrides in `MCP_OVERRIDES` map
   - Added override for google-calendar-mcp to use eastlondoner fork
