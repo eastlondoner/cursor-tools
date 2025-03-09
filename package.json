@@ -9,7 +9,7 @@
   ],
   "version": "0.6.0-alpha.7",
   "scripts": {
-    "install": "echo 'foo' >> /dev/null"
+    "install": "node build.js"
   },
   "files": [
     "package.json",
