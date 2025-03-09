@@ -27,9 +27,8 @@
   "bugs": {
     "url": "https://github.com/eastlondoner/cursor-tools/issues"
   },
-  "devDependencies": {
-  },
   "dependencies": {
+    "esbuild": "^0.25.0"
   },
   "engines": {
     "node": ">=18.0.0"
