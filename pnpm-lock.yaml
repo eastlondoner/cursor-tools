@@ -39,8 +39,8 @@ importers:
         specifier: ^2.3.1
         version: 2.3.1
       repomix:
-        specifier: 0.2.29
-        version: 0.2.29
+        specifier: 0.2.35
+        version: 0.2.35
       zod:
         specifier: 3.24.2
         version: 3.24.2
@@ -1117,8 +1117,8 @@ packages:
   fast-levenshtein@2.0.6:
     resolution: {integrity: sha512-DCXu6Ifhqcks7TZKY3Hxp3y6qphY5SJZmrWMDrKcERSOXWQdMhU9Ig/PYrzyw/ul9jOIyh0N4M0tbC5hodg8dw==}
 
-  fast-xml-parser@4.5.3:
-    resolution: {integrity: sha512-RKihhV+SHsIUGXObeVy9AXiBbFwkVk7Syp8XgwN5U3JV416+Gwp/GO9i0JYKmikykgz/UHRrrV4ROuZEo/T0ig==}
+  fast-xml-parser@5.0.8:
+    resolution: {integrity: sha512-qY8NiI5L8ff00F2giyICiJxSSKHO52tC36LJqx2JtvGyAd5ZfehC/l4iUVVHpmpIa6sM9N5mneSLHQG2INGoHA==}
     hasBin: true
 
   fastq@1.19.0:
@@ -1370,6 +1370,11 @@ packages:
   json-stable-stringify-without-jsonify@1.0.1:
     resolution: {integrity: sha512-Bdboy+l7tA3OGW6FjyFHWkP5LuByj1Tk33Ljyq0axyzdk9//JSi2u3fP1QSmd1KNwq6VOKYGlAu87CisVir6Pw==}
 
+  json5@2.2.3:
+    resolution: {integrity: sha512-XmOWe7eyHYH14cLdVPoyg+GOH3rYX++KpzrylJwSW98t3Nk+U8XOl8FWKOgwtzdb8lXGf6zYwDUzeHMWfxasyg==}
+    engines: {node: '>=6'}
+    hasBin: true
+
   jwa@2.0.0:
     resolution: {integrity: sha512-jrZ2Qx916EA+fq9cEAeCROWPTfCwi1IVHqT2tapuqLEVVDKFDENFw1oL+MwrTvH6msKxsd1YTDVw6uKEcsrLEA==}
 
@@ -1589,8 +1594,8 @@ packages:
     resolution: {integrity: sha512-RmkhL8CAyCRPXCE28MMH0z2PNWQBNk2Q09ZdxM9IOOXwxwZbN+qbWaatPkdkWIKL2ZVDImrN/pK5HTRz2PcS4g==}
     engines: {node: '>= 0.8'}
 
-  repomix@0.2.29:
-    resolution: {integrity: sha512-WWQEt6mGPYCkgu737ldhOFtCldbPTnlapqVu3xwRiX9KLpuIz2cRZLIsA5M1wMpV83vfPxtas/TZum6S/H36wA==}
+  repomix@0.2.35:
+    resolution: {integrity: sha512-XzrXn3f7gMQm6UJWzmZPzz3k+LlS2CJ+gaqH8O+xHAgUMQFxh4R0oKznelu/yjA7z1BF23uWQPmgnAaIpFs4hQ==}
     engines: {node: '>=18.0.0', yarn: '>=1.22.22'}
     hasBin: true
 
@@ -1699,8 +1704,8 @@ packages:
     resolution: {integrity: sha512-0fk9zBqO67Nq5M/m45qHCJxylV/DhBlIOVExqgOMiCCrzrhU6tCibRXNqE3jwJLftzE9SNuZtYbpzcO+i9FiKw==}
     engines: {node: '>=14.16'}
 
-  strnum@1.1.1:
-    resolution: {integrity: sha512-O7aCHfYCamLCctjAiaucmE+fHf2DYHkus2OKCn4Wv03sykfFtgeECn505X6K4mPl8CRNd/qurC9guq+ynoN4pw==}
+  strnum@2.0.5:
+    resolution: {integrity: sha512-YAT3K/sgpCUxhxNMrrdhtod3jckkpYwH6JAuwmUdXZsmzH1wUyzTMrrK2wYCEEqlKwrWDd35NeuUkbBy/1iK+Q==}
 
   structured-source@4.0.0:
     resolution: {integrity: sha512-qGzRFNJDjFieQkl/sVOI2dUjHKRyL9dAJi2gCPGJLbJHBIkyOHxjuocpIEfbLioX+qSJpvbYdT49/YCdMznKxA==}
@@ -2874,9 +2879,9 @@ snapshots:
 
   fast-levenshtein@2.0.6: {}
 
-  fast-xml-parser@4.5.3:
+  fast-xml-parser@5.0.8:
     dependencies:
-      strnum: 1.1.1
+      strnum: 2.0.5
 
   fastq@1.19.0:
     dependencies:
@@ -3143,6 +3148,8 @@ snapshots:
 
   json-stable-stringify-without-jsonify@1.0.1: {}
 
+  json5@2.2.3: {}
+
   jwa@2.0.0:
     dependencies:
       buffer-equal-constant-time: 1.0.1
@@ -3340,7 +3347,7 @@ snapshots:
       iconv-lite: 0.6.3
       unpipe: 1.0.0
 
-  repomix@0.2.29:
+  repomix@0.2.35:
     dependencies:
       '@clack/prompts': 0.9.1
       '@secretlint/core': 9.0.0
@@ -3348,13 +3355,14 @@ snapshots:
       cli-spinners: 2.9.2
       clipboardy: 4.0.0
       commander: 13.1.0
-      fast-xml-parser: 4.5.3
+      fast-xml-parser: 5.0.8
       git-url-parse: 16.0.1
       globby: 14.1.0
       handlebars: 4.7.8
       iconv-lite: 0.6.3
       istextorbinary: 9.5.0
       jschardet: 3.1.4
+      json5: 2.2.3
       log-update: 6.1.0
       minimatch: 10.0.1
       picocolors: 1.1.1
@@ -3463,7 +3471,7 @@ snapshots:
 
   strip-json-comments@5.0.1: {}
 
-  strnum@1.1.1: {}
+  strnum@2.0.5: {}
 
   structured-source@4.0.0:
     dependencies:
