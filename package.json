@@ -15,8 +15,6 @@
   },
   "scripts": {
     "compile": "tsc -build",
-    "build": "node build.js",
-    "prepublish": "npm run compile && npm run lint && npm run build",
     "dev": "node --import=tsx src/index.ts",
     "serve-test": "bun --hot tests/commands/browser/serve.ts",
     "test": "vitest",
