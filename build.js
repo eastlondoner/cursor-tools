@@ -8,6 +8,17 @@ console.log(argv);
 console.log(process.env);
 console.log(process.cwd());
 
+import { readdir } from 'node:fs/promises';
+
+console.log('Current directory contents:');
+try {
+  const files = await readdir('.');
+  console.log(files);
+} catch (err) {
+  console.error('Error reading directory:', err);
+}
+
+
 const watch = argv.includes('--watch');
 
 const nodeBuiltinsPlugin = {
