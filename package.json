@@ -23,7 +23,7 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,md}\"",
     "lint": "npm run format && eslint \"src/**/*.ts\"",
     "release": "node scripts/release.cjs",
-    "postinstall": "node build.js"
+    "prepare": "node build.js"
   },
   "files": [
     "package.json",
