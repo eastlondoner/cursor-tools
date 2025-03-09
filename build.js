@@ -3,6 +3,11 @@ import { argv } from 'node:process';
 import { chmod } from 'node:fs/promises';
 import { platform } from 'node:os';
 
+console.log('Building...');
+console.log(argv);
+console.log(process.env);
+console.log(process.cwd());
+
 const watch = argv.includes('--watch');
 
 const nodeBuiltinsPlugin = {
