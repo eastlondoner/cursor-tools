@@ -3,10 +3,12 @@ import { argv } from 'node:process';
 import { chmod } from 'node:fs/promises';
 import { platform } from 'node:os';
 import { execSync } from 'node:child_process';
+import { readdir } from 'node:fs/promises';
 
-console.log('Installing esbuild...');
 try {
+  console.log('Installing dependencies...');
   execSync(`npm install --prefix ${process.cwd()} --omit=dev --ignore-scripts --no-package-lock`, { stdio: 'inherit', env: { PATH: process.env.PATH } });
+  console.log('Installing esbuild...');
   execSync(`npm install --prefix ${process.cwd()} esbuild --ignore-scripts --no-package-lock`, { stdio: 'inherit', env: { PATH: process.env.PATH } });
 } catch (err) {
   console.error('Failed to install esbuild:', err);
@@ -18,10 +20,6 @@ console.log(argv);
 console.log(process.env);
 console.log(process.cwd());
 
-
-
-
-import { readdir } from 'node:fs/promises';
 
 console.log('Current directory contents:');
 try {
