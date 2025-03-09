@@ -8,11 +8,6 @@
     "assistant"
   ],
   "version": "0.6.0-alpha.7",
-  "type": "module",
-  "main": "./dist/index.mjs",
-  "bin": {
-    "cursor-tools": "dist/index.mjs"
-  },
   "scripts": {
     "install": "echo 'foo'"
   },
