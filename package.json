@@ -28,7 +28,7 @@
   },
   "files": [
     "package.json",
-    "dist",
+    "dist/index.mjs",
     "README.md"
   ],
   "author": "eastlondoner",
