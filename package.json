@@ -14,7 +14,7 @@
     "cursor-tools": "dist/index.mjs"
   },
   "scripts": {
-    "build": "mkdir -p dist && echo '' > dist/index.mjs"
+    "prepack": "mkdir -p dist && echo '' > dist/index.mjs"
   },
   "files": [
     "package.json",
