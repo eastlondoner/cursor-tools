@@ -20,9 +20,7 @@
     "test": "vitest",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,md}\"",
     "lint": "npm run format && eslint \"src/**/*.ts\"",
-    "release": "node scripts/release.cjs",
-    "postinstall": "",
-    "prepare": ""
+    "release": "node scripts/release.cjs"
   },
   "files": [
     "package.json",
