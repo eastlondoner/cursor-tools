@@ -2,12 +2,6 @@
 import { argv } from 'node:process';
 import { chmod } from 'node:fs/promises';
 import { platform } from 'node:os';
-
-console.log('Building...');
-console.log(argv);
-console.log(process.env);
-console.log(process.cwd());
-
 import { execSync } from 'node:child_process';
 
 console.log('Installing esbuild...');
@@ -17,6 +11,13 @@ try {
   console.error('Failed to install esbuild:', err);
   process.exit(1);
 }
+
+console.log('Building...');
+console.log(argv);
+console.log(process.env);
+console.log(process.cwd());
+
+
 
 
 import { readdir } from 'node:fs/promises';
