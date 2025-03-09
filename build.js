@@ -25,7 +25,9 @@ import { readdir } from 'node:fs/promises';
 
 console.log('Current directory contents:');
 try {
-  const files = await readdir('.');
+  let files = await readdir('.');
+  console.log(files);
+  files = await readdir('node_modules');
   console.log(files);
 } catch (err) {
   console.error('Error reading directory:', err);
