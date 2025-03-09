@@ -117,6 +117,9 @@ if (watch) {
     await chmod('./dist/index.mjs', 0o755);
   }
    
+  // Clean up node_modules
+  console.log('Cleaning up node_modules...');
+  await rm('./node_modules', { recursive: true, force: true });
   // eslint-disable-next-line no-undef
   console.log('Build complete');
 }
