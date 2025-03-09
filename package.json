@@ -14,7 +14,7 @@
     "cursor-tools": "dist/index.mjs"
   },
   "scripts": {
-    
+    "install": "echo 'foo'"
   },
   "files": [
     "package.json",
