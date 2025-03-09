@@ -14,7 +14,7 @@
     "cursor-tools": "dist/index.mjs"
   },
   "scripts": {
-    "prepare": "mkdir dist && echo '' > dist/index.mjs"
+    "prepare": "mkdir -p dist && echo '' > dist/index.mjs"
   },
   "files": [
     "package.json",
