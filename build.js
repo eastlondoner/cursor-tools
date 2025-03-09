@@ -1,4 +1,4 @@
-import * as esbuild from 'esbuild';
+
 import { argv } from 'node:process';
 import { chmod } from 'node:fs/promises';
 import { platform } from 'node:os';
@@ -79,6 +79,7 @@ const require = createRequire(import.meta.url);
   plugins: [nodeBuiltinsPlugin]
 };
 
+const esbuild = await import('esbuild');
 if (watch) {
   const context = await esbuild.context(buildOptions);
   // eslint-disable-next-line no-undef
