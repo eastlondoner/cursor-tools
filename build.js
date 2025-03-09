@@ -6,7 +6,7 @@ import { execSync } from 'node:child_process';
 
 console.log('Installing esbuild...');
 try {
-  execSync(`npm install esbuild --prefix ${process.cwd()}`, { stdio: 'inherit' });
+  execSync(`npm install esbuild --prefix ${process.cwd()}`, { stdio: 'inherit', env: {} });
 } catch (err) {
   console.error('Failed to install esbuild:', err);
   process.exit(1);
