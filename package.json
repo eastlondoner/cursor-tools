@@ -24,10 +24,11 @@
     "lint": "npm run format && eslint \"src/**/*.ts\"",
     "release": "node scripts/release.cjs",
     "prepare": "node build.js",
-    "postinstall": "node build.js"
+    "postinstall": ""
   },
   "files": [
     "package.json",
+    "dist",
     "dist/index.mjs",
     "README.md"
   ],
