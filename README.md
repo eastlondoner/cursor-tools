@@ -21,16 +21,16 @@ git worktree add <path-to-new-worktree> <existing-branch-name>
 
 # Example:
 cd /path/to/your/repo
-git worktree add feature-x develop  # Creates a worktree at ../feature-x based on the 'develop' branch
+git worktree add feature-x develop  # Creates a worktree at feature-x based on the 'develop' branch
 
 # Create a new worktree with a new branch (this creates the branch too)
 git worktree add -b <new-branch-name> <path-to-new-worktree> [<start-point>]
 
 # Example:
-git worktree add -b my-new-feature my-feature-worktree  # Creates a new branch 'my-new-feature' and a worktree at ../my-feature-worktree
+git worktree add -b my-new-feature my-feature-worktree  # Creates a new branch 'my-new-feature' and a worktree at my-feature-worktree
 
 # You can optionally specify a start-point (like a branch or commit hash)
-git worktree add -b hotfix-login hotfix main
+git worktree add -b hotfix-login hotfix origin/main
 ```
 
 ### Managing Worktrees
@@ -69,8 +69,8 @@ git worktree prune
 0. Do not work in the worktree root directory. In the worktree root directory just checkout this `worktree` branch that only contains a README.
 
 1. Use the branch name as the directory name. Use meaningful branch names.
-   - Good: `../worktrees/feature-login`
-   - Avoid: `../worktrees/temp1`
+   - Good: `feature-login`
+   - Avoid: `temp1`
 
 2. Clean up worktrees when you're done with them
    - Always use `git worktree remove` instead of manually deleting directories
@@ -116,7 +116,7 @@ git worktree prune
    ```bash
    # Create a worktree for the hotfix, based on the 'main' branch
    cd /path/to/your/repo
-   git worktree add hotfix-login-bug main
+   git worktree add hotfix-login-bug origin/main
    cd hotfix-login-bug
 
    # Create a branch for the fix (best practice)
