@@ -1,5 +1,6 @@
 export const ignorePatterns = [
-  '**/.!(cursor)/**',
+  //'**/.!(cursor)/**', // negations in ignores do not work correctly
+  '.*.*',// ignore dot files - we cannot add an ignore on `.*` because it will cause .cursor to be ignored
   '**/*.pbxproj',
   '**/node_modules/**',
   '**/dist/**',
@@ -18,7 +19,7 @@ export const ignorePatterns = [
   '**/*.tsbuildinfo',
 ];
 
-export const includePatterns = ['**/*', '.cursorrules', '.cursor/rules/*', '.cursor/**'];
+export const includePatterns = ['**/*', '.cursorrules', '.cursor/rules/*'];
 
 export const outputOptions = {
   compress: false,

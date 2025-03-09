@@ -22,8 +22,7 @@
     "test": "vitest",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,md}\"",
     "lint": "npm run format && eslint \"src/**/*.ts\"",
-    "release": "node scripts/release.cjs",
-    "prepare": "npm run build"
+    "release": "node scripts/release.cjs"
   },
   "files": [
     "package.json",
@@ -64,7 +63,7 @@
     "google-auth-library": "^9.15.1",
     "openai": "^4.85.3",
     "punycode": "^2.3.1",
-    "repomix": "0.2.29",
+    "repomix": "0.2.35",
     "zod": "3.24.2"
   },
   "peerDependencies": {
