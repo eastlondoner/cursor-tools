@@ -14,7 +14,7 @@
     "cursor-tools": "dist/index.mjs"
   },
   "scripts": {
-    "compile": "tsc -build",
+    "compile": "which tsc && tsc -build",
     "build": "node build.js",
     "prepublish": "npm run compile && npm run lint && npm run build",
     "dev": "node --import=tsx src/index.ts",
