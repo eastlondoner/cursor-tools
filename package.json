@@ -67,9 +67,6 @@
     "repomix": "0.2.35",
     "zod": "3.24.2"
   },
-  "peerDependencies": {
-    "@playwright/test": "latest"
-  },
   "engines": {
     "node": ">=18.0.0"
   },
