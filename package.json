@@ -14,13 +14,6 @@
     "cursor-tools": "dist/index.mjs"
   },
   "scripts": {
-    "compile": "tsc -build",
-    "dev": "node --import=tsx src/index.ts",
-    "serve-test": "bun --hot tests/commands/browser/serve.ts",
-    "test": "vitest",
-    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,md}\"",
-    "lint": "npm run format && eslint \"src/**/*.ts\"",
-    "release": "node scripts/release.cjs"
   },
   "files": [
     "package.json",
