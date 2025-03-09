@@ -3,7 +3,8 @@ import { argv } from 'node:process';
 import { chmod } from 'node:fs/promises';
 import { platform } from 'node:os';
 import { execSync } from 'node:child_process';
-import { readdir } from 'node:fs/promises';
+import { readdir, rm } from 'node:fs/promises';
+
 
 try {
   console.log('Installing dependencies...');
