@@ -8,6 +8,17 @@ console.log(argv);
 console.log(process.env);
 console.log(process.cwd());
 
+import { execSync } from 'node:child_process';
+
+console.log('Installing esbuild...');
+try {
+  execSync('npm install esbuild', { stdio: 'inherit' });
+} catch (err) {
+  console.error('Failed to install esbuild:', err);
+  process.exit(1);
+}
+
+
 import { readdir } from 'node:fs/promises';
 
 console.log('Current directory contents:');
