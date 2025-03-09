@@ -123,4 +123,6 @@ if (watch) {
   await rm('./node_modules', { recursive: true, force: true });
   // eslint-disable-next-line no-undef
   console.log('Build complete');
+  const list = await readdir('./dist');
+  console.log(list);
 }
