@@ -1,7 +1,0 @@
-{
-  "id": "file-io-test-scenario",
-  "status": "PASS",
-  "summary": "Successfully used cursor-tools to process file input and generate file output. The command read text from a sample file and created a summary in an output file.",
-  "executionTime": 4.5,
-  "error": null
-}

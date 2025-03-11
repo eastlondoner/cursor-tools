@@ -135,27 +135,6 @@ export async function parseFeatureBehaviorFile(filePath: string): Promise<Featur
  * @returns A prompt for the AI agent
  */
 export function generateScenarioPrompt(scenario: TestScenario): string {
-  // Replace the existing JSON response instructions with the new simplified schema
-  const jsonResponseInstructions = `
-Return a JSON object with the following fields:
-- id: string (unique identifier for the test scenario)
-- status: "PASS" or "FAIL"
-- summary: string (brief description of the outcome, including key messages or error information)
-- executionTime: number (time taken to execute the scenario in seconds)
-- error: string (optional, provide if there is an error)
-
-Example:
-\`\`\`json
-{
-  "id": "scenario-1",
-  "status": "PASS",
-  "summary": "Test completed successfully",
-  "executionTime": 2.5,
-  "error": null
-}
-\`\`\`
-`;
-
   // Update the prompt to include the new JSON response instructions
   const prompt = `
 Task Description: ${scenario.taskDescription}
@@ -165,8 +144,6 @@ ${scenario.expectedBehavior.map((b) => `- ${b}`).join('\n')}
 
 Success Criteria:
 ${scenario.successCriteria.map((c) => `- ${c}`).join('\n')}
-
-${jsonResponseInstructions}
 `;
 
   return prompt;

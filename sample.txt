@@ -1,1 +1,0 @@
-This is a sample text file that contains information about cursor-tools. Cursor-tools is a command-line utility that provides various text processing capabilities. It can be used for summarization, analysis, and other text operations.

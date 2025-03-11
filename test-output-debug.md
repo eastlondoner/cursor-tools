@@ -1,7 +1,0 @@
-
-📋 Test Summary for Parallel Test Execution:
-- Total scenarios: 3
-- Passed: 3
-- Failed: 0
-- Overall result: PASS
-- Total execution time: 24.14s

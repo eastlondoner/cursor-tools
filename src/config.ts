@@ -137,24 +137,22 @@ export function applyEnvUnset(): void {
 function _loadEnv(): void {
   // Try loading from current directory first
   const localEnvPath = join(process.cwd(), '.cursor-tools.env');
-  console.log(`Checking for local .env file at: ${localEnvPath}`);
   if (existsSync(localEnvPath)) {
-    console.log('Local .env file found, loading...');
+    console.log('Local .env file found, loading env from', localEnvPath);
     dotenv.config({ path: localEnvPath });
     return;
   }
 
   // If local env doesn't exist, try home directory
   const homeEnvPath = join(homedir(), '.cursor-tools', '.env');
-  console.log(`Checking for home .env file at: ${homeEnvPath}`);
   if (existsSync(homeEnvPath)) {
-    console.log('Home .env file found, loading...');
+    console.log('Home .env file found, loading env from', homeEnvPath);
     dotenv.config({ path: homeEnvPath });
     return;
   }
 
   // If neither env file exists, continue without loading
-  console.log('No .env file found in local or home directories.');
+  console.log('No .env file found in local or home directories.', localEnvPath, homeEnvPath);
   return;
 }
 

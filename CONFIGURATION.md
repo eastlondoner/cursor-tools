@@ -16,7 +16,8 @@ GEMINI_API_KEY="your-gemini-api-key"            # Required for repository analys
 
 # Optional API Keys
 OPENAI_API_KEY="your-openai-api-key"            # For browser commands with OpenAI
-ANTHROPIC_API_KEY="your-anthropic-api-key"      # For browser commands with Anthropic
+ANTHROPIC_API_KEY="your-anthropic-api-key"      # For browser commands with Anthropic, and MCP commands
+OPENROUTER_API_KEY="your-openrouter-api-key"    # For MCP commands with OpenRouter and web search
 GITHUB_TOKEN="your-github-token"                # For enhanced GitHub access
 
 # Configuration Options
@@ -280,3 +281,18 @@ You can configure both models and their providers:
 ```
 
 The OpenAI o3-mini model is chosen as the default thinking provider for its speed and efficiency in generating implementation plans. 
+
+## MCP Configuration
+
+The `cursor-tools mcp run` command supports using OpenRouter as a provider. You can configure this using the following:
+
+- **`--provider` (Command-line option):** Specify the provider to use. Valid values are `anthropic` (default) and `openrouter`.
+- **`--model` (Command-line option):** Specify the OpenRouter model to use (e.g., `openai/o3-mini`). This option is ignored if the provider is Anthropic.
+- **Environment Variable:** You *must* set either `ANTHROPIC_API_KEY` or `OPENROUTER_API_KEY` in your environment.
+
+**Default Behavior:**
+- If `--provider` is not specified, `anthropic` is used by default.
+- If `--model` is not specified and the provider is `openrouter` a provider default model is used.
+
+**Example `cursor-tools.config.json`:**
+The `cursor-tools.config.json` is not currently used to configure MCP. 

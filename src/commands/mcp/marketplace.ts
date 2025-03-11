@@ -116,8 +116,7 @@ export class MarketplaceManager {
       for (const path of paths) {
         for (const pattern of readmePatterns) {
           const readmeUrl = `${root.replace('github.com', 'raw.githubusercontent.com')}/${path}/${pattern}`;
-          console.log(readmeUrl);
-          console.log(`Attempting to fetch README from: ${readmeUrl}`);
+          console.log('Attempting to fetch README from', readmeUrl);
 
           const response = await fetch(readmeUrl);
           if (response.ok) {

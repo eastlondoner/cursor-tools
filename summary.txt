@@ -1,1 +1,0 @@
-Cursor-tools is a command-line utility offering text processing capabilities such as summarization and analysis.

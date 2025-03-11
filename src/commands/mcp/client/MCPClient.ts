@@ -1,18 +1,24 @@
 import { Anthropic } from '@anthropic-ai/sdk';
-
+import OpenAI from 'openai';
+import { ChatCompletionTool } from 'openai/resources/chat/completions.mjs';
+import { ChatCompletionChunk } from 'openai/resources/chat/completions.mjs';
 import {
   StdioClientTransport,
   StdioServerParameters,
 } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { ListToolsResultSchema, CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { Tool, ToolUseBlockParam } from '@anthropic-ai/sdk/resources/index.mjs';
+import { Tool, ToolUseBlockParam, Message } from '@anthropic-ai/sdk/resources/index.mjs';
 import { Stream } from '@anthropic-ai/sdk/streaming.mjs';
 import { MCPAuthError, MCPError, handleMCPError } from './errors.js';
+import { Stream as OpenAIStream } from 'openai/streaming';
 
 export interface InternalMessage {
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'tool';
   content: string | Array<ToolResult | ToolUseBlockParam>;
+  tool_call_id?: string;
+  name?: string;
+  cache_control?: { type: string };
 }
 
 interface ToolResult {
@@ -28,7 +34,10 @@ interface ToolCall {
   tool_use_id: string;
 }
 
-type MCPClientOptions = StdioServerParameters;
+export interface MCPClientOptions extends StdioServerParameters {
+  provider: 'anthropic' | 'openrouter';
+  model: string;
+}
 
 const SYSTEM_PROMPT = `You are a helpful AI assistant using tools.
 When you receive a tool result, do not call the same tool again with the same arguments unless the user explicitly asks for it or the context changes significantly.
@@ -37,12 +46,14 @@ If you have already called a tool with the same arguments and received a result,
 When you receive a tool result, focus on interpreting and explaining the result to the user rather than making additional tool calls.`;
 
 export class MCPClient {
-  private anthropicClient: Anthropic;
+  private anthropicClient?: Anthropic = undefined;
+  private openrouterClient?: OpenAI = undefined;
   private messages: InternalMessage[] = [];
   private mcpClient: Client;
   private transport: StdioClientTransport;
-  private tools: Tool[] = [];
+  private tools: Tool[] | ChatCompletionTool[] = [];
   private toolCalls: ToolCall[] = [];
+  private readonly model: string;
   public config: MCPClientOptions;
 
   constructor(
@@ -50,14 +61,35 @@ export class MCPClient {
     private debug: boolean
   ) {
     this.config = serverConfig;
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      throw new MCPAuthError('ANTHROPIC_API_KEY environment variable is not set');
-    }
+    const provider = serverConfig.provider || 'anthropic';
+    this.model =
+      serverConfig.model || provider === 'anthropic'
+        ? 'claude-3-7-sonnet-latest'
+        : 'anthropic/claude-3.7-sonnet';
 
-    this.anthropicClient = new Anthropic({
-      apiKey,
-    });
+    if (provider === 'openrouter') {
+      const openRouterApiKey = process.env.OPENROUTER_API_KEY;
+      if (!openRouterApiKey) {
+        throw new MCPAuthError('OPENROUTER_API_KEY environment variable is not set');
+      }
+      const headers = {
+        'HTTP-Referer': 'http://cursor-tools.com',
+        'X-Title': 'cursor-tools',
+      };
+      this.openrouterClient = new OpenAI({
+        apiKey: openRouterApiKey,
+        baseURL: 'https://openrouter.ai/api/v1',
+        defaultHeaders: headers,
+      });
+    } else {
+      const apiKey = process.env.ANTHROPIC_API_KEY;
+      if (!apiKey) {
+        throw new MCPAuthError('ANTHROPIC_API_KEY environment variable is not set');
+      }
+      this.anthropicClient = new Anthropic({
+        apiKey,
+      });
+    }
 
     this.mcpClient = new Client({ name: 'cli-client', version: '1.0.0' }, { capabilities: {} });
     this.transport = new StdioClientTransport(this.config);
@@ -71,6 +103,9 @@ export class MCPClient {
 
   async start() {
     try {
+      if (this.debug) {
+        console.log('starting mcp client', this.config.command, this.config.args);
+      }
       await this.mcpClient.connect(this.transport);
       await this.initMCPTools();
     } catch (error) {
@@ -96,10 +131,31 @@ export class MCPClient {
         { method: 'tools/list' },
         ListToolsResultSchema
       );
-      this.tools = toolsResults.tools.map(({ inputSchema, ...tool }) => ({
-        ...tool,
-        input_schema: inputSchema,
-      }));
+
+      if (this.openrouterClient) {
+        // Convert tools to OpenRouter format
+        this.tools = toolsResults.tools.map(
+          (tool) =>
+            ({
+              type: 'function',
+              function: {
+                name: tool.name,
+                description: tool.description || '',
+                parameters: {
+                  type: 'object',
+                  properties: tool.inputSchema.properties || {},
+                  required: tool.inputSchema.required || [],
+                },
+              },
+            }) as ChatCompletionTool
+        );
+      } else {
+        // Original Anthropic format
+        this.tools = toolsResults.tools.map(({ inputSchema, ...tool }) => ({
+          ...tool,
+          input_schema: inputSchema,
+        }));
+      }
     } catch (error) {
       const mcpError = handleMCPError(error);
       console.error('Failed to initialize MCP tools:', mcpError.message);
@@ -310,39 +366,207 @@ export class MCPClient {
   }
 
   async processQuery(query: string) {
+    const model = this.model;
     try {
       // Reset tool calls for new query
       this.toolCalls = [];
+
+      // Add available variables to the start of the conversation
+      const envVars = printSafeEnvVars();
       this.messages = [
-        { role: 'user', content: `Available variables ${printSafeEnvVars()}` },
+        {
+          role: 'user',
+          content: `Available variables ${envVars}`,
+          cache_control: { type: 'ephemeral' }, // Cache the environment variables
+        },
         { role: 'user', content: query },
       ];
 
       let continueConversation = true;
 
       while (continueConversation) {
-        const stream = await this.anthropicClient.messages.create({
-          messages: this.messages,
-          model: 'claude-3-7-sonnet-latest',
-          max_tokens: 8192,
-          tools: this.tools,
-          stream: true,
-          system: SYSTEM_PROMPT,
-        });
+        let stopReason;
+        if (this.openrouterClient) {
+          const response = await this.openrouterClient.chat.completions.create({
+            messages: this.messages.map((msg) => {
+              const role = msg.role;
+              if (role === 'tool') {
+                return {
+                  role: role,
+                  content:
+                    typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
+                  tool_call_id: msg.tool_call_id!,
+                  name: msg.name!,
+                  cache_control: { type: 'ephemeral' },
+                };
+              }
+              return {
+                role: role as 'user' | 'assistant',
+                content:
+                  typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
+                cache_control: { type: 'ephemeral' },
+              };
+            }),
+            model: model,
+            stream: true,
+            tools: this.tools as ChatCompletionTool[],
+            max_tokens: 8192,
+          });
+          stopReason = await this.processOpenRouterStream(response);
+        } else if (this.anthropicClient) {
+          const stream = await this.anthropicClient.messages.create({
+            messages: this.messages
+              .filter((msg) => msg.role !== 'tool')
+              .map((msg) => ({
+                role: msg.role as 'user' | 'assistant',
+                content:
+                  typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
+                cache_control: msg.cache_control, // Pass through cache_control if present
+              })),
+            model: 'claude-3-7-sonnet-latest',
+            max_tokens: 8192,
+            tools: this.tools as Tool[],
+            stream: true,
+            system: SYSTEM_PROMPT,
+          });
+          stopReason = await this.processStream(stream);
+        } else {
+          throw new MCPError('No valid client configured');
+        }
 
-        const stopReason = await this.processStream(stream);
-
-        // Continue only if we used a tool and need another turn
         continueConversation = stopReason === 'tool_use';
       }
 
-      return this.messages.slice(1); // don't include the available variables in the response
+      return this.messages.slice(1);
     } catch (error) {
       const mcpError = handleMCPError(error);
       console.error('\nError during query processing:', mcpError.message);
-      if (error instanceof Error) {
-        process.stdout.write('I apologize, but I encountered an error: ' + error.message + '\n');
+      if (this.debug) {
+        console.error(mcpError.stack);
       }
+      throw mcpError;
+    }
+  }
+
+  private async processOpenRouterStream(stream: OpenAIStream<ChatCompletionChunk>) {
+    let currentMessage = '';
+    let lastStopReason: string | null | undefined;
+    let toolCallsInProgress: Map<string, { name: string; arguments: string; id: string }> =
+      new Map();
+
+    try {
+      let currentTool = null;
+      for await (const chunk of stream) {
+        if (chunk.choices && chunk.choices[0]) {
+          const choice = chunk.choices[0];
+
+          if (choice.delta?.content) {
+            currentMessage += choice.delta.content;
+          }
+
+          if (choice.delta?.tool_calls) {
+            for (const toolCall of choice.delta.tool_calls) {
+              if (toolCall.id) {
+                if (!toolCallsInProgress.has(toolCall.id)) {
+                  toolCallsInProgress.set(toolCall.id, {
+                    name: '',
+                    arguments: '',
+                    id: toolCall.id,
+                  });
+                }
+                currentTool = toolCallsInProgress.get(toolCall.id);
+              }
+              if (!currentTool) break;
+
+              // Accumulate tool call data
+              if (toolCall.function?.name) {
+                currentTool.name = toolCall.function.name;
+              }
+              if (toolCall.function?.arguments) {
+                currentTool.arguments += toolCall.function.arguments;
+              }
+
+              // Try to process the tool call if it seems complete
+              if (currentTool.name && currentTool.arguments.endsWith('}')) {
+                try {
+                  // Store any pending assistant message
+                  if (currentMessage) {
+                    this.messages.push({ role: 'assistant', content: currentMessage });
+                    currentMessage = '';
+                  }
+
+                  await this.executeToolCall(currentTool.name, currentTool.arguments);
+                  toolCallsInProgress.delete(currentTool.id);
+                } catch (error) {
+                  if (error instanceof SyntaxError) {
+                    // JSON is incomplete, continue accumulating
+                    continue;
+                  }
+                  console.error('Error processing tool call:', error);
+                }
+              }
+            }
+          }
+
+          if (choice.finish_reason) {
+            lastStopReason = choice.finish_reason;
+            if (currentMessage) {
+              this.messages.push({ role: 'assistant', content: currentMessage });
+              currentMessage = '';
+            }
+          }
+        }
+      }
+      return lastStopReason;
+    } catch (error) {
+      const mcpError = handleMCPError(error);
+      console.error('\nError processing OpenRouter stream:', mcpError.message);
+      throw mcpError;
+    }
+  }
+
+  private async executeToolCall(toolName: string, argsString: string) {
+    try {
+      const toolArgs = JSON.parse(argsString);
+      const toolUseId = this.generateToolUseId();
+
+      if (this.debug) {
+        console.log(`Tool call requested: ${toolName}${this.formatToolCallArgs(toolArgs)}`);
+      }
+
+      // Store the tool use request
+      this.messages.push({
+        role: 'assistant',
+        content: [
+          {
+            type: 'tool_use',
+            id: toolUseId,
+            name: toolName,
+            input: toolArgs,
+          },
+        ],
+      });
+
+      // Execute the tool
+      const toolResult = await this.mcpClient.request(
+        {
+          method: 'tools/call',
+          params: { name: toolName, arguments: toolArgs },
+        },
+        CallToolResultSchema
+      );
+
+      // Store the result
+      const formattedResult = JSON.stringify(toolResult.content.flatMap((c) => c.text));
+      this.messages.push({
+        role: 'tool',
+        name: toolName,
+        tool_call_id: toolUseId,
+        content: formattedResult,
+      });
+    } catch (error) {
+      const mcpError = handleMCPError(error);
+      console.error('\nError executing tool:', mcpError.message);
       throw mcpError;
     }
   }

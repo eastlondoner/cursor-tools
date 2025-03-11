@@ -21,6 +21,7 @@ export interface TestOptions extends CommandOptions {
   tag?: string;
   mcpServers?: string[]; // Optional MCP servers to include in testing
   scenarios?: string; // Comma-separated list of scenario numbers to run
+  provider?: string;  // Changed from '"openrouter" | "anthropic"' to allow any string
 }
 
 /**

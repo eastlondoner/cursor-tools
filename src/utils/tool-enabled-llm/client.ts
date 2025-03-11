@@ -1,5 +1,5 @@
 import { Anthropic } from '@anthropic-ai/sdk';
-import { Tool, ToolUseBlockParam } from '@anthropic-ai/sdk/resources/index.mjs';
+import { Tool, ToolUseBlockParam, TextBlockParam } from '@anthropic-ai/sdk/resources/index.mjs';
 import { Stream } from '@anthropic-ai/sdk/streaming.mjs';
 
 /**
@@ -7,7 +7,7 @@ import { Stream } from '@anthropic-ai/sdk/streaming.mjs';
  */
 export interface InternalMessage {
   role: 'user' | 'assistant';
-  content: string | Array<ToolResult | ToolUseBlockParam>;
+  content: string | Array<ToolResult | ToolUseBlockParam | TextBlockParam>;
 }
 
 /**
@@ -121,19 +121,51 @@ export class ToolEnabledLLMClient {
    *
    * @param query - The query to process
    * @param systemPrompt - The system prompt to use
+   * @param maxApiCalls - Maximum number of API calls allowed (default: unlimited)
    * @returns The conversation messages
    */
-  async processQuery(query: string, systemPrompt: string): Promise<InternalMessage[]> {
+  async processQuery(query: string, systemPrompt: string, maxApiCalls?: number): Promise<InternalMessage[]> {
     try {
       // Reset tool calls for new query
       this.toolCalls = [];
-      this.messages = [{ role: 'user', content: query }];
+      this.messages = [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: query,
+              cache_control: { type: 'ephemeral' },
+            },
+          ],
+        },
+      ];
 
       let continueConversation = true;
+      // Track API call count if maxApiCalls is specified
+      let apiCallCount = 0;
 
       while (continueConversation) {
+        // Check if we've reached the maximum number of API calls
+        if (maxApiCalls !== undefined && apiCallCount >= maxApiCalls) {
+          const errorMessage = `Maximum number of API calls (${maxApiCalls}) reached.`;
+          this.logger(`\n${errorMessage}`);
+          
+          // Add an error message to the conversation
+          this.messages.push({
+            role: 'assistant',
+            content: `I'm sorry, but I've reached the maximum number of API calls allowed (${maxApiCalls}) for this request. The conversation has been terminated to prevent excessive API usage.`
+          });
+          
+          // Break out of the conversation loop
+          break;
+        }
+        
+        // Increment the API call counter
+        apiCallCount++;
+        
         if (this.debug) {
-          this.logger(`\nSending ${this.messages.length} messages to ${this.model}...`);
+          this.logger(`\nSending ${this.messages.length} messages to ${this.model}... (API call ${apiCallCount}${maxApiCalls ? ` of max ${maxApiCalls}` : ''})`);
         }
 
         const stream = await this.anthropicClient.messages.create({

@@ -12,14 +12,17 @@ Use cursor-tools to search for available MCP servers that can handle SQLite data
 **Expected Behavior:**
 - The AI agent should use the mcp search command with a query for SQLite capabilities
 - The response should include the SQLite MCP server in the results
-- Server information should include details about available tools (read_query, write_query, create_table, etc.)
+- Server information should include a short description
 - The command should complete successfully without errors
+- Command output and logs should be concise
 
 **Success Criteria:**
 - AI agent correctly uses mcp search command with SQLite-related query
-- Response includes the SQLite MCP server
-- Server information shows all available tools (read_query, write_query, create_table, list_tables, describe_table)
+- Response includes the SQLite MCP server "mcp-server-sqlite"
+- Server information describes the server
+- There are no verbose or obviously debug level outputs or log messages
 - No error messages are displayed
+
 - Command completes within a reasonable time
 
 ### Scenario 2: MCP Search for Unsupported Database (Edge Case)
@@ -40,36 +43,39 @@ Use cursor-tools to search for something that will return no MCP servers (e.g., 
 
 ### Scenario 3: MCP Run SQLite Query (Happy Path)
 **Task Description:**
-Use cursor-tools to execute the SQLite MCP server's `read_query` tool to count the number of users in the test database at {{path:test.db}}.
+Use cursor-tools to execute the SQLite MCP server's `read_query` tool to count the number of users in the test database at {{path:test.db}}. When calling cursor-tools mcp run for this that "ONLY mcp-server-sqlite should be used"
 
 **Expected Behavior:**
 - The AI agent should use the MCP run command with the SQLite server's read_query tool
 - The command should include a COUNT query for the users table
 - The response should include the total number of users
 - The command should complete successfully without errors
+- Command output and logs should be concise
 
 **Success Criteria:**
 - AI agent correctly uses mcp run command with the read_query tool
 - Command includes a valid SQL COUNT query
 - Response includes the correct count of users
 - No error messages are displayed
+- There are no verbose or obviously debug level outputs or log messages
 - Command completes successfully
 
-### Scenario 4: MCP Run SQLite Query with Parameters (Happy Path)
-**Tags:** parameters
+### Scenario 4: MCP Run SQLite Query with Specific Filter (Happy Path)
+**Tags:** query
 **Task Description:**
-Use cursor-tools to execute the SQLite MCP server's `read_query` tool with a parameterized query to find users by name in the test database at {{path:test.db}}.
+Use cursor-tools to execute the SQLite MCP server's `read_query` tool to find a specific user by name in the test database at {{path:test.db}}. The test database contains users named Alice, Bob, and Charlie. When calling cursor-tools mcp run for this that "ONLY mcp-server-sqlite should be used"
 
 **Expected Behavior:**
 - The AI agent should use the MCP run command with the SQLite server's read_query tool
-- The command should include a parameterized SELECT query with name parameter
-- The response should include matching user records
+- The command should include a specific SELECT query filtering for a user by name (e.g., 'Alice')
+- The response should include the matching user record
 - The command should complete successfully without errors
 
 **Success Criteria:**
-- AI agent correctly includes the name parameter in the query
-- Command properly formats the SQL query with parameter
-- Response includes the matching user records
+- AI agent correctly uses the mcp run command specifying the SQLite MCP server
+- Command includes "execute the read_query tool" or similar wording
+- Command specifies a valid SQL query to filter users by name (e.g., "SELECT * FROM users WHERE name = 'Alice'")
+- Response includes the complete user record for the selected user
 - No error messages are displayed
 - Command completes successfully
 
@@ -90,7 +96,7 @@ Attempt to use cursor-tools to execute the SQLite MCP server's `read_query` tool
 
 ### Scenario 6: MCP Server Configuration (Error Handling)
 **Task Description:**
-Attempt to use cursor-tools to execute the `read_query` tool with an incorrect SQLite MCP server configuration (wrong path in config).
+Attempt to use cursor-tools to execute the `read_query` tool with an incorrect SQLite MCP server configuration (wrong path in config). When calling cursor-tools mcp run for specify this that "ONLY mcp-server-sqlite should be used"
 
 **Expected Behavior:**
 - The command should fail with a clear error message
@@ -110,6 +116,7 @@ Use cursor-tools to execute the SQLite MCP server's `read_query` tool with a com
 1. Count the number of users with each email domain
 2. Only include domains with more than 1 user
 3. Order by count descending
+When calling cursor-tools mcp run for this specify that "ONLY mcp-server-sqlite should be used"
 
 **Expected Behavior:**
 - The AI agent should use the MCP run command with the following SQL query:
@@ -136,15 +143,16 @@ Use cursor-tools to execute the SQLite MCP server's `read_query` tool with a com
 **Tags:** advanced, file-io
 **Task Description:**
 Use cursor-tools to execute the SQLite MCP server's `read_query` tool and save the results to a file. Query all user data from the test database at {{path:test.db}} and save it as JSON.
+When calling cursor-tools mcp run for this specify that "ONLY mcp-server-sqlite should be used"
 
 **Expected Behavior:**
-- The AI agent should use the MCP run command with output file parameter
+- The AI agent should use the MCP run command with save-to/saveTo argument
 - The command should execute the query and save results to a file
 - The output file should contain the query results in JSON format
 - The command should complete successfully without errors
 
 **Success Criteria:**
-- AI agent correctly includes the output file parameter
+- AI agent correctly includes the save-to/saveTo argument
 - Command executes the query successfully
 - Results are correctly saved to the specified file in JSON format
 - Output file contains all user data
@@ -154,7 +162,7 @@ Use cursor-tools to execute the SQLite MCP server's `read_query` tool and save t
 ### Scenario 9: MCP List and Describe Tables (Happy Path)
 **Tags:** schema
 **Task Description:**
-Use cursor-tools to execute the SQLite MCP server's `list_tables` tool first, then use `describe_table` to get schema information for the users table in the test database at {{path:test.db}}.
+Use cursor-tools to execute the SQLite MCP server's `list_tables` tool first, then use `describe_table` to get schema information for the users table in the test database at {{path:test.db}}. You must specify in the command to cursor-tools that it must "ONLY use mcp-server-sqlite"
 
 **Expected Behavior:**
 1. For list_tables:

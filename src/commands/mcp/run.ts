@@ -6,6 +6,10 @@ import { createProvider } from '../../providers/base';
 import { once } from '../../utils/once.js';
 import { execFile as execFileCallback } from 'node:child_process';
 import { promisify } from 'node:util';
+import { MCPClientNew } from './client/MCPClientNew.js';
+import { ToolUseBlockParam } from '@anthropic-ai/sdk/resources/index.mjs';
+import { ToolResult } from '../../utils/tool-enabled-llm/unified-client.js';
+import { TextBlockParam } from '@anthropic-ai/sdk/resources/index.mjs';
 
 const execFile = promisify(execFileCallback);
 
@@ -247,6 +251,22 @@ HOWEVER if the server details show that you cannot run with uvx or npx, or if yo
       throw new Error('Query cannot be empty');
     }
 
+    // Extract provider option if specified
+    const provider = (options.provider as 'anthropic' | 'openrouter') || 'anthropic';
+    const model = options.model as string;
+
+    if (provider && provider !== 'anthropic' && provider !== 'openrouter') {
+      throw new Error(
+        `Invalid provider: ${provider}. Supported providers are 'anthropic' and 'openrouter'`
+      );
+    }
+
+    if (provider === 'openrouter' && !process.env.OPENROUTER_API_KEY) {
+      throw new Error(
+        'OPENROUTER_API_KEY environment variable is required when using the OpenRouter provider'
+      );
+    }
+
     // Fetch marketplace data first
     const marketplaceData = await this.marketplaceManager.getMarketplaceData();
 
@@ -321,11 +341,13 @@ HOWEVER if the server details show that you cannot run with uvx or npx, or if yo
             );
 
             // Initialize client with selected server and generated args
-            const client = new MCPClient(
+            const client = new MCPClientNew(
               {
                 command: serverConfig.command,
                 args: serverConfig.args,
                 env: serverConfig.env,
+                provider: provider,
+                model: model,
               },
               options.debug
             );
@@ -370,7 +392,7 @@ HOWEVER if the server details show that you cannot run with uvx or npx, or if yo
     const successfulClients = serverResults.filter(
       (
         result
-      ): result is { type: 'success'; client: MCPClient; server: MCPServer; yields: string[] } =>
+      ): result is { type: 'success'; client: MCPClientNew; server: MCPServer; yields: string[] } =>
         result.type === 'success'
     );
     const failedServers = serverResults.filter(
@@ -454,7 +476,7 @@ HOWEVER if the server details show that you cannot run with uvx or npx, or if yo
           for (const message of result.messages) {
             const msg = stringifyMessage(message.content, { debug: options.debug });
             if (msg.trim()) {
-              yield msg + '\n';
+              yield msg;
             }
           }
           yield `\n=== End of ${result.server.name} ===\n`;
@@ -468,14 +490,22 @@ HOWEVER if the server details show that you cannot run with uvx or npx, or if yo
 }
 
 function stringifyMessage(
-  message: InternalMessage['content'] | InternalMessage['content'][number],
+  message:
+    | string
+    | Array<ToolResult | ToolUseBlockParam | TextBlockParam>
+    | ToolResult
+    | ToolUseBlockParam
+    | TextBlockParam,
   { debug }: { debug: boolean }
 ): string {
   if (typeof message === 'string') {
-    return message;
+    return message + '\n';
   }
   if (Array.isArray(message)) {
     return message.map((m) => stringifyMessage(m, { debug })).join('\n');
+  }
+  if ('type' in message && message.type === 'text') {
+    return message.text;
   }
   if ('type' in message && message.type === 'tool_result') {
     if (debug) {

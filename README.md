@@ -69,6 +69,7 @@
 - Perplexity to search the web and perform deep research
 - Gemini 2.0 for huge whole-codebase context window, search grounding and reasoning
 - Stagehand for browser operation to test and debug web apps (uses Anthropic or OpenAI models)
+- OpenRouter for access to a variety of models through a unified API (for MCP commands)
 
 
 ### New Skills for your existing Agent
@@ -257,14 +258,19 @@ Note: The ask command requires both --provider and --model parameters to be spec
 
 
 ## Authentication and API Keys
-`cursor-tools` requires API keys for both Perplexity AI and Google Gemini. These can be configured in two ways:
+`cursor-tools` requires API keys for Perplexity AI, Google Gemini, and optionally for OpenAI, Anthropic and OpenRouter. These can be configured in two ways:
 
 1. **Interactive Setup**: Run `cursor-tools install` and follow the prompts
 2. **Manual Setup**: Create `~/.cursor-tools/.env` in your home directory or `.cursor-tools.env` in your project root:
    ```env
    PERPLEXITY_API_KEY="your-perplexity-api-key"
    GEMINI_API_KEY="your-gemini-api-key"
+   OPENAI_API_KEY="your-openai-api-key"  # Optional, for Stagehand
+   ANTHROPIC_API_KEY="your-anthropic-api-key" # Optional, for Stagehand and MCP
+   OPENROUTER_API_KEY="your-openrouter-api-key" # Optional, for MCP
+   GITHUB_TOKEN="your-github-token"  # Optional, for enhanced GitHub access
    ```
+   * At least one of `ANTHROPIC_API_KEY` and `OPENROUTER_API_KEY` must be provided to use the `mcp` commands.
 
 ### Google Gemini API Authentication
 
@@ -839,6 +845,9 @@ cursor-tools web "What's new in TypeScript 5.7?"
       - If using ADC, ensure you've run `gcloud auth application-default login` and the account has appropriate permissions
       - Verify your service account has the necessary roles in Google Cloud Console (typically "Vertex AI User")
       - For troubleshooting ADC: Run `gcloud auth application-default print-access-token` to check if ADC is working
+    - For MCP commands ensure that *either* the `ANTHROPIC_API_KEY` *or* the `OPENROUTER_API_KEY` are set.
+    - If using OpenRouter for MCP, ensure `OPENROUTER_API_KEY` is set.
+    - If a provider is not specified for an MCP command, Anthropic will be used by default.
 
 3. **Model Errors**
     - Check your internet connection

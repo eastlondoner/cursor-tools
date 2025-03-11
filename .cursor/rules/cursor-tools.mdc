@@ -60,11 +60,13 @@ Use the following commands to interact with MCP servers and their specialized to
 `cursor-tools mcp search "<query>"` - Search the MCP Marketplace for available servers that match your needs (e.g., `cursor-tools mcp search "git repository management"`)
 `cursor-tools mcp run "<query>"` - Execute MCP server tools using natural language queries (e.g., `cursor-tools mcp run "list files in the current directory"`). The query must include sufficient information for cursor-tools to determine which server to use, provide plenty of context.
 
-The `search` command helps you discover servers in the MCP Marketplace based on their capabilities and your requirements. The `run` command automatically selects and executes appropriate tools from these servers based on your natural language queries. If you want to use a specific server include the server name in your query. E.g. `cursor-tools mcp run "using the mcp-server-sqlite list files in directory"
+The `search` command helps you discover servers in the MCP Marketplace based on their capabilities and your requirements. The `run` command automatically selects and executes appropriate tools from these servers based on your natural language queries. If you want to use a specific server include the server name in your query. E.g. `cursor-tools mcp run "using the mcp-server-sqlite list files in directory --provider=openrouter"`
+
 The `run` command will automatically download, checkout or clone MCP servers and initialize them for you. You do NOT need to separately install or clone or checkout an MCP server if you're going to run it with cursor-tools, even if the README of the MCP server says that you need to.
 
 **Notes on MCP Commands:**
-- MCP commands require `ANTHROPIC_API_KEY` to be set in your environment
+- MCP commands require `ANTHROPIC_API_KEY` or `OPENROUTER_API_KEY` to be set in your environment
+- By default the `mcp` command uses Anthropic, but takes a --provider argument that can be set to 'anthropic' or 'openrouter'
 - Results are streamed in real-time for immediate feedback
 - Tool calls are automatically cached to prevent redundant operations
 - Often the MCP server will not be able to run because environment variables are not set. If this happens ask the user to add the missing environment variables to the cursor tools env file at ~/.cursor-tools/.env

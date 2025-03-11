@@ -54,12 +54,13 @@
     "vitest": "^3.0.6"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.36.3",
+    "@anthropic-ai/sdk": "^0.39.0",
     "@browserbasehq/stagehand": "^1.14.0",
     "@modelcontextprotocol/sdk": "^1.5.0",
     "@types/glob": "^8.1.0",
     "dotenv": "16.4.7",
     "eventsource-client": "1.1.3",
+    "fast-glob": "^3.3.3",
     "glob": "^11.0.1",
     "google-auth-library": "^9.15.1",
     "openai": "^4.85.3",

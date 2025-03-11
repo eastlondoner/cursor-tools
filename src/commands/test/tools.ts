@@ -34,8 +34,19 @@ export function createCommandExecutionTool(options: {
       },
       required: ['command'],
     },
-    execute: async ({ command }: { command: string }): Promise<ToolExecutionResult> => {
+    execute: async (arg: { command: string } | string): Promise<ToolExecutionResult> => {
+      let command: string;
+      if (typeof arg === 'string') {
+        if (arg.startsWith('{')) {
+          command = JSON.parse(arg).command;
+        } else {
+          command = arg;
+        }
+      } else {
+        command = arg.command;
+      }
       if (!command || typeof command !== 'string') {
+        console.log('command', arg);
         return {
           success: false,
           output: 'Invalid command: Command must be a non-empty string',
@@ -45,7 +56,7 @@ export function createCommandExecutionTool(options: {
         };
       }
       // Extract environment variables and cursor-tools command
-      const envVarRegex = /^(?:(?:[A-Z_][A-Z0-9_]*=[^\s]*\s+)*)?/i;
+      const envVarRegex = /^(?:(?:[A-Z_][A-Z0-9_]*=[^\s]*\s+)*)?(?=cursor-tools|$)/i;
       const envMatch = command.match(envVarRegex);
       const envVars: Record<string, string> = {};
 
@@ -234,7 +245,9 @@ export function createCommandExecutionTool(options: {
             timeoutId = null;
           }
 
-          const { stdout, stderr } = result;
+          let { stdout, stderr } = result;
+          stderr = stderr.trim();
+          stdout = stdout.trim();
 
           if (stdout) {
             appendToBuffer(`COMMAND OUTPUT:\n${stdout}`);

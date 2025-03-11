@@ -382,7 +382,7 @@ export abstract class BaseProvider implements BaseModelProvider {
 }
 
 // Helper function for exponential backoff retry
-async function retryWithBackoff<T>(
+export async function retryWithBackoff<T>(
   operation: () => Promise<T>,
   maxAttempts: number = 5,
   baseDelay: number = 1000, // 1 second
@@ -1091,6 +1091,14 @@ export class GoogleGenerativeLanguageProvider extends BaseProvider {
           const data = await response.json();
           this.debugLog(options, 'Response:', this.truncateForLogging(data));
 
+          // Sometimes gemini returns something that doesn't have a candidates array
+          if (!data.candidates) {
+            console.error(
+              'Google Generative Language returned an unexpected response:',
+              JSON.stringify(data, null, 2)
+            );
+            throw new ProviderError('Google Generative Language returned an unexpected response');
+          }
           const content = data.candidates[0]?.content?.parts[0]?.text;
           const grounding = data.candidates[0]?.groundingMetadata as GeminiGroundingMetadata;
           const webSearchQueries = grounding?.webSearchQueries;
@@ -1800,11 +1808,9 @@ export function createProvider(
 
       // Choose between Vertex AI and Generative Language based on credentials
       if (apiKey.endsWith('.json') || apiKey.toLowerCase() === 'adc') {
-        console.log('Using Google Vertex AI provider');
         const vertexProvider = new GoogleVertexAIProvider();
         return vertexProvider;
       } else {
-        console.log('Using Google Generative Language provider');
         return new GoogleGenerativeLanguageProvider();
       }
     }

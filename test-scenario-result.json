@@ -1,7 +1,0 @@
-{
-  "id": "doc-large-repo-test",
-  "status": "PASS",
-  "summary": "The doc command successfully generated comprehensive documentation for a large repository with many files and directories. The command completed without crashing and produced detailed documentation covering repository purpose, quick start, configuration options, package documentation with command details, dependencies, and advanced usage examples.",
-  "executionTime": 15.4,
-  "error": null
-}
