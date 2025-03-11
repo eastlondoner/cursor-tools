@@ -1,6 +1,6 @@
 import type { Config } from '../types';
 import { loadConfig, loadEnv } from '../config';
-import OpenAI from 'openai';
+import OpenAI, { BadRequestError } from 'openai';
 import { ApiKeyMissingError, ModelNotFoundError, NetworkError, ProviderError } from '../errors';
 import { exhaustiveMatchGuard } from '../utils/exhaustiveMatchGuard';
 import { chunkMessage } from '../utils/messageChunker';
@@ -10,6 +10,7 @@ import { GoogleAuth } from 'google-auth-library';
 import { existsSync, readFileSync } from 'fs';
 import { execSync } from 'child_process';
 import { once } from '../utils/once';
+import { getAllProviders } from '../utils/providerAvailability';
 
 const TEN_MINUTES = 600000;
 // Interfaces for Gemini response types
@@ -486,9 +487,15 @@ abstract class OpenAIBase extends BaseProvider {
 
       return content;
     } catch (error) {
-      console.error(`Error in ${this.constructor.name} executePrompt`, error);
+      this.debugLog(options, `Error in ${this.constructor.name} executePrompt:`, error);
       if (error instanceof ProviderError) {
         throw error;
+      }
+      if (error instanceof BadRequestError) {
+        // BadRequestError if logged unmodified will leak credentials.
+        // Remove headers from error object before logging
+        Object.keys(error.headers).forEach((key) => delete error.headers[key]);
+        throw new NetworkError(`Failed to communicate with ${this.constructor.name} API`, error);
       }
       throw new NetworkError(`Failed to communicate with ${this.constructor.name} API`, error);
     }
@@ -1250,9 +1257,15 @@ export class OpenAIProvider extends OpenAIBase {
           console.warn(`${this.constructor.name} returned an empty response chunk.`);
         }
       } catch (error) {
-        console.error(`Error in ${this.constructor.name} executePrompt chunk`, error);
+        this.debugLog(options, `Error in ${this.constructor.name} executePrompt chunk`, error);
         if (error instanceof ProviderError) {
           throw error;
+        }
+        if (error instanceof BadRequestError) {
+          // BadRequestError if logged unmodified will leak credentials.
+          // Remove headers from error object before logging
+          Object.keys(error.headers).forEach((key) => delete error.headers[key]);
+          throw new NetworkError(`Failed to communicate with ${this.constructor.name} API`, error);
         }
         throw new NetworkError(`Failed to communicate with ${this.constructor.name} API`, error);
       }
@@ -1809,7 +1822,13 @@ export function createProvider(
     case 'anthropic':
       return new AnthropicProvider();
     default:
-      throw exhaustiveMatchGuard(provider);
+      throw exhaustiveMatchGuard(
+        provider,
+        `Provider "${provider}" is not recognized. Valid provider values are ${getAllProviders()
+          .filter((p) => p.available)
+          .map((p) => p.provider)
+          .join(', ')}`
+      );
   }
 }
 

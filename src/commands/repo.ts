@@ -8,7 +8,7 @@ import type { ModelOptions, BaseModelProvider } from '../providers/base';
 import { createProvider } from '../providers/base';
 import { ignorePatterns, includePatterns, outputOptions } from '../repomix/repomixConfig';
 import {
-  getAvailableProviders,
+  getAllProviders,
   getNextAvailableProvider,
   getDefaultModel,
 } from '../utils/providerAvailability';
@@ -24,21 +24,15 @@ export class RepoCommand implements Command {
 
   async *execute(query: string, options: CommandOptions & Partial<ModelOptions>): CommandGenerator {
     try {
-      let repoContext: string;
-      try {
-        repoContext = readFileSync('.repomix-output.txt', 'utf-8');
-      } catch (error) {
-        throw new FileError('Failed to read repository context', error);
-      }
-
       let cursorRules =
         'If generating code observe rules from the .cursorrules file and contents of the .cursor/rules folder';
 
       const providerName = options?.provider || this.config.repo?.provider || 'gemini';
 
-      if (!getAvailableProviders().find((p) => p.provider === providerName)) {
+      if (!getAllProviders().find((p) => p.provider === providerName)) {
         throw new ProviderError(
-          `Unrecognized provider: ${providerName}. Try one of ${getAvailableProviders()
+          `Unrecognized provider: ${providerName}. Try one of ${getAllProviders()
+            .filter((p) => p.available)
             .map((p) => p.provider)
             .join(', ')}`
         );
@@ -77,12 +71,24 @@ export class RepoCommand implements Command {
       if (packResult?.totalTokens > 200_000) {
         options.tokenCount = packResult.totalTokens;
       }
+
+      let repoContext: string;
+      try {
+        repoContext = readFileSync('.repomix-output.txt', 'utf-8');
+      } catch (error) {
+        throw new FileError('Failed to read repository context', error);
+      }
+
       // If provider is explicitly specified, try only that provider
       if (options?.provider) {
-        const providerInfo = getAvailableProviders().find((p) => p.provider === options.provider);
+        const providerInfo = getAllProviders().find((p) => p.provider === options.provider);
         if (!providerInfo?.available) {
           throw new ProviderError(
-            `Provider ${options.provider} is not available. Please check your API key configuration.`
+            `Provider ${options.provider} is not available. Please check your API key configuration.`,
+            `Try one of ${getAllProviders()
+              .filter((p) => p.available)
+              .map((p) => p.provider)
+              .join(', ')}`
           );
         }
         yield* this.tryProvider(

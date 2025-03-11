@@ -6,7 +6,7 @@ import { ToolDefinition, ToolExecutionResult } from '../../utils/tool-enabled-ll
 const execAsync = util.promisify(child_process.exec);
 
 // Whitelist of permitted shell commands that can be executed directly
-const WHITELISTED_COMMANDS = ['ls', 'cat', 'echo', 'grep', 'find', 'sqlite3'];
+const WHITELISTED_COMMANDS = ['ls', 'cat', 'grep', 'find', 'sqlite3'];
 
 /**
  * Creates a tool for executing cursor-tools commands in an isolated environment.
@@ -60,16 +60,16 @@ export function createCommandExecutionTool(options: {
 
       // Extract the actual command and arguments
       const commandPart = command.slice(envMatch ? envMatch[0].length : 0);
-      
+
       // Check if it's a cursor-tools command
       const cursorToolsMatch = commandPart.match(/^cursor-tools\s+([^\s]+)(.*)$/);
-      
+
       // Check if it's a whitelisted shell command
       const shellCommandMatch = commandPart.match(/^([^\s]+)(.*)$/);
-      
+
       // Set working directory
       const workingDir = cwd || process.cwd();
-      
+
       if (cursorToolsMatch) {
         // Handle cursor-tools command
         const [, subCommand, args] = cursorToolsMatch;
@@ -77,7 +77,7 @@ export function createCommandExecutionTool(options: {
       } else if (shellCommandMatch) {
         // Check if the command is in the whitelist
         const [, shellCommand, shellArgs] = shellCommandMatch;
-        
+
         if (WHITELISTED_COMMANDS.includes(shellCommand)) {
           // Handle whitelisted shell command
           return await executeShellCommand(shellCommand, shellArgs, envVars, workingDir);
@@ -92,9 +92,9 @@ export function createCommandExecutionTool(options: {
               message: 'Command not allowed',
               details: {
                 command: shellCommand,
-                allowedCommands: ['cursor-tools', ...WHITELISTED_COMMANDS]
-              }
-            }
+                allowedCommands: ['cursor-tools', ...WHITELISTED_COMMANDS],
+              },
+            },
           };
         }
       } else {
@@ -109,10 +109,14 @@ export function createCommandExecutionTool(options: {
           },
         };
       }
-      
-      // Helper function to execute cursor-tools commands
-      async function executeCursorToolsCommand(subCommand: string, args: string, envVars: Record<string, string>, workingDir: string) {
 
+      // Helper function to execute cursor-tools commands
+      async function executeCursorToolsCommand(
+        subCommand: string,
+        args: string,
+        envVars: Record<string, string>,
+        workingDir: string
+      ) {
         // Safety check for potentially dangerous commands
         const dangerousCommands = ['rm', 'del', 'remove', 'format'];
         if (dangerousCommands.includes(subCommand.toLowerCase())) {
@@ -187,29 +191,31 @@ export function createCommandExecutionTool(options: {
             cwd: workingDir,
             maxBuffer: 1024 * 1024 * 10, // 10MB buffer for large outputs
             timeout: timeoutMs, // 5 minute timeout
-          env: {
-            ...process.env,
-            // Ensure API keys are passed to the child process
-            GEMINI_API_KEY: process.env.GEMINI_API_KEY,
-            OPENAI_API_KEY: process.env.OPENAI_API_KEY,
-            ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
-            PERPLEXITY_API_KEY: process.env.PERPLEXITY_API_KEY,
-            // Set a flag to indicate we're in test mode
-            CURSOR_TOOLS_TEST_MODE: '1',
-            // If env overrides are provided, set CURSOR_TOOLS_ENV_UNSET
-            ...(env && Object.keys(env).some((key) => env[key] === undefined)
-              ? {
-                  CURSOR_TOOLS_ENV_UNSET: Object.keys(env)
-                    .filter((key) => env[key] === undefined)
-                    .join(','),
-                }
-              : {}),
-            // Add any environment variables that are set (not undefined)
-            ...(env
-              ? Object.fromEntries(Object.entries(env).filter(([_, value]) => value !== undefined))
-              : {}),
-          },
-        };
+            env: {
+              ...process.env,
+              // Ensure API keys are passed to the child process
+              GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+              OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+              ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+              PERPLEXITY_API_KEY: process.env.PERPLEXITY_API_KEY,
+              // Set a flag to indicate we're in test mode
+              CURSOR_TOOLS_TEST_MODE: '1',
+              // If env overrides are provided, set CURSOR_TOOLS_ENV_UNSET
+              ...(env && Object.keys(env).some((key) => env[key] === undefined)
+                ? {
+                    CURSOR_TOOLS_ENV_UNSET: Object.keys(env)
+                      .filter((key) => env[key] === undefined)
+                      .join(','),
+                  }
+                : {}),
+              // Add any environment variables that are set (not undefined)
+              ...(env
+                ? Object.fromEntries(
+                    Object.entries(env).filter(([_, value]) => value !== undefined)
+                  )
+                : {}),
+            },
+          };
 
           // Create a promise that will be rejected if the timeout is reached
           const timeoutPromise = new Promise<never>((_, reject) => {
@@ -315,13 +321,18 @@ export function createCommandExecutionTool(options: {
           };
         }
       }
-      
+
       // Helper function to execute whitelisted shell commands
-      async function executeShellCommand(shellCommand: string, shellArgs: string, envVars: Record<string, string>, workingDir: string) {
+      async function executeShellCommand(
+        shellCommand: string,
+        shellArgs: string,
+        envVars: Record<string, string>,
+        workingDir: string
+      ) {
         // Set a reasonable timeout for command execution (5 minutes)
         const timeoutMs = 5 * 60 * 1000;
         let timeoutId: ReturnType<typeof setTimeout> | null = null;
-        
+
         // Construct the command with environment variables
         const fullCommand = `${
           envVars
@@ -330,11 +341,11 @@ export function createCommandExecutionTool(options: {
                 .join(' ') + ' '
             : ''
         }${shellCommand}${shellArgs}`;
-        
+
         if (debug) {
           appendToBuffer(`[DEBUG] Executing shell command in ${workingDir}: ${fullCommand}`);
         }
-        
+
         try {
           // Execute in the specified directory
           const execOptions: child_process.ExecOptions = {
@@ -346,38 +357,40 @@ export function createCommandExecutionTool(options: {
               ...process.env,
               // Add any environment variables
               ...(env
-                ? Object.fromEntries(Object.entries(env).filter(([_, value]) => value !== undefined))
+                ? Object.fromEntries(
+                    Object.entries(env).filter(([_, value]) => value !== undefined)
+                  )
                 : {}),
             },
           };
-          
+
           // Create a promise that will be rejected if the timeout is reached
           const timeoutPromise = new Promise<never>((_, reject) => {
             timeoutId = setTimeout(() => {
               reject(new Error(`Command execution timed out after ${timeoutMs / 1000} seconds`));
             }, timeoutMs);
           });
-          
+
           // Execute command with timeout
           const execPromise = execAsync(fullCommand, execOptions);
           const result = await Promise.race([execPromise, timeoutPromise]);
-          
+
           // Clear the timeout if the command completes before the timeout
           if (timeoutId) {
             clearTimeout(timeoutId);
             timeoutId = null;
           }
-          
+
           const { stdout, stderr } = result;
-          
+
           if (stdout) {
             appendToBuffer(`COMMAND OUTPUT:\n${stdout}`);
           }
-          
+
           if (stderr) {
             appendToBuffer(`COMMAND ERRORS:\n${stderr}`);
           }
-          
+
           // Return successful result with both stdout and stderr if available
           return {
             success: true,
@@ -392,11 +405,11 @@ export function createCommandExecutionTool(options: {
             clearTimeout(timeoutId);
             timeoutId = null;
           }
-          
+
           const errorMessage = error instanceof Error ? error.message : String(error);
-          
+
           appendToBuffer(`COMMAND ERROR: ${errorMessage}`);
-          
+
           // Handle specific error types with detailed information
           if (error instanceof Error) {
             const errorObj: ToolExecutionResult = {
@@ -408,7 +421,7 @@ export function createCommandExecutionTool(options: {
                 details: {},
               },
             };
-            
+
             // Handle different error scenarios
             if (error.message.includes('command not found') || error.message.includes('ENOENT')) {
               if (errorObj.error) {
@@ -442,10 +455,10 @@ export function createCommandExecutionTool(options: {
                 };
               }
             }
-            
+
             return errorObj;
           }
-          
+
           return {
             success: false,
             output: 'Command execution failed with unknown error',

@@ -8,7 +8,7 @@ import { createProvider } from '../providers/base';
 import { ModelNotFoundError } from '../errors';
 import { ignorePatterns, includePatterns, outputOptions } from '../repomix/repomixConfig';
 import {
-  getAvailableProviders,
+  getAllProviders,
   getNextAvailableProvider,
   getDefaultModel,
 } from '../utils/providerAvailability';
@@ -251,7 +251,7 @@ Please:
 
       // If provider is explicitly specified, try only that provider
       if (options?.provider) {
-        const providerInfo = getAvailableProviders().find((p) => p.provider === options.provider);
+        const providerInfo = getAllProviders().find((p) => p.provider === options.provider);
         if (!providerInfo?.available) {
           throw new ProviderError(
             `Provider ${options.provider} is not available. Please check your API key configuration.`

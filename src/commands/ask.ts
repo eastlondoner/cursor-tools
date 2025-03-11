@@ -2,17 +2,7 @@ import type { Command, CommandGenerator, CommandOptions, Provider } from '../typ
 import { loadEnv, loadConfig, defaultMaxTokens } from '../config';
 import { createProvider } from '../providers/base';
 import { ProviderError, ModelNotFoundError } from '../errors';
-
-function getAvailableProviders(): { provider: Provider; available: boolean }[] {
-  return [
-    { provider: 'perplexity', available: !!process.env.PERPLEXITY_API_KEY },
-    { provider: 'gemini', available: !!process.env.GEMINI_API_KEY },
-    { provider: 'openai', available: !!process.env.OPENAI_API_KEY },
-    { provider: 'anthropic', available: !!process.env.ANTHROPIC_API_KEY },
-    { provider: 'openrouter', available: !!process.env.OPENROUTER_API_KEY },
-    { provider: 'modelbox', available: !!process.env.MODELBOX_API_KEY },
-  ];
-}
+import { getAllProviders } from '../utils/providerAvailability';
 
 export class AskCommand implements Command {
   private config;
@@ -24,7 +14,7 @@ export class AskCommand implements Command {
 
   async *execute(query: string, options?: CommandOptions): CommandGenerator {
     // Get available providers
-    const availableProviders = getAvailableProviders().filter((p) => p.available);
+    const availableProviders = getAllProviders().filter((p) => p.available);
 
     // If no providers are available, throw an error
     if (availableProviders.length === 0) {
@@ -37,7 +27,7 @@ export class AskCommand implements Command {
     const providerName = options?.provider || availableProviders[0].provider;
 
     // Check if the requested provider is available
-    const providerInfo = getAvailableProviders().find((p) => p.provider === providerName);
+    const providerInfo = getAllProviders().find((p) => p.provider === providerName);
     if (!providerInfo) {
       throw new ProviderError(
         `Invalid provider: ${providerName}.\n` +

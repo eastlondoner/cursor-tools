@@ -30,18 +30,14 @@ export class TestEnvironmentManager {
       throw new Error(errorMessage);
     }
 
-    // Create a symlink to the node_modules directory and src directory
+    // Create a symlink to the node_modules directory only
+    // Note: We don't create a symlink to the src directory to maintain isolation
     const projectRoot = process.cwd();
     const nodeModulesPath = path.join(projectRoot, 'node_modules');
     const symlinkPath = path.join(tempDir, 'node_modules');
-    const srcPath = path.join(projectRoot, 'src');
-    const srcSymlinkPath = path.join(tempDir, 'src');
 
     try {
-      await Promise.all([
-        fs.promises.symlink(nodeModulesPath, symlinkPath, 'junction'),
-        fs.promises.symlink(srcPath, srcSymlinkPath, 'junction'),
-      ]);
+      await fs.promises.symlink(nodeModulesPath, symlinkPath, 'junction');
     } catch (error) {
       const errorMessage = `Failed to create symlink to node_modules: ${error instanceof Error ? error.message : String(error)}`;
       console.error(errorMessage);

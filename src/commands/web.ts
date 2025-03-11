@@ -4,7 +4,7 @@ import { defaultMaxTokens, loadConfig, loadEnv } from '../config.ts';
 import { createProvider } from '../providers/base';
 import { ProviderError } from '../errors';
 import {
-  getAvailableProviders,
+  getAllProviders,
   getNextAvailableProvider,
   getDefaultModel,
 } from '../utils/providerAvailability';
@@ -30,10 +30,13 @@ export class WebCommand implements Command {
     try {
       // If provider is explicitly specified, try only that provider
       if (options?.provider) {
-        const providerInfo = getAvailableProviders().find((p) => p.provider === options.provider);
+        const providerInfo = getAllProviders().find((p) => p.provider === options.provider);
         if (!providerInfo?.available) {
           throw new ProviderError(
-            `Provider ${options.provider} is not available. Please check your API key configuration.`
+            `Provider ${options.provider} is not available. Please check your API key configuration.`,
+            `Try one of ${getAllProviders()
+              .filter((p) => p.available)
+              .join(', ')}`
           );
         }
         yield* this.tryProvider(options.provider as Provider, query, options);

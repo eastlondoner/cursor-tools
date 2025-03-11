@@ -11,7 +11,7 @@ const DEFAULT_MODELS: Record<Provider, string> = {
   perplexity: 'sonar-pro',
   gemini: 'gemini-2.0-flash-thinking-exp',
   openai: 'o3-mini',
-  anthropic: 'claude-3-sonnet',
+  anthropic: 'claude-3-7-sonnet-latest',
   openrouter: 'anthropic/claude-3.7-sonnet',
   modelbox: 'anthropic/claude-3-5-sonnet',
 };
@@ -31,8 +31,7 @@ export function getDefaultModel(provider: Provider): string {
   return DEFAULT_MODELS[provider];
 }
 
-export function getAvailableProviders(): ProviderInfo[] {
-  console.log('env keys', Object.keys(process.env));
+export function getAllProviders(): ProviderInfo[] {
   return [
     {
       provider: 'perplexity',
@@ -76,7 +75,7 @@ export function getNextAvailableProvider(
     throw new Error(`Unknown command type: ${commandType}`);
   }
 
-  const availableProviders = getAvailableProviders();
+  const availableProviders = getAllProviders();
 
   // If currentProvider is specified, start looking from the next provider in the preference order
   const startIndex = currentProvider ? preferenceOrder.indexOf(currentProvider) + 1 : 0;

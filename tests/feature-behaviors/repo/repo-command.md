@@ -20,6 +20,8 @@ Use cursor-tools to ask a simple question about the current repository's structu
 - Response demonstrates understanding of the repository context
 - No error messages are displayed
 - Command completes within a reasonable time
+- The command output does not include unnecessarily verbose or debugging messages
+- The command output does not include any security tokens or API keys
 
 ### Scenario 2: Repository Analysis with Different Providers and Models (Happy Path)
 **Task Description:**
@@ -37,6 +39,8 @@ Use cursor-tools to ask the same question about the repository using different p
 - Responses contain relevant information about the repository
 - Differences in provider/model responses are noted and compared
 - No error messages are displayed
+- The command output does not include unnecessarily verbose or debugging messages
+- The command output does not include any security tokens or API keys
 
 ### Scenario 3: Repository Analysis with a Complex Query (Happy Path)
 **Tags:** advanced
@@ -54,6 +58,8 @@ Use cursor-tools to ask a complex question about the repository that requires un
 - Response includes comprehensive information about relevant parts of the codebase
 - Response demonstrates understanding of relationships between components
 - Command completes successfully without errors
+- The command output does not include unnecessarily verbose or debugging messages
+- The command output does not include any security tokens or API keys
 
 ### Scenario 4: Repository Analysis with Save-to Option (Happy Path)
 **Tags:** file-io, parameters
@@ -70,6 +76,8 @@ Use cursor-tools to analyze the repository and save the results to a file.
 - Response is saved to the specified file
 - File contains the same content as displayed in the console
 - Command completes successfully
+- The command output does not include unnecessarily verbose or debugging messages
+- The command output does not include any security tokens or API keys
 
 ### Scenario 5: Repository Analysis with Invalid Provider and Model (Error Handling)
 **Task Description:**
@@ -149,6 +157,8 @@ Use cursor-tools to ask for an overview of the repository's architecture and des
 - Response includes a high-level overview of the repository's architecture
 - Response identifies key design patterns and architectural decisions
 - Command completes successfully without errors
+- The command output does not include unnecessarily verbose or debugging messages
+- The command output does not include any security tokens or API keys
 
 
 ### Scenario 10: Invalid Key (Fallback to alternate provider)
@@ -164,3 +174,22 @@ Attempt to use cursor-tools to analyze the repository without setting explicit p
 - the invalid API key issue is logged
 - Command succeeds by using an alternate provider
 - A satisfactory, correct answer is returned
+- The command output does not include unnecessarily verbose or debugging messages
+- The command output does not include any security tokens or API keys
+
+
+### Scenario 11: Repomixignore file support
+**Task Description:**
+We're going to verify that cursor-tools repo respects the .repomixignore file. First check that the .repomixignore file is either empty or not present. Use cursor-tools to analyze the repository, note how many tokens are used. 
+
+Then create a .repomixignore file using the content from {{path:repomixignore-with-src.txt}} and repeat the same query. Note how many tokens are used on the second query - it should be much less since we're excluding the src directory.
+
+**Expected Behavior:**
+- Files that match patterns in the .repomixignore should not be included in the repository context sent with the repo command
+- The repo command logs the number of tokens in the packed repo context
+- Token usage is much less when there are significant ignores
+- The repo command succeeds on both queries. Although for the 2nd query the answer may now be incorrect
+
+**Success Criteria:**
+- Command succeeds on both queries
+- The second query has much lower token usage

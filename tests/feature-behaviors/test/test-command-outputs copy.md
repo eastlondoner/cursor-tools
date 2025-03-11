@@ -1,4 +1,4 @@
-# Feature Behavior: Parallel Test Execution
+# Feature Behavior: Test Command Output
 
 ## Description
 This test verifies the output behaviour of the test command for different parameters.

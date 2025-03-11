@@ -4,7 +4,7 @@ import type { Command, CommandGenerator } from '../../types';
 import { loadEnv, loadConfig } from '../../config';
 import { yieldOutput } from '../../utils/output';
 import { TestError, FeatureFileParseError } from '../../errors';
-import { TestOptions, RetryConfig, TestReport, TestScenarioResult } from './types';
+import { TestOptions, RetryConfig, TestReport, TestScenarioResult, TestScenario } from './types';
 import { parseFeatureBehaviorFile } from './parser';
 import { executeScenario } from './executor';
 import { saveReportToFile, saveResultToFile, compareReports } from './reporting';
@@ -18,6 +18,10 @@ import {
 import PQueue from 'p-queue';
 import { createProvider } from '../../providers/base';
 import { once } from '../../utils/once';
+
+interface ExtendedTestOptions extends TestOptions {
+  skipIntermediateOutput?: boolean;
+}
 
 /**
  * Implementation of the test command
@@ -37,11 +41,17 @@ export class TestCommand implements Command {
    * @param query - Path to the feature behavior file or glob pattern
    * @param options - Test command options
    */
-  async *execute(query: string, options: TestOptions): CommandGenerator {
+  async *execute(
+    query: string,
+    options: ExtendedTestOptions
+  ): AsyncGenerator<string, void, unknown> {
     try {
       // Check if query is a glob pattern
       if (query.includes('*')) {
-        yield* this.executeAll(query, options);
+        // Process all files in parallel
+        for await (const output of this.executeAll(query, options)) {
+          yield output;
+        }
         return;
       }
 
@@ -188,7 +198,7 @@ export class TestCommand implements Command {
 `
               : '');
 
-          yieldOutput(statusMessage, options).catch((err) =>
+          void yieldOutput(statusMessage, options).catch((err) =>
             console.error('Error yielding progress output:', err)
           );
 
@@ -396,44 +406,265 @@ export class TestCommand implements Command {
    * @param pattern - Glob pattern for feature behavior files
    * @param options - Test command options
    */
-  private async *executeAll(pattern: string, options: TestOptions): CommandGenerator {
+  private async *executeAll(
+    pattern: string,
+    options: ExtendedTestOptions
+  ): AsyncGenerator<string, void, unknown> {
     // Find all files matching the pattern
     const files = await findFeatureBehaviorFiles(pattern);
 
     if (files.length === 0) {
-      await yieldOutput(
-        `❌ No feature behavior files found matching pattern: ${pattern}\n`,
-        options
-      );
+      yield `❌ No feature behavior files found matching pattern: ${pattern}\n`;
       return;
     }
 
-    await yieldOutput(
-      `📂 Found ${files.length} feature behavior files matching pattern: ${pattern}\n`,
-      options
-    );
+    yield `📂 Found ${files.length} feature behavior files matching pattern: ${pattern}\n`;
 
-    // Execute each file
-    const reports: TestReport[] = [];
-    for (const file of files) {
-      await yieldOutput(`\n🔍 Testing file: ${file}\n`, options);
-      try {
-        yield* this.execute(file, options);
-      } catch (error) {
-        await yieldOutput(
-          `❌ Error testing ${file}: ${error instanceof Error ? error.message : String(error)}\n`,
-          options
-        );
+    // Create an async generator that yields scenarios from all files
+    type ScenarioOrOutput =
+      | { type: 'scenario'; scenario: TestScenario; file: string }
+      | { type: 'output'; text: string };
+
+    async function* scenarioGenerator(): AsyncGenerator<ScenarioOrOutput> {
+      for (const file of files) {
+        try {
+          const featureBehavior = await parseFeatureBehaviorFile(file);
+          if (featureBehavior && featureBehavior.scenarios.length > 0) {
+            yield {
+              type: 'output',
+              text: `📝 Loaded ${featureBehavior.scenarios.length} scenarios from ${file}\n`,
+            };
+            for (const scenario of featureBehavior.scenarios) {
+              yield { type: 'scenario', scenario, file };
+            }
+          } else if (!featureBehavior) {
+            yield { type: 'output', text: `⚠️ Could not parse feature behavior file: ${file}\n` };
+          } else {
+            yield { type: 'output', text: `⚠️ No scenarios found in: ${file}\n` };
+          }
+        } catch (error) {
+          yield {
+            type: 'output',
+            text: `❌ Error parsing ${file}: ${error instanceof Error ? error.message : String(error)}\n`,
+          };
+        }
       }
     }
 
-    // Output summary of all tests
-    const passedTests = reports.filter((r) => r.overallResult === 'PASS').length;
-    const failedTests = reports.length - passedTests;
+    // Set up test execution
+    const startTime = Date.now();
+    const {
+      model = 'claude-3-7-sonnet-latest',
+      timeout = 300,
+      retries = 3,
+      parallel = 1,
+      debug = false,
+      skipIntermediateOutput = false,
+      mcpServers = [],
+    } = options;
 
-    await yieldOutput(`\n Overall Summary:\n`, options);
-    await yieldOutput(`- Total files: ${files.length}\n`, options);
-    await yieldOutput(`- Passed: ${passedTests}\n`, options);
-    await yieldOutput(`- Failed: ${failedTests}\n`, options);
+    yield `🛠️ Executing scenarios${parallel > 1 ? ` in parallel (concurrency: ${parallel})` : ''}\n`;
+
+    // Set up retry configuration
+    const retryConfig: RetryConfig = {
+      initialDelay: 1000, // 1 second
+      maxDelay: 30000, // 30 seconds
+      factor: 2, // Exponential backoff factor
+      retries,
+      jitter: true, // Add jitter to prevent thundering herd
+    };
+
+    // Create provider factory function
+    const geminiProvider = once(() => {
+      return createProvider('gemini');
+    });
+
+    // Create queue for parallel execution
+    const queue = new PQueue({ concurrency: parallel });
+
+    // All scenarios from all files
+    let totalScenarios = 0;
+    let completedScenarios = 0;
+    const results: TestScenarioResult[] = [];
+    const inProgress = new Set<string>();
+    const started = new Set<string>();
+    const completed = new Set<string>();
+    const scenarioByIdMap = new Map<string, TestScenario>();
+
+    // Progress tracking
+    let lastReportTime = Date.now();
+    const reportInterval = 3000; // Report every 3 seconds
+
+    // Set up progress event handler
+    queue.on('active', () => {
+      const progress =
+        totalScenarios > 0 ? Math.round((completedScenarios / totalScenarios) * 100) : 0;
+      const currentTime = Date.now();
+      const elapsedSeconds = (currentTime - startTime) / 1000;
+
+      // Only report at intervals to avoid excessive output
+      if (
+        parallel > 1 &&
+        (currentTime - lastReportTime > reportInterval || inProgress.size < parallel)
+      ) {
+        // Calculate estimated time remaining
+        let estimatedTimeRemaining = 0;
+        if (completedScenarios > 0) {
+          const avgTimePerScenario = elapsedSeconds / completedScenarios;
+          const remainingScenarios = totalScenarios - completedScenarios;
+          // Adjust for parallel execution
+          estimatedTimeRemaining =
+            (avgTimePerScenario * remainingScenarios) / Math.min(parallel, remainingScenarios || 1);
+        }
+
+        // Format times for display
+        const formatTime = (seconds: number): string => {
+          if (seconds < 60) return `${seconds.toFixed(0)}s`;
+          if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${Math.floor(seconds % 60)}s`;
+          return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m ${Math.floor(seconds % 60)}s`;
+        };
+
+        const statusMessage =
+          `⏳ Progress: ${completedScenarios}/${totalScenarios} scenarios completed (${progress}%)
+🔄 Status: ${inProgress.size} running, ${totalScenarios - completedScenarios - inProgress.size} pending` +
+          (elapsedSeconds > 2
+            ? `
+⏱️ Elapsed: ${formatTime(elapsedSeconds)}
+⏰ Est. remaining: ${formatTime(estimatedTimeRemaining)}
+`
+            : '');
+
+        void yieldOutput(statusMessage, options).catch((err) =>
+          console.error('Error yielding progress output:', err)
+        );
+
+        lastReportTime = currentTime;
+      }
+    });
+
+    // Process the scenario stream
+    const processScenarios = async () => {
+      for await (const item of scenarioGenerator()) {
+        if (item.type === 'output') {
+          await yieldOutput(item.text, options);
+          continue;
+        }
+
+        const { scenario } = item;
+        totalScenarios++;
+        scenarioByIdMap.set(scenario.id, scenario);
+
+        // Enqueue the scenario for execution
+        void queue.add(async () => {
+          const scenarioId = scenario.id;
+          const scenarioOutputBuffer: string[] = [];
+          inProgress.add(scenarioId);
+          started.add(scenarioId);
+
+          try {
+            // Execute the scenario
+            const scenarioResult = await executeScenario(
+              scenario,
+              {
+                model,
+                timeout,
+                retryConfig,
+                debug,
+                mcpServers,
+                scenarioId,
+                outputBuffer: scenarioOutputBuffer,
+              },
+              geminiProvider()
+            );
+
+            results.push(scenarioResult);
+
+            // Output intermediate results if not skipped
+            if (!skipIntermediateOutput) {
+              // Individual scenario output (only if not skipping intermediate output)
+              await yieldOutput(scenarioOutputBuffer.join('\n') + '\n', options);
+
+              const scenarioSummary = `\n${scenarioResult.result === 'PASS' ? '✅' : '❌'} Scenario ${
+                scenarioResult.id
+              }: ${scenarioResult.result} (${scenarioResult.executionTime.toFixed(1)}s)\n`;
+
+              await yieldOutput(scenarioSummary, options);
+            }
+
+            return scenarioResult;
+          } catch (error) {
+            console.error(`Error executing scenario ${scenarioId}:`, error);
+            // Create a failed result
+            const failedResult: TestScenarioResult = {
+              id: scenarioId,
+              result: 'FAIL',
+              type: scenario.type,
+              description: scenario.description,
+              taskDescription: scenario.taskDescription,
+              approachTaken: '',
+              commands: [],
+              output: '',
+              outputBuffer: scenarioOutputBuffer,
+              expectedBehavior: (scenario.expectedBehavior || []).map((behavior: string) => ({
+                behavior,
+                met: false,
+                explanation: 'Execution error',
+              })),
+              successCriteria: (scenario.successCriteria || []).map((criteria: string) => ({
+                criteria,
+                met: false,
+                explanation: 'Execution error',
+              })),
+              executionTime: 0,
+              attempts: 0,
+              explanation: 'Failed to execute scenario',
+              error: error instanceof Error ? error.message : String(error),
+            };
+            results.push(failedResult);
+
+            await yieldOutput(
+              `❌ Error executing scenario ${scenarioId}: ${error instanceof Error ? error.message : String(error)}\n`,
+              options
+            );
+            return failedResult;
+          } finally {
+            inProgress.delete(scenarioId);
+            completed.add(scenarioId);
+            completedScenarios++;
+          }
+        });
+      }
+    };
+
+    // Start processing scenarios and wait for completion
+    await processScenarios();
+    await queue.onIdle();
+
+    // Output summary
+    const executionTime = (Date.now() - startTime) / 1000;
+    const passedScenarios = results.filter((r) => r.result === 'PASS');
+    const failedScenarios = results.filter((r) => r.result === 'FAIL');
+    const overallResult = failedScenarios.length === 0 ? 'PASS' : 'FAIL';
+
+    const summary = `
+---------------------------------------------------------
+📊 Test Summary:
+---------------------------------------------------------
+🧪 Total Scenarios: ${results.length}
+✅ Passed: ${passedScenarios.length}
+❌ Failed: ${failedScenarios.length}
+⏱️ Total Execution Time: ${executionTime.toFixed(1)}s
+🏁 Overall Result: ${overallResult === 'PASS' ? '✅ PASS' : '❌ FAIL'}
+${
+  failedScenarios.length > 0
+    ? `\n❌ Failed Scenarios:\n${failedScenarios
+        .map((r) => `  - Scenario ${r.id}: ${r.error || 'Failed checks'}`)
+        .join('\n')}`
+    : ''
+}
+---------------------------------------------------------
+`;
+
+    yield summary;
   }
 }
