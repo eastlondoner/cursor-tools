@@ -36,11 +36,13 @@ export async function createDirIfNotExists(dir: string): Promise<void> {
 
 /**
  * Find all feature behavior files matching a pattern
- * 
+ *
  * @param pattern - Glob pattern to match feature behavior files
  * @returns AsyncGenerator that yields file paths as they are found
  */
-export async function* findFeatureBehaviorFiles(pattern: string): AsyncGenerator<string, void, unknown> {
+export async function* findFeatureBehaviorFiles(
+  pattern: string
+): AsyncGenerator<string, void, unknown> {
   const stream = fastGlob.stream(pattern, {
     absolute: false, // Return paths relative to cwd
     dot: true, // Include dotfiles
@@ -55,7 +57,7 @@ export async function* findFeatureBehaviorFiles(pattern: string): AsyncGenerator
 
 /**
  * Find all feature behavior files matching a pattern (non-streaming version)
- * 
+ *
  * @param pattern - Glob pattern to match feature behavior files
  * @returns Promise resolving to array of file paths
  * @deprecated Use the streaming version instead

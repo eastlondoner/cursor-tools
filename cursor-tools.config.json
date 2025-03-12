@@ -1,52 +1,42 @@
 {
   "perplexity": {
-    "model": "sonar-pro",
-    "maxTokens": 8000
+    "model": "sonar-pro"
   },
   "gemini": {
-    "model": "gemini-2.0-pro-exp",
-    "maxTokens": 10000
+    "model": "gemini-2.0-flash-thinking-exp",
+    "maxTokens": 8192
   },
-  "openrouter": {
-    "model": "anthropic/claude-3-7-sonnet",
+  "openai": {
+    "model": "o3-mini",
     "maxTokens": 10000
   },
   "plan": {
-    "fileProvider": "openrouter",
-    "thinkingProvider": "openrouter",
+    "fileProvider": "gemini",
+    "thinkingProvider": "openai",
     "fileMaxTokens": 8192,
     "thinkingMaxTokens": 8192
   },
   "repo": {
-    "provider": "openrouter",
-    "maxTokens": 10000
+    "provider": "gemini",
+    "maxTokens": 8192
   },
   "doc": {
     "maxRepoSizeMB": 100,
-    "provider": "openrouter",
-    "maxTokens": 10000
-  },
-  "browser": {
-    "defaultViewport": "1280x720",
-    "timeout": 30000,
-    "stagehand": {
-      "env": "LOCAL",
-      "headless": true,
-      "verbose": 1,
-      "debugDom": false,
-      "enableCaching": false,
-      "model": "claude-3-7-sonnet-latest",
-      "provider": "anthropic",
-      "timeout": 30000
-    }
+    "provider": "gemini",
+    "maxTokens": 8192
   },
   "tokenCount": {
     "encoding": "o200k_base"
   },
-  "openai": {
-    "maxTokens": 8000
+  "browser": {
+    "headless": true,
+    "defaultViewport": "1280x720",
+    "timeout": 120000
   },
-  "anthropic": {
-    "maxTokens": 8000
+  "stagehand": {
+    "provider": "openai",
+    "verbose": true,
+    "debugDom": false,
+    "enableCaching": true
   }
 }

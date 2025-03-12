@@ -16,6 +16,9 @@ import { createCommandExecutionTool } from './tools';
 import { BaseModelProvider, retryWithBackoff } from '../../providers/base';
 import { CURSOR_RULES_TEMPLATE } from '../../cursorrules';
 import { TestEnvironmentManager } from './environment';
+import { StdioServerParameters } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { realpath } from 'fs/promises';
 
 // Replace the existing JSON response instructions with the new simplified schema
 const jsonResponseInstructions = `
@@ -134,6 +137,8 @@ export async function executeScenario(
   },
   geminiProvider: BaseModelProvider // used for summarization
 ): Promise<TestScenarioResult> {
+  // Declare filesystemClient at the function scope so it's available in the finally block
+  let filesystemClient: Client | undefined;
   const { model, provider, timeout, retryConfig, debug, scenarioId, outputBuffer = [] } = options;
   // Note: mcpServers is not used currently but kept for future implementation
   const startTime = Date.now();
@@ -181,6 +186,14 @@ export async function executeScenario(
           throw new TestTimeoutError(scenarioId, timeout);
         }
 
+        const tempDirRealPath = await realpath(tempDir);
+        const allowedPaths = tempDir === tempDirRealPath ? [tempDir] : [tempDir, tempDirRealPath];
+        // Initialize filesystem MCP client
+        const filesystemMCPConfig: StdioServerParameters = {
+          command: "npx",
+          args: ["-y", "@modelcontextprotocol/server-filesystem", ...allowedPaths]
+        };
+        
         // Create tool definitions
         const tools = [
           createCommandExecutionTool({
@@ -198,11 +211,30 @@ export async function executeScenario(
         // Process the query with tools
         const systemPrompt = `You are a testing agent for cursor-tools commands. Your task is to execute the test scenario provided using the tools available to determine if cursor-tools is working correctly and report the results.
 
+<filesystem_mcp_tool>
+A filesystem MCP tool (filesystem_mcp) is available for file operations. This tool is configured via '@modelcontextprotocol/server-filesystem' and can ONLY access the temporary test directory (${tempDir}).
+
+The filesystem_mcp tool supports the following operations:
+- read: Read the contents of a file
+- write: Write content to a file
+- list: List files in a directory
+- exists: Check if a file or directory exists
+- mkdir: Create a directory
+
+Examples:
+- To read a file: filesystem_mcp({ operation: 'read', path: 'example.txt' })
+- To write to a file: filesystem_mcp({ operation: 'write', path: 'example.txt', content: 'Hello world' })
+- To list files: filesystem_mcp({ operation: 'list', path: '.' })
+
+IMPORTANT: Do NOT attempt to use this tool to access files outside the temporary test directory (your current working directory).
+</filesystem_mcp_tool>
+
 ${CURSOR_RULES_TEMPLATE}
 
 Execute the test scenario provided and report the results. If you run into problems executing the scenario, make 3 attempts to execute the scenario. If you are still run into problems after 3 attempts, report the results as FAIL.
 
 <hints>
+You have access to a filesystem tool that can read and write files, list directores etc. in the temporary test directory.
 The available command line tools are cursor-tools and ${tools.map((tool) => tool.name).join(', ')}. Other command line tools are not permitted.
 Reply to the chat with your workings and your findings. Only use tools to perform the test, do not use tools to communicate your results.
 </hints>
@@ -219,10 +251,12 @@ ${jsonResponseInstructions}
             debug,
             maxTokens: 8192,
             logger: (text) => appendToBuffer(text, false), // Don't prefix LLM outputs
-            mcpMode: false,
+            mcpMode: true,
+            mcpConfig: filesystemMCPConfig
           },
           tools
         );
+        await client.startMCP();
         // Execute with timeout
         const messages = await Promise.race([
           client.processQuery(prompt, systemPrompt),
@@ -407,5 +441,24 @@ ${jsonResponseInstructions}
       attempts,
       explanation: `Fatal error: ${error instanceof Error ? error.message : String(error)}`,
     };
+  } finally {
+    // Clean up resources
+    try {
+      // Stop the filesystem MCP client if it exists
+      if (filesystemClient) {
+        await filesystemClient.close();
+        if (debug) {
+          console.log(`Stopped filesystem MCP client`);
+        }
+      }
+      
+      // Clean up temporary directory
+      await TestEnvironmentManager.cleanup(tempDir);
+      if (debug) {
+        console.log(`Cleaned up temporary directory: ${tempDir}`);
+      }
+    } catch (error) {
+      console.error(`Error cleaning up resources: ${error}`);
+    }
   }
 }

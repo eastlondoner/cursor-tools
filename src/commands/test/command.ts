@@ -23,6 +23,7 @@ import {
   createTestReport,
   generateParallelStats,
 } from './command-utils';
+import { createFileProcessingQueue, processFeatureFile } from './file-processing';
 
 interface ExtendedTestOptions extends TestOptions {
   skipIntermediateOutput?: boolean;
@@ -92,187 +93,69 @@ export class TestCommand implements Command {
 
     if (isGlobPattern) {
       // Find all files matching the pattern
-      const filesStream = findFeatureBehaviorFiles(query);
-      yield `📂 Found feature behavior files matching pattern: ${query}\n`;
-
-      // Track overall statistics
-      let summaryTotalScenarios = 0;
-      let summaryPassedScenarios = 0;
-      let summaryFailedScenarios = 0;
-      let summaryTotalExecutionTime = 0;
-      const featureResults: { file: string; report: TestReport }[] = [];
-
-      // Process each file
-      for await (const file of filesStream) {
-        try {
-          const featureBehavior = await parseFeatureBehaviorFile(file);
-          if (!featureBehavior) {
-            yield `⚠️ Could not parse feature behavior file: ${file}\n`;
-            continue;
-          }
-
-          if (featureBehavior.scenarios.length === 0) {
-            yield `⚠️ No scenarios found in: ${file}\n`;
-            continue;
-          }
-
-          yield `📝 Processing ${featureBehavior.scenarios.length} scenarios from ${file}\n`;
-
-          // Filter scenarios if needed
-          let scenarios = featureBehavior.scenarios;
-          if (tags) {
-            scenarios = scenarios.filter(
-              (scenario) => scenario.tags && scenario.tags.some((tag) => tags.includes(tag))
-            );
-            yield `🏷️ Filtered to ${scenarios.length} scenarios with tags: ${tags.join(', ')}\n`;
-          }
-
-          if (options.scenarios) {
-            const numbers = options.scenarios
-              .split(',')
-              .map((num) => parseInt(num.trim(), 10))
-              .filter((num) => !isNaN(num) && num > 0);
-
-            if (numbers.length > 0) {
-              scenarios = scenarios.filter((scenario) => {
-                const scenarioNumber = parseInt(scenario.id.split(' ')[1], 10);
-                return numbers.includes(scenarioNumber);
-              });
-              yield `🔢 Filtered to ${scenarios.length} scenarios with numbers: ${numbers.join(', ')}\n`;
-            }
-          }
-
-          if (scenarios.length === 0) {
-            yield `⚠️ No matching scenarios in: ${file}\n`;
-            continue;
-          }
-
-          // Set up execution queue for this file
-          const startTime = Date.now();
-          const progressStats = {
-            totalScenarios: scenarios.length,
-            completedScenarios: 0,
-          };
-          const queue = createExecutionQueue(options, startTime, progressStats);
-          const resultPromises: Promise<TestScenarioResult | void>[] = [];
-
-          // Execute scenarios
-          for (const scenario of scenarios) {
-            const result = queue.add(async (): Promise<TestScenarioResult> => {
-              const scenarioId = scenario.id;
-              const scenarioOutputBuffer: string[] = [];
-
-              try {
-                const scenarioResult = await executeScenario(
-                  scenario,
-                  {
-                    provider,
-                    model,
-                    timeout,
-                    retryConfig,
-                    debug,
-                    mcpServers,
-                    scenarioId,
-                    outputBuffer: scenarioOutputBuffer,
-                  },
-                  geminiProvider()
-                );
-
-                scenarioResult.outputBuffer = scenarioOutputBuffer;
-                progressStats.completedScenarios++;
-                return scenarioResult;
-              } catch (error) {
-                const errorMessage = error instanceof Error ? error.message : String(error);
-                const failedResult: TestScenarioResult = {
-                  id: scenarioId,
-                  type: scenario.type,
-                  description: scenario.description,
-                  taskDescription: scenario.taskDescription,
-                  approachTaken: '',
-                  commands: [],
-                  output: '',
-                  outputBuffer: scenarioOutputBuffer,
-                  expectedBehavior: scenario.expectedBehavior.map((behavior) => ({
-                    behavior,
-                    met: false,
-                    explanation: 'Execution error',
-                  })),
-                  successCriteria: scenario.successCriteria.map((criteria) => ({
-                    criteria,
-                    met: false,
-                    explanation: 'Execution error',
-                  })),
-                  result: 'FAIL',
-                  executionTime: 0,
-                  attempts: 0,
-                  explanation: 'Failed to execute scenario',
-                  error: errorMessage,
-                };
-                progressStats.completedScenarios++;
-                return failedResult;
-              }
-            });
-
-            resultPromises.push(
-              result.then(async (result) => {
-                if (result && !options.skipIntermediateOutput) {
-                  await yieldOutput(
-                    `\n${'='.repeat(80)}\n` +
-                      `📝 Scenario: ${result.id}\n` +
-                      `${'='.repeat(80)}\n\n` +
-                      `${
-                        result.outputBuffer && result.outputBuffer.length > 0
-                          ? result.outputBuffer.join('')
-                          : 'No logs available for this scenario.\n'
-                      }` +
-                      `\n${'='.repeat(80)}\n\n`,
-                    options
-                  );
-                }
-              })
-            );
-          }
-
-          // Wait for all scenarios to complete
-          await queue.onIdle();
-          await Promise.allSettled(resultPromises);
-
-          const results = (await Promise.all(resultPromises)).filter(
-            (r): r is TestScenarioResult => !!r
-          );
-
-          const totalExecutionTime = (Date.now() - startTime) / 1000;
-
-          // Create and save report for this file
-          const testReport = createTestReport(
-            featureBehavior.name,
-            featureBehavior.description,
-            results,
-            branch,
-            provider,
-            model,
-            totalExecutionTime
-          );
-
-          const reportFilePath = path.join(branchOutputDir, getReportFilename(file));
-          await saveReportToFile(testReport, reportFilePath);
-          yield `📊 Report saved to: ${reportFilePath}\n`;
-
-          const resultFilePath = path.join(branchOutputDir, getResultFilename(file));
-          await saveResultToFile(testReport, resultFilePath);
-          yield `🏁 Result saved to: ${resultFilePath}\n`;
-
-          // Update summary statistics
-          summaryTotalScenarios += scenarios.length;
-          summaryPassedScenarios += results.filter((r) => r.result === 'PASS').length;
-          summaryFailedScenarios += testReport.failedScenarios.length;
-          summaryTotalExecutionTime += totalExecutionTime;
-          featureResults.push({ file, report: testReport });
-
-        } catch (error) {
-          yield `❌ Error processing ${file}: ${error instanceof Error ? error.message : String(error)}\n`;
-        }
+      const files: string[] = [];
+      for await (const file of findFeatureBehaviorFiles(query)) {
+        files.push(file);
       }
+      yield `📂 Found ${files.length} feature behavior files matching pattern: ${query}\n`;
+
+      // Create global stats for tracking
+      const globalStats = {
+        totalFiles: files.length,
+        completedFiles: 0,
+        totalScenarios: 0,
+        completedScenarios: 0,
+        passedScenarios: 0,
+        failedScenarios: 0,
+        totalExecutionTime: 0,
+      };
+
+      // Common configuration for all files
+      const commonConfig = {
+        provider,
+        model,
+        branchOutputDir,
+        branch,
+        timeout,
+        retryConfig,
+        debug,
+        mcpServers,
+        tags,
+      };
+
+      // Create a queue for file processing
+      const fileQueue = createFileProcessingQueue(options, globalStats);
+      
+      // Submit all files for processing
+      const fileResults: { file: string; report: TestReport | null }[] = [];
+      const filePromises: Promise<void>[] = [];
+
+      // Create a wrapper for outputCallback that handles yielding
+      const yieldWrapper = async (output: string) => {
+        if (!options.skipIntermediateOutput) {
+          await yieldOutput(output, options);
+        }
+      };
+
+      for (const file of files) {
+        const promise = fileQueue.add(async () => {
+          const result = await processFeatureFile(
+            file,
+            options,
+            commonConfig,
+            globalStats,
+            yieldWrapper
+          );
+          if (result.report) {
+            fileResults.push(result);
+          }
+        });
+        filePromises.push(promise);
+      }
+
+      // Wait for all file processing to complete
+      await fileQueue.onIdle();
+      await Promise.allSettled(filePromises);
 
       // Create and save overall summary report
       const overallSummaryReport = createTestReport(
@@ -282,10 +165,10 @@ export class TestCommand implements Command {
         branch,
         provider,
         model,
-        summaryTotalExecutionTime
+        globalStats.totalExecutionTime
       );
-      overallSummaryReport.failedScenarios = featureResults
-        .filter((fr) => fr.report.overallResult === 'FAIL')
+      overallSummaryReport.failedScenarios = fileResults
+        .filter((fr) => fr.report?.overallResult === 'FAIL')
         .map((fr) => fr.file);
 
       const summaryReportFilePath = path.join(
@@ -307,26 +190,25 @@ export class TestCommand implements Command {
 ---------------------------------------------------------
 📊 Overall Test Summary:
 ---------------------------------------------------------
-🧪 Total Scenarios: ${summaryTotalScenarios}
-✅ Passed Scenarios: ${summaryPassedScenarios}
-❌ Failed Scenarios: ${summaryFailedScenarios}${
-        summaryFailedScenarios > 0
-          ? `\n${featureResults
-              .filter((fr) => fr.report.overallResult === 'FAIL')
+🧪 Total Scenarios: ${globalStats.totalScenarios}
+✅ Passed Scenarios: ${globalStats.passedScenarios}
+❌ Failed Scenarios: ${globalStats.failedScenarios}${
+        globalStats.failedScenarios > 0
+          ? `\n${fileResults
+              .filter((fr) => fr.report?.overallResult === 'FAIL')
               .map(
                 (fr) =>
-                  `  - Feature File: ${fr.file} - Failed Scenarios: ${fr.report.failedScenarios.join(
+                  `  - Feature File: ${fr.file} - Failed Scenarios: ${fr.report?.failedScenarios.join(
                     ', '
                   )}`
               )
               .join('\n')}`
           : ''
       }
-⏱️ Total Execution Time: ${summaryTotalExecutionTime.toFixed(2)}s
-🏁 Overall Result: ${summaryFailedScenarios === 0 ? '✅ PASS' : '❌ FAIL'}
+⏱️ Total Execution Time: ${globalStats.totalExecutionTime.toFixed(2)}s
+🏁 Overall Result: ${globalStats.failedScenarios === 0 ? '✅ PASS' : '❌ FAIL'}
 ---------------------------------------------------------
 `;
-
     } else {
       // Single file processing
       const featureBehavior = await parseFeatureBehaviorFile(query);
@@ -444,7 +326,7 @@ export class TestCommand implements Command {
 
         resultPromises.push(
           result.then(async (result) => {
-            if (result) {
+            if (result && !options.skipIntermediateOutput) {
               await yieldOutput(
                 `\n${'='.repeat(80)}\n` +
                   `📝 Scenario: ${result.id}\n` +
@@ -510,17 +392,15 @@ export class TestCommand implements Command {
 - Total scenarios: ${scenarios.length}
 - Passed: ${scenarios.length - testReport.failedScenarios.length}
 - Failed: ${testReport.failedScenarios.length}${
-        testReport.failedScenarios.length > 0
-          ? ` (${testReport.failedScenarios.join(', ')})`
-          : ''
+        testReport.failedScenarios.length > 0 ? ` (${testReport.failedScenarios.join(', ')})` : ''
       }
 - Overall result: ${testReport.overallResult}
 - Total execution time: ${totalExecutionTime.toFixed(2)}s
 ${
-        parallel > 1
-          ? generateParallelStats(parallel, sequentialEstimatedTime, totalExecutionTime, results)
-          : ''
-      }`;
+  parallel > 1
+    ? generateParallelStats(parallel, sequentialEstimatedTime, totalExecutionTime, results)
+    : ''
+}`;
     }
   }
 }

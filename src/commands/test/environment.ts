@@ -18,7 +18,9 @@ export class TestEnvironmentManager {
     // Create a unique directory name with timestamp and random suffix for collision avoidance
     const timestamp = Date.now();
     const randomSuffix = crypto.randomBytes(4).toString('hex');
-    const dirName = `cursor-tools-test-${scenarioId.replace(/\//g, '-')}-${timestamp}-${randomSuffix}`;
+    // Replace any whitespace and special characters with hyphens to ensure no whitespace in directory names
+    const sanitizedScenarioId = scenarioId.replace(/[\s\W]+/g, '-');
+    const dirName = `cursor-tools-test-${sanitizedScenarioId}-${timestamp}-${randomSuffix}`;
     const tempDir = path.join(os.tmpdir(), dirName);
 
     // Ensure the directory exists

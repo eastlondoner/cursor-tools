@@ -196,6 +196,9 @@ export class UnifiedLLMClient {
 
     // Initialize MCP client if in MCP mode
     if (this.config.mcpMode && this.config.mcpConfig) {
+      if (this.config.debug) {
+        console.log('Initializing MCP client...', this.config.mcpConfig.command, this.config.mcpConfig.args);
+      }
       this.initMCPClient();
     }
 
@@ -212,13 +215,13 @@ export class UnifiedLLMClient {
         messages: transformToOpenRouterMessages(messages, systemPrompt),
         model: this.config.model,
         max_tokens: this.config.maxTokens,
-        tools: this.tools as ChatCompletionTool[],
+        tools: [], // deliberately no tools
       })) ??
       (await this.anthropicClient?.messages.create({
         messages: transformToAnthropicMessages(messages),
         model: this.config.model,
         max_tokens: this.config.maxTokens,
-        tools: [], //
+        tools: [], // deliberately no tools
       }));
 
     if (!result) {
@@ -245,10 +248,14 @@ export class UnifiedLLMClient {
    * Process a user query with tool execution
    * @param query The user query to process
    * @param systemPrompt The system prompt to use
-   * @param maxApiCalls Maximum number of API calls allowed (default: unlimited)
+   * @param maxApiCalls Maximum number of API calls allowed (default: 30)
    * @returns Array of messages representing the conversation
    */
-  async processQuery(query: string, systemPrompt: string, maxApiCalls?: number): Promise<InternalMessage[]> {
+  async processQuery(
+    query: string,
+    systemPrompt: string,
+    maxApiCalls: number = 30
+  ): Promise<InternalMessage[]> {
     try {
       // Add user message
       this.messages.push({
@@ -262,7 +269,7 @@ export class UnifiedLLMClient {
       const model =
         this.config.model ||
         (provider === 'anthropic' ? 'claude-3-7-sonnet-latest' : 'anthropic/claude-3-7-sonnet');
-      
+
       // Track API call count if maxApiCalls is specified
       let apiCallCount = 0;
 
@@ -282,24 +289,28 @@ export class UnifiedLLMClient {
             }
           });
         }
-        
+
         // Check if we've reached the maximum number of API calls
         if (maxApiCalls !== undefined && apiCallCount >= maxApiCalls) {
           const errorMessage = `Maximum number of API calls (${maxApiCalls}) reached.`;
           this.logger(`\n${errorMessage}`);
-          
+
           // Add an error message to the conversation
           this.messages.push({
             role: 'assistant',
-            content: `I'm sorry, but I've reached the maximum number of API calls allowed (${maxApiCalls}) for this request. The conversation has been terminated to prevent excessive API usage.`
+            content: `I'm sorry, but I've reached the maximum number of AI tool API calls allowed for this request (${maxApiCalls}). To prevent excessive usage and unexpected costs, I've terminated this conversation. If you need a more complex task completed, consider breaking it down into smaller steps or increasing the 'maxApiCalls' limit if possible.`,
           });
-          
+
           // Break out of the conversation loop
           break;
         }
-        
+
         // Increment the API call counter
         apiCallCount++;
+
+        if (this.config.debug) {
+          this.logger(`\n[API Call ${apiCallCount}${maxApiCalls ? ` of max ${maxApiCalls}` : ''}] Sending ${this.messages.length} messages to ${model} for chat completion...`);
+        }
 
         if (provider === 'openrouter' && this.openrouterClient) {
           const response = await this.openrouterClient.chat.completions.create({
