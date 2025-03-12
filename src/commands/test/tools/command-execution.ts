@@ -1,6 +1,10 @@
+import type {
+  ToolDefinition,
+  ToolExecutionResult,
+} from '../../../utils/tool-enabled-llm/unified-client';
+
 import * as childProcess from 'child_process';
 import { promisify } from 'util';
-import { ToolDefinition, ToolExecutionResult } from '../../../utils/tool-enabled-llm/client';
 
 const exec = promisify(childProcess.exec);
 

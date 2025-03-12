@@ -2,7 +2,13 @@ import type { Command, CommandGenerator, CommandOptions, Config, Provider } from
 import { defaultMaxTokens, loadConfig, loadEnv } from '../config';
 import { pack } from 'repomix';
 import { readFileSync } from 'node:fs';
-import { FileError, NetworkError, ProviderError } from '../errors';
+import {
+  ApiKeyMissingError,
+  CursorToolsError,
+  FileError,
+  NetworkError,
+  ProviderError,
+} from '../errors';
 import type { ModelOptions, BaseModelProvider } from '../providers/base';
 import { createProvider } from '../providers/base';
 import { ModelNotFoundError } from '../errors';
@@ -11,6 +17,7 @@ import {
   getAllProviders,
   getNextAvailableProvider,
   getDefaultModel,
+  PROVIDER_PREFERENCE,
 } from '../utils/providerAvailability';
 
 interface DocCommandOptions extends CommandOptions {
@@ -203,6 +210,9 @@ Please:
     try {
       console.error('Generating repository documentation...\n');
 
+      // Validate API keys before proceeding
+      this.validateApiKeys(options);
+
       let repoContext: { text: string; tokenCount: number };
 
       if (options?.hint) {
@@ -249,13 +259,33 @@ Please:
         }
       }
 
+      // Check if repository is empty or nearly empty
+      const isEmptyRepo = repoContext.text.trim() === '' || repoContext.tokenCount < 50;
+      if (isEmptyRepo) {
+        console.error('Repository appears to be empty or contains minimal code.');
+        yield '\n\n\u2139\uFE0F Repository Notice: This repository appears to be empty or contains minimal code.\n';
+        yield 'Basic structure documentation:\n';
+
+        // Generate minimal documentation for empty repository
+        if (options?.fromGithub) {
+          const { username, reponame } = this.parseGithubUrl(options.fromGithub);
+          yield `Repository: ${username}/${reponame}\n`;
+          yield 'Status: Empty or minimal content\n';
+        } else {
+          const currentDir = process.cwd().split('/').pop() || 'current directory';
+          yield `Repository: ${currentDir}\n`;
+          yield 'Status: Empty or minimal content\n';
+        }
+
+        yield '\nRecommendation: Add more code files to generate comprehensive documentation.\n';
+        return;
+      }
+
       // If provider is explicitly specified, try only that provider
       if (options?.provider) {
         const providerInfo = getAllProviders().find((p) => p.provider === options.provider);
         if (!providerInfo?.available) {
-          throw new ProviderError(
-            `Provider ${options.provider} is not available. Please check your API key configuration.`
-          );
+          throw new ApiKeyMissingError(options.provider);
         }
         yield* this.tryProvider(options.provider, query, repoContext, options);
         return;
@@ -274,6 +304,10 @@ Please:
 
       // Otherwise try providers in preference order
       let currentProvider = getNextAvailableProvider('doc');
+      if (!currentProvider) {
+        throw new ApiKeyMissingError('AI');
+      }
+
       while (currentProvider) {
         try {
           yield* this.tryProvider(currentProvider, query, repoContext, options);
@@ -290,20 +324,66 @@ Please:
 
       // If we get here, no providers worked
       throw new ProviderError(
-        'No suitable AI provider available for doc command. Please ensure at least one of the following API keys are set: GEMINI_API_KEY, OPENAI_API_KEY, OPENROUTER_API_KEY, PERPLEXITY_API_KEY, MODELBOX_API_KEY.'
+        'No suitable AI provider available for doc command. Please ensure at least one of the following API keys are set in your ~/.cursor-tools/.env file: GEMINI_API_KEY, OPENAI_API_KEY, OPENROUTER_API_KEY, PERPLEXITY_API_KEY, MODELBOX_API_KEY.'
       );
     } catch (error) {
-      // console.error errors and then throw
-      if (error instanceof Error) {
+      // Format and yield error message
+      if (error instanceof CursorToolsError) {
+        const errorMessage = error.formatUserMessage(options?.debug);
+        console.error('Error in doc command:', errorMessage);
+        yield `\n❌ Error: ${errorMessage}\n`;
+
+        if (error instanceof ApiKeyMissingError) {
+          yield `\nPlease set up the required API keys in your ~/.cursor-tools/.env file.\n`;
+          yield `For more information, visit: https://github.com/cursor-ai/cursor-tools#api-keys\n`;
+        }
+      } else if (error instanceof Error) {
         console.error('Error in doc command:', error.message);
-        if ('details' in error && options?.debug) {
-          console.error(`Debug details: ${JSON.stringify(error.details, null, 2)}\n`);
-          throw error;
+        yield `\n❌ Error: ${error.message}\n`;
+
+        if (options?.debug && error.stack) {
+          console.error(error.stack);
         }
       } else {
         console.error('An unknown error occurred in doc command:', error);
-        throw new Error('An unknown error occurred in doc command');
+        yield `\n❌ Error: An unknown error occurred in the doc command.\n`;
       }
+
+      // Always throw the error to terminate the generator
+      throw error;
+    }
+  }
+
+  /**
+   * Validates that at least one required API key is available for the doc command
+   * @param options Command options
+   * @throws ApiKeyMissingError if no required API keys are found
+   */
+  private validateApiKeys(options: DocCommandOptions): void {
+    // If a specific provider is requested, validate just that provider
+    if (options?.provider) {
+      const providerInfo = getAllProviders().find((p) => p.provider === options.provider);
+      if (!providerInfo?.available) {
+        throw new ApiKeyMissingError(options.provider);
+      }
+      return;
+    }
+
+    // Check if any of the preferred providers for doc command are available
+    const docProviders = PROVIDER_PREFERENCE.doc;
+    const availableProviders = getAllProviders().filter((p) => p.available);
+
+    // Check if any of the preferred providers are available
+    const hasAvailableProvider = docProviders.some((provider) =>
+      availableProviders.some((p) => p.provider === provider)
+    );
+
+    if (!hasAvailableProvider) {
+      // No providers available, throw error with list of required API keys
+      throw new ProviderError(
+        `No available providers for doc command`,
+        `Run cursor-tools install and provide an API key for one of these providers: ${docProviders.join(', ')}`
+      );
     }
   }
 

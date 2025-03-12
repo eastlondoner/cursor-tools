@@ -4,7 +4,7 @@ import type { Command } from '../../types';
 import { loadEnv, loadConfig } from '../../config';
 import { yieldOutput } from '../../utils/output';
 import { TestError, FeatureFileParseError } from '../../errors';
-import { TestOptions, RetryConfig, TestReport, TestScenarioResult, TestScenario } from './types';
+import { TestOptions, TestReport, TestScenarioResult } from './types';
 import { parseFeatureBehaviorFile } from './parser';
 import { executeScenario } from './executor-new';
 import { saveReportToFile, saveResultToFile, compareReports } from './reporting';
@@ -125,7 +125,7 @@ export class TestCommand implements Command {
 
       // Create a queue for file processing
       const fileQueue = createFileProcessingQueue(options, globalStats);
-      
+
       // Submit all files for processing
       const fileResults: { file: string; report: TestReport | null }[] = [];
       const filePromises: Promise<void>[] = [];
@@ -167,9 +167,25 @@ export class TestCommand implements Command {
         model,
         globalStats.totalExecutionTime
       );
-      overallSummaryReport.failedScenarios = fileResults
+
+      // Set the passedScenarios property directly from globalStats
+      overallSummaryReport.passedScenarios = globalStats.passedScenarios;
+
+      // Update the failedScenarios list with actual failed file paths
+      const failedFiles = fileResults
         .filter((fr) => fr.report?.overallResult === 'FAIL')
         .map((fr) => fr.file);
+
+      // If we have specific failed scenarios from individual reports, use those
+      // Otherwise, just use the file paths as the failed scenarios list
+      if (failedFiles.length > 0) {
+        overallSummaryReport.failedScenarios = failedFiles;
+      } else {
+        // Create dummy failed scenario IDs if needed
+        overallSummaryReport.failedScenarios = Array(globalStats.failedScenarios)
+          .fill(0)
+          .map((_, i) => `failed-scenario-${i + 1}`);
+      }
 
       const summaryReportFilePath = path.join(
         outputDir,

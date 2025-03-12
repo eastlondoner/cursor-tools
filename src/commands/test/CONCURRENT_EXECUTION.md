@@ -9,11 +9,11 @@ In the current implementation of `runTests` in `command.ts`, when processing mul
 for await (const file of filesStream) {
   try {
     // Process the file...
-    
+
     // Wait for all scenarios to complete
     await queue.onIdle();
     await Promise.allSettled(resultPromises);
-    
+
     // Process results and create report...
   } catch (error) {
     // Handle error...
@@ -30,15 +30,18 @@ Refactor the code to process multiple files concurrently, allowing for better re
 ### Implementation Plan
 
 1. **Collect All Files First**
+
    - Replace the `for await` loop with collecting all files into an array first
    - Use the existing `findFeatureBehaviorFilesArray` function in `utils.ts` instead of the async generator
 
 2. **Create a File Processing Queue**
+
    - Use the existing `PQueue` library to create a file-level queue
    - Add a new `fileConcurrency` option to control the maximum number of files processed concurrently
    - Leverage the existing queue management patterns from the scenario execution code
 
 3. **Process Files Concurrently**
+
    - Extract the file processing logic into a separate function
    - Submit each file to the file processing queue
    - Track file processing results and promises
@@ -103,8 +106,12 @@ export async function processFeatureFile(
     }
 
     // Filter scenarios if needed (based on tags and scenario numbers)
-    let scenarios = filterScenarios(featureBehavior.scenarios, commonConfig.tags, options.scenarios);
-    
+    let scenarios = filterScenarios(
+      featureBehavior.scenarios,
+      commonConfig.tags,
+      options.scenarios
+    );
+
     if (scenarios.length === 0) {
       await outputCallback(`⚠️ No matching scenarios in: ${file}\n`);
       return { file, report: null };
@@ -112,33 +119,31 @@ export async function processFeatureFile(
 
     // Update global stats
     globalStats.totalScenarios += scenarios.length;
-    
+
     // Execute scenarios (similar to existing code)
     const startTime = Date.now();
     const progressStats = {
       totalScenarios: scenarios.length,
       completedScenarios: 0,
     };
-    
+
     const queue = createExecutionQueue(options, startTime, progressStats);
     const resultPromises: Promise<TestScenarioResult | void>[] = [];
-    
+
     // Add scenarios to the queue
     for (const scenario of scenarios) {
       // ... Add scenarios to queue (existing code)
     }
-    
+
     // Wait for scenarios to complete
     await queue.onIdle();
     await Promise.allSettled(resultPromises);
-    
+
     // Process results and create report
-    const results = (await Promise.all(resultPromises)).filter(
-      (r): r is TestScenarioResult => !!r
-    );
-    
+    const results = (await Promise.all(resultPromises)).filter((r): r is TestScenarioResult => !!r);
+
     const totalExecutionTime = (Date.now() - startTime) / 1000;
-    
+
     // Create and save report
     const testReport = createTestReport(
       featureBehavior.name,
@@ -149,23 +154,25 @@ export async function processFeatureFile(
       commonConfig.model,
       totalExecutionTime
     );
-    
+
     // Save report files
     const reportFilePath = path.join(commonConfig.branchOutputDir, getReportFilename(file));
     await saveReportToFile(testReport, reportFilePath);
-    
+
     const resultFilePath = path.join(commonConfig.branchOutputDir, getResultFilename(file));
     await saveResultToFile(testReport, resultFilePath);
-    
+
     // Update global statistics
     globalStats.completedScenarios += scenarios.length;
-    globalStats.passedScenarios += results.filter(r => r.result === 'PASS').length;
+    globalStats.passedScenarios += results.filter((r) => r.result === 'PASS').length;
     globalStats.failedScenarios += testReport.failedScenarios.length;
     globalStats.completedFiles += 1;
-    
+
     return { file, report: testReport };
   } catch (error) {
-    await outputCallback(`❌ Error processing ${file}: ${error instanceof Error ? error.message : String(error)}\n`);
+    await outputCallback(
+      `❌ Error processing ${file}: ${error instanceof Error ? error.message : String(error)}\n`
+    );
     return { file, report: null };
   }
 }
@@ -174,24 +181,24 @@ export async function processFeatureFile(
  * Helper function to filter scenarios based on tags and scenario numbers
  */
 export function filterScenarios(
-  scenarios: TestScenario[], 
-  tags?: string[], 
+  scenarios: TestScenario[],
+  tags?: string[],
   scenarioNumbers?: string
 ): TestScenario[] {
   let filteredScenarios = [...scenarios];
-  
+
   if (tags) {
     filteredScenarios = filteredScenarios.filter(
       (scenario) => scenario.tags && scenario.tags.some((tag) => tags.includes(tag))
     );
   }
-  
+
   if (scenarioNumbers) {
     const numbers = scenarioNumbers
       .split(',')
       .map((num) => parseInt(num.trim(), 10))
       .filter((num) => !isNaN(num) && num > 0);
-      
+
     if (numbers.length > 0) {
       filteredScenarios = filteredScenarios.filter((scenario) => {
         const scenarioNumber = parseInt(scenario.id.split(' ')[1], 10);
@@ -199,7 +206,7 @@ export function filterScenarios(
       });
     }
   }
-  
+
   return filteredScenarios;
 }
 
@@ -221,17 +228,16 @@ export function createFileProcessingQueue(
   const queue = new PQueue({ concurrency: fileConcurrency });
   let lastReportTime = Date.now();
   const reportInterval = 5000; // Report every 5 seconds
-  
+
   queue.on('active', () => {
-    const fileProgress = Math.round(
-      (globalStats.completedFiles / globalStats.totalFiles) * 100
-    );
-    const scenarioProgress = globalStats.totalScenarios > 0
-      ? Math.round((globalStats.completedScenarios / globalStats.totalScenarios) * 100)
-      : 0;
-    
+    const fileProgress = Math.round((globalStats.completedFiles / globalStats.totalFiles) * 100);
+    const scenarioProgress =
+      globalStats.totalScenarios > 0
+        ? Math.round((globalStats.completedScenarios / globalStats.totalScenarios) * 100)
+        : 0;
+
     const currentTime = Date.now();
-    
+
     // Only report at intervals to avoid excessive output
     if (currentTime - lastReportTime > reportInterval || queue.size < fileConcurrency) {
       const statusMessage = `
@@ -242,15 +248,15 @@ export function createFileProcessingQueue(
 ❌ Failed: ${globalStats.failedScenarios}
 🔄 Current processing: ${queue.size} files
 `;
-      
+
       void yieldOutput(statusMessage, options).catch((err) =>
         console.error('Error yielding progress output:', err)
       );
-      
+
       lastReportTime = currentTime;
     }
   });
-  
+
   return queue;
 }
 ```
@@ -318,7 +324,7 @@ private async *runTests(
 
     // Create a queue for file processing
     const fileQueue = createFileProcessingQueue(options, globalStats);
-    
+
     // Submit all files for processing
     const fileResults: { file: string; report: TestReport | null }[] = [];
     const filePromises: Promise<void>[] = [];
@@ -367,16 +373,19 @@ private async *runTests(
 ## Performance Considerations
 
 1. **Balance Between File and Scenario Concurrency**:
+
    - The system now has two levels of concurrency: file-level and scenario-level
    - Total concurrent operations = `fileConcurrency × parallel`
    - Setting these too high could overwhelm system resources
 
 2. **Memory Usage**:
+
    - Processing multiple files concurrently will increase memory usage
    - Each file's scenarios and results will be held in memory
    - Default `fileConcurrency` of 3 is conservative to avoid memory issues
 
 3. **I/O Operations**:
+
    - Multiple concurrent file writes could occur when saving reports
    - File system performance may impact overall speed
 
@@ -388,11 +397,13 @@ private async *runTests(
 
 For a test suite with 10 files, each containing 5 scenarios, the expected improvements are:
 
-1. **Sequential Processing (Current)**: 
+1. **Sequential Processing (Current)**:
+
    - Process time = Sum of all file processing times
    - If each file takes ~60 seconds, total time = ~600 seconds
 
 2. **Concurrent Processing (3 files)**:
+
    - Process time ≈ (Total files / concurrency) × avg file time
    - With 3 concurrent files: ~200 seconds (3× faster)
 
@@ -400,6 +411,7 @@ For a test suite with 10 files, each containing 5 scenarios, the expected improv
    - With 5 concurrent files: ~120 seconds (5× faster)
 
 The actual improvement will depend on:
+
 - The number of files
 - The complexity of scenarios
 - System resources
@@ -414,4 +426,4 @@ The actual improvement will depend on:
 5. Add the `fileConcurrency` option to the CLI command
 6. Update the `TestOptions` interface in `types.ts`
 7. Test with various concurrency settings
-8. Document the new feature in the README.md 
+8. Document the new feature in the README.md

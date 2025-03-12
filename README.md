@@ -897,6 +897,9 @@ cursor-tools repo "Show me examples of error handling in this codebase"
 
 # Debugging help
 cursor-tools repo "Why might the authentication be failing in the login flow?"
+
+# Analyze specific subdirectory
+cursor-tools repo "Explain the code structure" --subdir=src/components
 ```
 
 #### Documentation Examples

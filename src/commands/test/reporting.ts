@@ -33,7 +33,17 @@ export function formatReportAsMarkdown(report: TestReport): string {
   markdown += `- **Provider:** ${provider}\n`;
   markdown += `- **Model:** ${model}\n`;
   markdown += `- **Total Execution Time:** ${totalExecutionTime.toFixed(2)} seconds\n`;
-  markdown += `- **Scenarios:** ${scenarios.length} total, ${scenarios.filter((s) => s.result === 'PASS').length} passed, ${failedScenarios.length} failed\n\n`;
+
+  // Use the passedScenarios property if available, otherwise count from scenarios array
+  const passedCount =
+    report.passedScenarios !== undefined
+      ? report.passedScenarios
+      : scenarios.filter((s) => s.result === 'PASS').length;
+
+  // Calculate total scenarios count - for summary reports, this might not match scenarios.length
+  const totalCount = passedCount + failedScenarios.length;
+
+  markdown += `- **Scenarios:** ${totalCount} total, ${passedCount} passed, ${failedScenarios.length} failed\n\n`;
 
   // Description section
   markdown += `## Description\n\n${description}\n\n`;

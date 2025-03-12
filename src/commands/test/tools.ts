@@ -1,12 +1,16 @@
+import type {
+  ToolDefinition,
+  ToolExecutionResult,
+} from '../../utils/tool-enabled-llm/unified-client';
+
 import * as util from 'util';
 import * as fs from 'fs';
 import * as child_process from 'child_process';
-import { ToolDefinition, ToolExecutionResult } from '../../utils/tool-enabled-llm/client';
 
 const execAsync = util.promisify(child_process.exec);
 
 // Whitelist of permitted shell commands that can be executed directly
-const WHITELISTED_COMMANDS = ['ls', 'cat', 'grep', 'find', 'sqlite3'];
+const WHITELISTED_COMMANDS = ['ls', 'cat', 'grep', 'find', 'pwd', 'sqlite3', 'test'];
 
 /**
  * Creates a tool for executing cursor-tools commands in an isolated environment.

@@ -139,8 +139,8 @@ export class MarketplaceManager {
     // Use Gemini to find semantic matches
     const provider = createProvider('gemini');
 
-    const prompt = `You are a semantic search expert. Given a list of MCP servers and a search query, return ONLY the mcpIds of servers that best match the query.
-Do not include any explanation or other text, just return a JSON array of mcpId strings.
+    const prompt = `You are a semantic search expert. Given a list of MCP servers and a search query, return ONLY the mcpIds of servers that are very likely to be able to satisfy the users request or query.
+Do not include any explanation or other text, just return a JSON array of mcpId strings. If there are no suitable servers, return an empty json array.
 
 Search Query: "${query}"
 

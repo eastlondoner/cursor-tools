@@ -190,10 +190,10 @@ export async function executeScenario(
         const allowedPaths = tempDir === tempDirRealPath ? [tempDir] : [tempDir, tempDirRealPath];
         // Initialize filesystem MCP client
         const filesystemMCPConfig: StdioServerParameters = {
-          command: "npx",
-          args: ["-y", "@modelcontextprotocol/server-filesystem", ...allowedPaths]
+          command: 'npx',
+          args: ['-y', '@modelcontextprotocol/server-filesystem', ...allowedPaths],
         };
-        
+
         // Create tool definitions
         const tools = [
           createCommandExecutionTool({
@@ -252,7 +252,7 @@ ${jsonResponseInstructions}
             maxTokens: 8192,
             logger: (text) => appendToBuffer(text, false), // Don't prefix LLM outputs
             mcpMode: true,
-            mcpConfig: filesystemMCPConfig
+            mcpConfig: filesystemMCPConfig,
           },
           tools
         );
@@ -451,7 +451,7 @@ ${jsonResponseInstructions}
           console.log(`Stopped filesystem MCP client`);
         }
       }
-      
+
       // Clean up temporary directory
       await TestEnvironmentManager.cleanup(tempDir);
       if (debug) {

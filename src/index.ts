@@ -30,6 +30,7 @@ type CLIStringOption =
   // Context options
   | 'hint'
   | 'fromGithub'
+  | 'subdir'
   // Browser options
   | 'url'
   | 'screenshot'
@@ -85,6 +86,7 @@ interface CLIOptions {
   // Context options
   hint?: string;
   fromGithub?: string;
+  subdir?: string;
 
   // Browser options
   url?: string;
@@ -132,6 +134,7 @@ const OPTION_KEYS: Record<string, CLIOptionKey> = {
   // Context options
   hint: 'hint',
   fromgithub: 'fromGithub',
+  subdir: 'subdir',
 
   // Browser options
   url: 'url',

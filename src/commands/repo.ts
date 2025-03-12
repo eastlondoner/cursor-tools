@@ -2,7 +2,8 @@ import type { Command, CommandGenerator, CommandOptions, Provider } from '../typ
 import type { Config } from '../types';
 import { defaultMaxTokens, loadConfig, loadEnv } from '../config';
 import { pack } from 'repomix';
-import { Mode, readFileSync } from 'node:fs';
+import { Mode, readFileSync, existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { FileError, ProviderError } from '../errors';
 import type { ModelOptions, BaseModelProvider } from '../providers/base';
 import { createProvider } from '../providers/base';
@@ -24,6 +25,20 @@ export class RepoCommand implements Command {
 
   async *execute(query: string, options: CommandOptions & Partial<ModelOptions>): CommandGenerator {
     try {
+      // Determine the directory to analyze. If a subdirectory is provided, resolve it relative to the current working directory.
+      const targetDirectory = options.subdir
+        ? resolve(process.cwd(), options.subdir)
+        : process.cwd();
+
+      // Validate that the target directory exists
+      if (options.subdir && !existsSync(targetDirectory)) {
+        throw new FileError(`The directory "${targetDirectory}" does not exist.`);
+      }
+
+      if (options.subdir) {
+        yield `Analyzing subdirectory: ${options.subdir}\n`;
+      }
+
       let cursorRules =
         'If generating code observe rules from the .cursorrules file and contents of the .cursor/rules folder';
 
@@ -42,7 +57,7 @@ export class RepoCommand implements Command {
 
       let packResult: AsyncReturnType<typeof pack> | undefined;
       try {
-        packResult = await pack([process.cwd()], {
+        packResult = await pack([targetDirectory], {
           output: {
             ...outputOptions,
             filePath: '.repomix-output.txt',
@@ -59,7 +74,7 @@ export class RepoCommand implements Command {
           tokenCount: {
             encoding: this.config.tokenCount?.encoding || 'o200k_base',
           },
-          cwd: process.cwd(),
+          cwd: targetDirectory,
         });
         console.log(
           `Packed repository. ${packResult.totalFiles} files. Approximate size ${packResult.totalTokens} tokens.`
@@ -189,6 +204,6 @@ async function analyzeRepository(
   return provider.executePrompt(`${props.cursorRules}\n\n${props.repoContext}\n\n${props.query}`, {
     ...options,
     systemPrompt:
-      "You are an expert software developer analyzing a repository. Follow user instructions exactly and satisfy the user's request.",
+      "You are an expert software developer analyzing a repository. You should provide a comprehensive response to the user's request. In your response inclulde a list of all the files that were relevant to answering the user's request. Follow user instructions exactly and satisfy the user's request.",
   });
 }

@@ -18,6 +18,7 @@ export interface CommandOptions {
 
   // Context options
   hint?: string; // Additional context or hint for the AI
+  subdir?: string; // Subdirectory to analyze (for repo command)
 
   // Plan command specific options
   fileProvider?: Provider;

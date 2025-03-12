@@ -193,3 +193,39 @@ Then create a .repomixignore file using the content from {{path:repomixignore-wi
 **Success Criteria:**
 - Command succeeds on both queries
 - The second query has much lower token usage
+
+### Scenario 12: Subdirectory Analysis (Happy Path)
+**Tags:** subdir, parameters
+**Task Description:**
+Use cursor-tools to analyze a specific subdirectory of the repository instead of the entire repository by using the `--subdir` parameter.
+
+**Expected Behavior:**
+- The AI agent should include the `--subdir` parameter in the command
+- The response should include information specific to the subdirectory
+- The command should complete successfully without errors
+- The token usage should be less than analyzing the entire repository
+
+**Success Criteria:**
+- AI agent correctly includes the `--subdir` parameter in the command
+- Response contains information specific to the subdirectory
+- Response demonstrates understanding of the subdirectory context
+- Token usage is less compared to analyzing the entire repository
+- No error messages are displayed
+- The command output does not include unnecessarily verbose or debugging messages
+- The command output does not include any security tokens or API keys
+
+### Scenario 13: Subdirectory Analysis with Invalid Path (Error Handling)
+**Tags:** subdir, error-handling
+**Task Description:**
+Attempt to use cursor-tools to analyze a non-existent subdirectory using the `--subdir` parameter.
+
+**Expected Behavior:**
+- When using a non-existent subdirectory path, the command should fail with a clear error message
+- Error message should mention that the specified subdirectory does not exist
+- Error message should provide guidance on using a valid subdirectory path
+
+**Success Criteria:**
+- AI agent recognizes the invalid subdirectory path error
+- Command fails gracefully with an informative error message
+- Error message clearly indicates that the specified subdirectory does not exist
+- No partial or corrupted output is generated

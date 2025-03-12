@@ -89,6 +89,7 @@ Attempt to use cursor-tools to generate documentation for a repository with an i
 ### Scenario 6: Documentation Generation with Missing API Key (Error Handling)
 **Task Description:**
 Attempt to use cursor-tools to generate documentation when required API keys are missing.
+To simulate missing API keys, set CURSOR_TOOLS_ENV_UNSET=GEMINI_API_KEY when running the command and specify the gemini provider explicitly.
 
 **Expected Behavior:**
 - When the API key is not available, the command should fail with a clear error message

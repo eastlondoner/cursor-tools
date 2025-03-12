@@ -1,6 +1,6 @@
 import type { Command, CommandGenerator, CommandOptions } from '../../types';
 import { MarketplaceManager, type MCPServer } from './marketplace.js';
-import { InternalMessage, MCPClient } from './client/MCPClient.js';
+import { InternalMessage } from './client/MCPClientNew.js';
 import { MCPConfigError } from './client/errors.js';
 import { createProvider } from '../../providers/base';
 import { once } from '../../utils/once.js';

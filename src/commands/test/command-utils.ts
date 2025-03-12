@@ -1,6 +1,13 @@
 import * as os from 'os';
 import PQueue from 'p-queue';
-import { TestOptions, RetryConfig, TestReport, TestScenarioResult, TestScenario, FeatureBehavior } from './types';
+import {
+  TestOptions,
+  RetryConfig,
+  TestReport,
+  TestScenarioResult,
+  TestScenario,
+  FeatureBehavior,
+} from './types';
 import { createProvider } from '../../providers/base';
 import { once } from '../../utils/once';
 import { yieldOutput } from '../../utils/output';
@@ -43,7 +50,7 @@ export function setupProviderAndModel(options: TestOptions): {
 
   const model =
     options.model ||
-    (provider === 'anthropic' ? 'claude-3-7-sonnet-latest' : 'anthropic/claude-3.7-sonnet');
+    (provider === 'anthropic' ? 'claude-3-5-haiku-latest' : 'anthropic/claude-3.5-haiku');
 
   return { provider, model };
 }
@@ -133,6 +140,7 @@ export function createTestReport(
   totalExecutionTime: number
 ): TestReport {
   const failedScenarios = scenarios.filter((r) => r.result === 'FAIL').map((r) => r.id);
+  const passedScenarios = scenarios.filter((r) => r.result === 'PASS').length;
   const overallResult = failedScenarios.length === 0 ? 'PASS' : 'FAIL';
 
   return {
@@ -147,6 +155,7 @@ export function createTestReport(
     nodeVersion: process.version,
     overallResult,
     failedScenarios,
+    passedScenarios,
     totalExecutionTime,
   };
 }
@@ -181,24 +190,24 @@ export function generateParallelStats(
  * Helper function to filter scenarios based on tags and scenario numbers
  */
 export function filterScenarios(
-  scenarios: TestScenario[], 
-  tags?: string[], 
+  scenarios: TestScenario[],
+  tags?: string[],
   scenarioNumbers?: string
 ): TestScenario[] {
   let filteredScenarios = [...scenarios];
-  
+
   if (tags) {
     filteredScenarios = filteredScenarios.filter(
       (scenario) => scenario.tags && scenario.tags.some((tag) => tags.includes(tag))
     );
   }
-  
+
   if (scenarioNumbers) {
     const numbers = scenarioNumbers
       .split(',')
       .map((num) => parseInt(num.trim(), 10))
       .filter((num) => !isNaN(num) && num > 0);
-      
+
     if (numbers.length > 0) {
       filteredScenarios = filteredScenarios.filter((scenario) => {
         const scenarioNumber = parseInt(scenario.id.split(' ')[1], 10);
@@ -206,7 +215,7 @@ export function filterScenarios(
       });
     }
   }
-  
+
   return filteredScenarios;
 }
 
@@ -228,17 +237,16 @@ export function createFileProcessingQueue(
   const queue = new PQueue({ concurrency: fileConcurrency });
   let lastReportTime = Date.now();
   const reportInterval = 5000; // Report every 5 seconds
-  
+
   queue.on('active', () => {
-    const fileProgress = Math.round(
-      (globalStats.completedFiles / globalStats.totalFiles) * 100
-    );
-    const scenarioProgress = globalStats.totalScenarios > 0
-      ? Math.round((globalStats.completedScenarios / globalStats.totalScenarios) * 100)
-      : 0;
-    
+    const fileProgress = Math.round((globalStats.completedFiles / globalStats.totalFiles) * 100);
+    const scenarioProgress =
+      globalStats.totalScenarios > 0
+        ? Math.round((globalStats.completedScenarios / globalStats.totalScenarios) * 100)
+        : 0;
+
     const currentTime = Date.now();
-    
+
     // Only report at intervals to avoid excessive output
     if (currentTime - lastReportTime > reportInterval || queue.size < fileConcurrency) {
       const statusMessage = `
@@ -249,15 +257,15 @@ export function createFileProcessingQueue(
 ❌ Failed: ${globalStats.failedScenarios}
 🔄 Current processing: ${queue.size} files
 `;
-      
+
       void yieldOutput(statusMessage, options).catch((err) =>
         console.error('Error yielding progress output:', err)
       );
-      
+
       lastReportTime = currentTime;
     }
   });
-  
+
   return queue;
 }
 
@@ -302,8 +310,12 @@ export async function processFeatureFile(
     }
 
     // Filter scenarios if needed (based on tags and scenario numbers)
-    let scenarios = filterScenarios(featureBehavior.scenarios, commonConfig.tags, options.scenarios);
-    
+    let scenarios = filterScenarios(
+      featureBehavior.scenarios,
+      commonConfig.tags,
+      options.scenarios
+    );
+
     if (scenarios.length === 0) {
       await outputCallback(`⚠️ No matching scenarios in: ${file}\n`);
       return { file, report: null };
@@ -311,17 +323,17 @@ export async function processFeatureFile(
 
     // Update global stats
     globalStats.totalScenarios += scenarios.length;
-    
+
     // Execute scenarios
     const startTime = Date.now();
     const progressStats = {
       totalScenarios: scenarios.length,
       completedScenarios: 0,
     };
-    
+
     const queue = createExecutionQueue(options, startTime, progressStats);
     const resultPromises: Promise<TestScenarioResult | void>[] = [];
-    
+
     // Add scenarios to the queue
     for (const scenario of scenarios) {
       const result = queue.add(async (): Promise<TestScenarioResult> => {
@@ -397,18 +409,16 @@ export async function processFeatureFile(
         })
       );
     }
-    
+
     // Wait for scenarios to complete
     await queue.onIdle();
     await Promise.allSettled(resultPromises);
-    
+
     // Process results and create report
-    const results = (await Promise.all(resultPromises)).filter(
-      (r): r is TestScenarioResult => !!r
-    );
-    
+    const results = (await Promise.all(resultPromises)).filter((r): r is TestScenarioResult => !!r);
+
     const totalExecutionTime = (Date.now() - startTime) / 1000;
-    
+
     // Create and save report
     const testReport = createTestReport(
       featureBehavior.name,
@@ -419,23 +429,25 @@ export async function processFeatureFile(
       commonConfig.model,
       totalExecutionTime
     );
-    
+
     // Save report files
     const reportFilePath = path.join(commonConfig.branchOutputDir, getReportFilename(file));
     await saveReportToFile(testReport, reportFilePath);
-    
+
     const resultFilePath = path.join(commonConfig.branchOutputDir, getResultFilename(file));
     await saveResultToFile(testReport, resultFilePath);
-    
+
     // Update global statistics
     globalStats.completedScenarios += scenarios.length;
-    globalStats.passedScenarios += results.filter(r => r.result === 'PASS').length;
+    globalStats.passedScenarios += results.filter((r) => r.result === 'PASS').length;
     globalStats.failedScenarios += testReport.failedScenarios.length;
     globalStats.completedFiles += 1;
-    
+
     return { file, report: testReport };
   } catch (error) {
-    await outputCallback(`❌ Error processing ${file}: ${error instanceof Error ? error.message : String(error)}\n`);
+    await outputCallback(
+      `❌ Error processing ${file}: ${error instanceof Error ? error.message : String(error)}\n`
+    );
     return { file, report: null };
   }
 }

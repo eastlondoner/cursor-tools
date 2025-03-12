@@ -197,7 +197,11 @@ export class UnifiedLLMClient {
     // Initialize MCP client if in MCP mode
     if (this.config.mcpMode && this.config.mcpConfig) {
       if (this.config.debug) {
-        console.log('Initializing MCP client...', this.config.mcpConfig.command, this.config.mcpConfig.args);
+        console.log(
+          'Initializing MCP client...',
+          this.config.mcpConfig.command,
+          this.config.mcpConfig.args
+        );
       }
       this.initMCPClient();
     }
@@ -309,7 +313,9 @@ export class UnifiedLLMClient {
         apiCallCount++;
 
         if (this.config.debug) {
-          this.logger(`\n[API Call ${apiCallCount}${maxApiCalls ? ` of max ${maxApiCalls}` : ''}] Sending ${this.messages.length} messages to ${model} for chat completion...`);
+          this.logger(
+            `\n[API Call ${apiCallCount}${maxApiCalls ? ` of max ${maxApiCalls}` : ''}] Sending ${this.messages.length} messages to ${model} for chat completion...`
+          );
         }
 
         if (provider === 'openrouter' && this.openrouterClient) {
@@ -721,11 +727,6 @@ export class UnifiedLLMClient {
       if (this.config.debug) {
         console.log('Available MCP tools:', JSON.stringify(toolDescriptions, null, 2));
       }
-
-      // Convert MCP tool descriptions to our tool format for both providers
-      // Clear existing tools first
-      this.tools = [];
-      this.toolDefinitions = [];
 
       for (const tool of toolDescriptions.tools) {
         // Add to internal tool definitions for execution

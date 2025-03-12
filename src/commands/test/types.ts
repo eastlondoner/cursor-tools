@@ -1,6 +1,6 @@
 import type { CommandOptions, Provider } from '../../types';
+import type { ToolExecutionResult } from '../../utils/tool-enabled-llm/unified-client';
 import { AssetReference } from '../../utils/assets';
-import { ToolExecutionResult } from '../../utils/tool-enabled-llm/client';
 import { z } from 'zod';
 
 /**
@@ -103,6 +103,7 @@ export interface TestReport {
   nodeVersion: string;
   overallResult: 'PASS' | 'FAIL';
   failedScenarios: string[];
+  passedScenarios?: number;
   totalExecutionTime: number;
 }
 
