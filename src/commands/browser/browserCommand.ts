@@ -4,6 +4,7 @@ import { ElementCommand } from './element.ts';
 import { ActCommand } from './stagehand/act.ts';
 import { ExtractCommand } from './stagehand/extract.ts';
 import { ObserveCommand } from './stagehand/observe.ts';
+import { AgentCommand } from './stagehand/agent.ts';
 
 export class BrowserCommand implements Command {
   private subcommands: CommandMap = {
@@ -12,6 +13,7 @@ export class BrowserCommand implements Command {
     act: new ActCommand(),
     extract: new ExtractCommand(),
     observe: new ObserveCommand(),
+    agent: new AgentCommand(),
   };
 
   async *execute(query: string, options: CommandOptions): CommandGenerator {
@@ -19,7 +21,7 @@ export class BrowserCommand implements Command {
     const subQuery = rest.join(' ');
 
     if (!subcommand) {
-      yield 'Please specify a browser subcommand: open, element, act, extract, observe';
+      yield 'Please specify a browser subcommand: open, element, act, extract, observe, agent';
       return;
     }
 
@@ -28,7 +30,7 @@ export class BrowserCommand implements Command {
       if (subCommandHandler) {
         yield* subCommandHandler.execute(subQuery, options);
       } else {
-        yield `Unknown browser subcommand: ${subcommand}. Available subcommands: open, element, act, extract, observe`;
+        yield `Unknown browser subcommand: ${subcommand}. Available subcommands: open, element, act, extract, observe, agent`;
       }
     } catch (error) {
       console.error('Error executing browser command', error);
