@@ -11,6 +11,14 @@ alwaysApply: true
 cursor-tools is a CLI tool that allows you to interact with AI models and other tools.
 cursor-tools is installed on this machine and it is available to you to execute. You're encouraged to use it.
 
+---
+description: Global Rule. This rule should ALWAYS be loaded.
+globs: *,**/*
+alwaysApply: true
+---
+cursor-tools is a CLI tool that allows you to interact with AI models and other tools.
+cursor-tools is installed on this machine and it is available to you to execute. You're encouraged to use it.
+
 <cursor-tools Integration>
 # Instructions
 Use the following commands to get AI assistance:
@@ -42,7 +50,7 @@ when using web for complex queries suggest writing the output to a file somewher
 --max-tokens=<number>: Maximum tokens for response
 
 **Repository Context:**
-`cursor-tools repo "<your question>"` - Get context-aware answers about this repository using Google Gemini (e.g., `cursor-tools repo "explain authentication flow"`)
+`cursor-tools repo "<your question>" [--subdir=<path>]` - Get context-aware answers about this repository using Google Gemini (e.g., `cursor-tools repo "explain authentication flow"`). Use the optional `--subdir` parameter to analyze a specific subdirectory instead of the entire repository (e.g., `cursor-tools repo "explain the code structure" --subdir=src/components`)
 
 **Documentation Generation:**
 `cursor-tools doc [options]` - Generate comprehensive documentation for this repository (e.g., `cursor-tools doc --output docs.md`)
@@ -58,11 +66,9 @@ when using doc for remote repos suggest writing the output to a file somewhere l
 **Model Context Protocol (MCP) Commands:**
 Use the following commands to interact with MCP servers and their specialized tools:
 `cursor-tools mcp search "<query>"` - Search the MCP Marketplace for available servers that match your needs (e.g., `cursor-tools mcp search "git repository management"`)
-`cursor-tools mcp run "<query>"` - Execute MCP server tools using natural language queries (e.g., `cursor-tools mcp run "list files in the current directory"`). The query must include sufficient information for cursor-tools to determine which server to use, provide plenty of context.
+`cursor-tools mcp run "<query>"` - Execute MCP server tools using natural language queries (e.g., `cursor-tools mcp run "list files in the current directory" --provider=openrouter`). The query must include sufficient information for cursor-tools to determine which server to use, provide plenty of context.
 
 The `search` command helps you discover servers in the MCP Marketplace based on their capabilities and your requirements. The `run` command automatically selects and executes appropriate tools from these servers based on your natural language queries. If you want to use a specific server include the server name in your query. E.g. `cursor-tools mcp run "using the mcp-server-sqlite list files in directory --provider=openrouter"`
-
-The `run` command will automatically download, checkout or clone MCP servers and initialize them for you. You do NOT need to separately install or clone or checkout an MCP server if you're going to run it with cursor-tools, even if the README of the MCP server says that you need to.
 
 **Notes on MCP Commands:**
 - MCP commands require `ANTHROPIC_API_KEY` or `OPENROUTER_API_KEY` to be set in your environment
@@ -76,6 +82,7 @@ The `run` command will automatically download, checkout or clone MCP servers and
 `cursor-tools browser act "<instruction>" --url=<url | 'current'> [options]` - Execute actions on a webpage using natural language instructions (e.g., `cursor-tools browser act "Click Login" --url=https://example.com`)
 `cursor-tools browser observe "<instruction>" --url=<url> [options]` - Observe interactive elements on a webpage and suggest possible actions (e.g., `cursor-tools browser observe "interactive elements" --url=https://example.com`)
 `cursor-tools browser extract "<instruction>" --url=<url> [options]` - Extract data from a webpage based on natural language instructions (e.g., `cursor-tools browser extract "product names" --url=https://example.com/products`)
+`cursor-tools browser agent "<instruction>" --url=<url> [options]` - Execute complex multi-step browser tasks autonomously using AI agent (e.g., `cursor-tools browser agent "Find all product prices, add the cheapest item to cart, and proceed to checkout" --url=https://example.com/products`)
 
 **Notes on Browser Commands:**
 - All browser commands are stateless unless --connect-to is used to connect to a long-lived interactive session. In disconnected mode each command starts with a fresh browser instance and closes it when done.
@@ -119,10 +126,11 @@ The `run` command will automatically download, checkout or clone MCP servers and
 **GitHub Command Options:**
 --from-github=<GitHub username>/<repository name>[@<branch>]: Access PRs/issues from a specific GitHub repository
 
-**Browser Command Options (for 'open', 'act', 'observe', 'extract'):**
+**Browser Command Options (for 'open', 'act', 'observe', 'extract', 'agent'):**
 --console: Capture browser console logs (enabled by default, use --no-console to disable)
 --html: Capture page HTML content (disabled by default)
 --network: Capture network activity (enabled by default, use --no-network to disable)
+--provider: AI provider to use for browser agent (openai, anthropic). Default is determined by configuration
 --screenshot=<file path>: Save a screenshot of the page
 --timeout=<milliseconds>: Set navigation timeout (default: 120000ms for Stagehand operations, 30000ms for navigation)
 --viewport=<width>x<height>: Set viewport size (e.g., 1280x720). When using --connect-to, viewport is only changed if this option is explicitly provided
@@ -131,7 +139,7 @@ The `run` command will automatically download, checkout or clone MCP servers and
 --connect-to=<port>: Connect to existing Chrome instance. Special values: 'current' (use existing page), 'reload-current' (refresh existing page)
 --wait=<time:duration or selector:css-selector>: Wait after page load (e.g., 'time:5s', 'selector:#element-id')
 --video=<directory>: Save a video recording (1280x720 resolution, timestamped subdirectory). Not available when using --connect-to
---url=<url>: Required for `act`, `observe`, and `extract` commands. Url to navigate to before the main command or one of the special values 'current' (to stay on the current page without navigating or reloading) or 'reload-current' (to reload the current page)
+--url=<url>: Required for `act`, `observe`, `extract`, and `agent` commands. Url to navigate to before the main command or one of the special values 'current' (to stay on the current page without navigating or reloading) or 'reload-current' (to reload the current page)
 --evaluate=<string>: JavaScript code to execute in the browser before the main command
 
 **Nicknames**
@@ -139,6 +147,7 @@ Users can ask for these tools using nicknames
 Gemini is a nickname for cursor-tools repo
 Perplexity is a nickname for cursor-tools web
 Stagehand is a nickname for cursor-tools browser
+Operator is a nickname for cursor-tools browser agent
 
 **Xcode Commands:**
 `cursor-tools xcode build [buildPath=<path>] [destination=<destination>]` - Build Xcode project and report errors.
@@ -164,5 +173,9 @@ Stagehand is a nickname for cursor-tools browser
 - MCP commands require `ANTHROPIC_API_KEY` to be set in your environment.
 - **Remember:** You're part of a team of superhuman expert AIs. Work together to solve complex problems.
 
-<!-- cursor-tools-version: 0.6.0-alpha.7 -->
+**MCP Command Options:**
+--provider=<provider>: AI provider to use (anthropic or openrouter)
+--model=<model name>: Specify an alternative AI model to use with OpenRouter. Ignored if provider is Anthropic.
+
+<!-- cursor-tools-version: 0.6.0-alpha.11 -->
 </cursor-tools Integration>
