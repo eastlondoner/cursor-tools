@@ -25,6 +25,7 @@
   - [Documentation Generation](#use-doc-generation)
   - [GitHub Integration](#use-github-integration)
   - [Browser Automation](#use-browser-automation)
+  - [Browser Agent](#use-browser-agent)
   - [Direct Model Queries](#use-direct-model-queries)
 - [Authentication and API Keys](#authentication-and-api-keys)
 - [AI Team Features](#ai-team-features)
@@ -33,6 +34,7 @@
   - [Stagehand: Browser Automation](#stagehand-browser-automation)
     - [Browser Command Options](#browser-command-options)
     - [Video Recording](#video-recording)
+    - [Browser Agent](#browser-agent)
     - [Console and Network Logging](#console-and-network-logging)
     - [Complex Actions](#complex-actions)
     - [Troubleshooting Browser Commands](#troubleshooting-browser-commands)
@@ -75,6 +77,7 @@
 ### New Skills for your existing Agent
 - Work with GitHub Issues and Pull Requests
 - Generate local agent-accessible documentation for external dependencies 
+- Autonomous browser interaction with the new `browser agent` command for complex multi-step tasks
 
 `cursor-tools` is optimized for Cursor Composer Agent but it can be used by any coding agent that can execute commands
 
@@ -174,7 +177,7 @@ This command will:
 - Google Gemini API key
 - For browser commands:
   - Playwright (`npm install --global playwright`)
-  - OpenAI API key or Anthropic API key (for `act`, `extract`, and `observe` commands)
+  - OpenAI API key or Anthropic API key (for `act`, `extract`, `observe`, and `agent` commands)
 
 `cursor-tools` uses Gemini-2.0 because it is the only good LLM with a context window that goes up to 2 million tokens - enough to handle and entire codebase in one shot. Gemini 2.0 experimental models that we use by default are currently free to use on Google and you need a Google Cloud project to create an API key.
 
@@ -216,6 +219,7 @@ When using cursor-tools with Cursor Composer, you can use these nicknames:
 - "Gemini" is a nickname for `cursor-tools repo`
 - "Perplexity" is a nickname for `cursor-tools web`
 - "Stagehand" is a nickname for `cursor-tools browser`
+- "Operator" is a nickname for `cursor-tools browser agent`
 
 
 ### Use web search
@@ -246,6 +250,13 @@ Note: in most cases you can say "fetch issue 123" or "fetch PR 321" instead of "
 "Use cursor-tools to test the form field validation logic. Take screenshots of each state"
 
 "Use cursor-tools to open https://example.com/foo the and check the error in the network logs, what could be causing it?"
+
+### Use browser agent
+"Use cursor-tools browser agent to analyze the login page and complete the authentication process"
+
+"Use cursor-tools browser agent to find products under $50 with at least 4-star rating and add them to cart"
+
+"Use cursor-tools browser agent to debug this form submission issue by exploring the page and trying different inputs"
 
 Note: in most cases you can say "Use Stagehand" instead of "use cursor-tools" and it will work the same.
 
@@ -403,7 +414,7 @@ cursor-tools browser extract "Get API responses" --url "https://example.com/api-
 ```
 
 #### Browser Command Options
-All browser commands (`open`, `act`, `observe`, `extract`) support these options:
+All browser commands (`open`, `act`, `observe`, `extract`, `agent`) support these options:
 - `--console`: Capture browser console logs (enabled by default, use `--no-console` to disable)
 - `--html`: Capture page HTML content (disabled by default)
 - `--network`: Capture network activity (enabled by default, use `--no-network` to disable)
@@ -415,9 +426,14 @@ All browser commands (`open`, `act`, `observe`, `extract`) support these options
 - `--connect-to=<port>`: Connect to existing Chrome instance. Special values: 'current' (use existing page), 'reload-current' (refresh existing page)
 - `--wait=<time:duration or selector:css-selector>`: Wait after page load (e.g., 'time:5s', 'selector:#element-id')
 - `--video=<directory>`: Save a video recording (1280x720 resolution, timestamped subdirectory). Not available when using --connect-to
-- `--url=<url>`: Required for `act`, `observe`, and `extract` commands
+- `--url=<url>`: Required for `act`, `observe`, `extract`, and `agent` commands
 - `--evaluate=<string>`: JavaScript code to execute in the browser before the main command
 
+**Additional options for the `agent` subcommand:**
+- `--provider=<provider>`: AI provider to use (openai, anthropic)
+- `--model=<model>`: Model to use for the agent:
+  - For OpenAI: `computer-use-preview-2025-03-11` 
+  - For Anthropic: `claude-3-5-sonnet-20240620` or `claude-3-7-sonnet-20250219`
 
 **Notes on Connecting to an existing browser session with --connect-to**
 - DO NOT ask browser act to "wait" for anything, the wait command is currently disabled in Stagehand.
@@ -439,6 +455,26 @@ Example:
 # Record a video of filling out a form
 cursor-tools browser act "Fill out registration form with name John Doe" --url "http://localhost:3000/signup" --video="./recordings"
 ```
+
+#### Browser Agent
+The `browser agent` subcommand provides autonomous browser operation for complex multi-step tasks:
+
+```bash
+# Execute an autonomous browser task with a single instruction
+cursor-tools browser agent "Analyze the login page, fill out the form with test@example.com and password123, then submit it" --url "https://example.com/login"
+
+# Browser agent with custom model
+cursor-tools browser agent "Find and click on all broken image links" --url "https://example.com" --provider openai --model computer-use-preview-2025-03-11
+
+# Record a video of the agent's work
+cursor-tools browser agent "Complete the multi-page checkout process" --url "https://example.com/cart" --video="./recordings"
+```
+
+The browser agent:
+- Makes decisions based on page content without requiring step-by-step instructions
+- Handles unexpected situations and errors more robustly than act/extract commands
+- Supports both OpenAI and Anthropic Computer Using Agent (CUA) models
+- Works well for complex workflows that involve decision-making based on dynamic content
 
 #### Console and Network Logging
 Console logs and network activity are captured by default:
@@ -717,295 +753,3 @@ cursor-tools browser act "Click Login" --url "https://example.com" --model=gpt-4
 # Use Claude 3.7 Sonnet
 cursor-tools browser act "Click Login" --url "https://example.com" --model=claude-3-7-sonnet-latest
 ```
-
-You can set a default provider in your `cursor-tools.config.json` file under the `stagehand` section:
-
-```json
-{
-  "stagehand": {
-    "model": "claude-3-7-sonnet-latest", // For Anthropic provider
-    "provider": "anthropic", // or "openai"
-    "timeout": 90000
-  }
-}
-```
-
-You can also set a default model in your `cursor-tools.config.json` file under the `stagehand` section:
-
-```json
-{
-  "stagehand": {
-    "provider": "openai", // or "anthropic"
-    "model": "gpt-4o"
-  }
-}
-```
-
-If no model is specified (either on the command line or in the config), a default model will be used based on your configured provider:
-
-- **OpenAI:** `o3-mini`
-- **Anthropic:** `claude-3-7-sonnet-latest`
-
-Available models depend on your configured provider (OpenAI or Anthropic) in `cursor-tools.config.json` and your API key.
-
-### Cursor Configuration
-`cursor-tools` automatically configures Cursor by updating your project rules during installation. This provides:
-- Command suggestions
-- Usage examples
-- Context-aware assistance
-
-For new installations, we use the recommended `.cursor/rules/cursor-tools.mdc` path. For existing installations, we maintain compatibility with the legacy `.cursorrules` file. If both files exist, we prefer the new path and show a warning.
-
-#### Cursor Agent Configuration:
-
-To get the benefits of cursor-tools you should use Cursor agent in "yolo mode". Ideal settings:
-
-![image](https://github.com/user-attachments/assets/783e26cf-c339-4cae-9629-857da0359cef)
-
-
-## cursor-tools cli
-
-In general you do not need to use the cli directly, your AI coding agent will call the CLI but it is useful to know it exists and this is how it works.
-
-### Command Options
-All commands support these general options:
-- `--model`: Specify an alternative model
-- `--max-tokens`: Control response length
-- `--save-to`: Save command output to a file (in addition to displaying it, like tee)
-- `--quiet`: Suppress stdout output (only useful with --save-to)
-- `--debug`: Show detailed error information
-- `--help`: View all available options
-- `--provider`: AI provider to use. Valid values: openai, anthropic, perplexity, gemini, openrouter
-
-Documentation command specific options:
-- `--from-github`: Generate documentation for a remote GitHub repository (supports @branch syntax)
-- `--hint`: Provide additional context or focus for documentation generation
-
-Plan command specific options:
-- `--fileProvider`: Provider for file identification (gemini, openai, anthropic, perplexity, modelbox, or openrouter)
-- `--thinkingProvider`: Provider for plan generation (gemini, openai, anthropic, perplexity, modelbox, or openrouter)
-- `--fileModel`: Model to use for file identification
-- `--thinkingModel`: Model to use for plan generation
-- `--fileMaxTokens`: Maximum tokens for file identification
-- `--thinkingMaxTokens`: Maximum tokens for plan generation
-
-GitHub command specific options:
-- `--from-github=<GitHub username>/<repository name>[@<branch>]`: Access PRs/issues from a specific GitHub repository. `--repo` is an older, still supported synonym for this option.
-
-Xcode command specific options:
-- For the build subcommand:
-  - `buildPath=<path>`: Set a custom derived data path
-  - `destination=<destination string>`: Set a custom simulator destination
-- For the run subcommand:
-  - `iphone` or `ipad`: Select device type
-  - `device=<device name>`: Specify a custom device
-  - `buildPath=<path>`: Set a custom derived data path
-
-Browser command specific options:
-- `--console`: Capture browser console logs (enabled by default, use `--no-console` to disable)
-- `--html`: Capture page HTML content (disabled by default)
-- `--network`: Capture network activity (enabled by default, use `--no-network` to disable)
-- `--screenshot`: Save a screenshot of the page
-- `--timeout`: Set navigation timeout (default: 120000ms for Stagehand operations, 30000ms for navigation)
-- `--viewport`: Set viewport size (e.g., 1280x720)
-- `--headless`: Run browser in headless mode (default: true)
-- `--no-headless`: Show browser UI (non-headless mode) for debugging
-- `--connect-to`: Connect to existing Chrome instance
-- `--wait`: Wait after page load (e.g., 'time:5s', 'selector:#element-id')
-- `--video`: Save a video recording (1280x720 resolution, timestamped subdirectory)
-- `--url`: Required for `act`, `observe`, and `extract` commands. Url to navigate to on connection or one of the special values: 'current' (use existing page), 'reload-current' (refresh existing page).
-- `--evaluate`: JavaScript code to execute in the browser before the main command
-
-### Execution Methods
-Execute commands using:
-```bash
-cursor-tools <command> [options]
-```
-
-For example:
-```bash
-cursor-tools web "What's new in TypeScript 5.7?"
-```
-
-## Troubleshooting
-
-1. **Command Not Found**
-    - Ensure `cursor-tools` is installed globally using `npm install -g cursor-tools`
-    - Check your system's PATH environment variable to ensure it includes npm's global bin directory
-    - On Unix-like systems, the global bin directory is typically `/usr/local/bin` or `~/.npm-global/bin`
-    - On Windows, it's typically `%AppData%\npm`
-
-2. **API Key Errors**
-    - Verify `.cursor-tools.env` exists and contains valid API keys
-    - Run `cursor-tools install` to reconfigure API keys
-    - Check that your API keys have the necessary permissions
-    - For GitHub operations, ensure your token has the required scopes (repo, read:user)
-    - For Google Vertex AI authentication:
-      - If using a JSON key file, verify the file path is correct and the file is readable
-      - If using ADC, ensure you've run `gcloud auth application-default login` and the account has appropriate permissions
-      - Verify your service account has the necessary roles in Google Cloud Console (typically "Vertex AI User")
-      - For troubleshooting ADC: Run `gcloud auth application-default print-access-token` to check if ADC is working
-    - For MCP commands ensure that *either* the `ANTHROPIC_API_KEY` *or* the `OPENROUTER_API_KEY` are set.
-    - If using OpenRouter for MCP, ensure `OPENROUTER_API_KEY` is set.
-    - If a provider is not specified for an MCP command, Anthropic will be used by default.
-
-3. **Model Errors**
-    - Check your internet connection
-    - Verify API key permissions
-    - Ensure the specified model is available for your API tier
-
-4. **GitHub API Rate Limits**
-    - GitHub API has rate limits for unauthenticated requests. For higher limits you must be authenticated.
-    - If you have the gh cli installed and logged in cursor-tools will use that to obtain a short lived auth token. Otherwise you can add a GitHub token to your environment:
-      ```env
-      GITHUB_TOKEN=your_token_here
-      ```
-    - Private repositories always require authentication
-
-5. **Documentation Generation Issues**
-    - Repository too large: Try using `--hint` to focus on specific parts
-    - Token limit exceeded: The tool will automatically switch to a larger model
-    - Network timeouts: The tool includes automatic retries
-    - For very large repositories, consider documenting specific directories or files
-
-6. **Cursor Integration**
-    - If .cursorrules is outdated, run `cursor-tools install .` to update
-    - Ensure Cursor is configured to allow command execution
-    - Check that your Cursor version supports AI commands
-
-### Examples
-
-#### Web Search Examples
-```bash
-# Get information about new technologies
-cursor-tools web "What are the key features of Bun.js?"
-
-# Check API documentation
-cursor-tools web "How to implement OAuth2 in Express.js?"
-
-# Compare technologies
-cursor-tools web "Compare Vite vs Webpack for modern web development"
-```
-
-#### Repository Context Examples
-```bash
-# Architecture understanding
-cursor-tools repo "Explain the overall architecture of this project"
-
-# Find usage examples
-cursor-tools repo "Show me examples of error handling in this codebase"
-
-# Debugging help
-cursor-tools repo "Why might the authentication be failing in the login flow?"
-
-# Analyze specific subdirectory
-cursor-tools repo "Explain the code structure" --subdir=src/components
-```
-
-#### Documentation Examples
-```bash
-# Document specific aspects and save to file without stdout output
-cursor-tools doc --save-to=docs/api.md --quiet --hint="Focus on the API endpoints and their usage"
-
-# Document with hint to customize the docs output
-cursor-tools doc --save-to=docs/architecture.md --quiet --hint="Focus on system architecture"
-
-# Document dependencies
-cursor-tools doc --from-github=expressjs/express --save-to=docs/EXPRESS.md --quiet
-```
-
-#### GitHub Integration Examples
-```bash
-# List PRs with specific labels
-cursor-tools github pr --from-github facebook/react
-
-# Check recent issues in a specific repository
-cursor-tools github issue --from-github vercel/next.js
-
-# View PR with code review comments
-cursor-tools github pr 123 --from-github microsoft/typescript
-
-# Track issue discussions
-cursor-tools github issue 456 --from-github golang/go
-```
-
-#### Xcode Command Examples
-```bash
-# Build an iOS app with default settings
-cursor-tools xcode build
-
-# Build with custom derived data path
-cursor-tools xcode build buildPath=~/custom/derived/data
-
-# Run in iPhone simulator
-cursor-tools xcode run iphone
-
-# Run on specific iPad model
-cursor-tools xcode run device="iPad Pro (12.9-inch) (6th generation)"
-
-# Analyze code quality 
-cursor-tools xcode lint
-```
-
-#### Browser Command Examples
-
-##### `open` subcommand examples:
-```bash
-# Open a URL and get HTML
-cursor-tools browser open "https://example.com" --html
-
-# Open and capture console logs and network activity
-cursor-tools browser open "https://example.com" --console --network
-
-# Take a screenshot
-cursor-tools browser open "https://example.com" --screenshot=page.png
-
-# Run in non-headless mode for debugging
-cursor-tools browser open "https://example.com" --no-headless
-```
-
-##### `act`, `extract`, `observe` subcommands examples:
-```bash
-# AI-powered action
-cursor-tools browser act "Click on 'Sign Up'" --url "https://example.com"
-
-# AI-powered extraction
-cursor-tools browser extract "Get the main content" --url "https://example.com/blog"
-
-# AI-powered observation
-cursor-tools browser observe "What can I do on this page?" --url "https://example.com"
-```
-
-## Node Package Manager (npm)
-
-cursor-tools is available on npm [here](https://www.npmjs.com/package/cursor-tools)
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request. If you used cursor-tools to make your contribution please include screenshots or videos of cursor-tools in action.
-
-
-## Sponsors
-
-### [Vinta.app](https://vinta.app)
-**Optimise your Vinted accounting** with real-time analytics, inventory management, and tax compliance tools.
-
-:link: [Start scaling your Vinted business today](https://vinta.app)
-
----
-
-### [Resoled.it](https://resoled.it)
-**Automate your Vinted reselling business** with advanced tools like autobuy, custom snipers, and one-click relisting.
-
-:link: [Take Vinted reselling to the next level](https://resoled.it)
-
----
-
-### [iterate.com](https://iterate.com)
-**Build self-driving startups** with autonomous AI agents that run your company.
-
-:link: [AI Engineer in London? Join the startup revolution](https://iterate.com)
-
-## License
-
-MIT License - see [LICENSE](LICENSE) for details.

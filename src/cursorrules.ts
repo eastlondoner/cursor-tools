@@ -97,6 +97,7 @@ The \`search\` command helps you discover servers in the MCP Marketplace based o
 \`cursor-tools browser act "<instruction>" --url=<url | 'current'> [options]\` - Execute actions on a webpage using natural language instructions (e.g., \`cursor-tools browser act "Click Login" --url=https://example.com\`)
 \`cursor-tools browser observe "<instruction>" --url=<url> [options]\` - Observe interactive elements on a webpage and suggest possible actions (e.g., \`cursor-tools browser observe "interactive elements" --url=https://example.com\`)
 \`cursor-tools browser extract "<instruction>" --url=<url> [options]\` - Extract data from a webpage based on natural language instructions (e.g., \`cursor-tools browser extract "product names" --url=https://example.com/products\`)
+\`cursor-tools browser agent "<instruction>" --url=<url> [options]\` - Execute complex multi-step browser tasks autonomously using AI agent (e.g., \`cursor-tools browser agent "Find all product prices, add the cheapest item to cart, and proceed to checkout" --url=https://example.com/products\`)
 
 **Notes on Browser Commands:**
 - All browser commands are stateless unless --connect-to is used to connect to a long-lived interactive session. In disconnected mode each command starts with a fresh browser instance and closes it when done.
@@ -140,10 +141,11 @@ The \`search\` command helps you discover servers in the MCP Marketplace based o
 **GitHub Command Options:**
 --from-github=<GitHub username>/<repository name>[@<branch>]: Access PRs/issues from a specific GitHub repository
 
-**Browser Command Options (for 'open', 'act', 'observe', 'extract'):**
+**Browser Command Options (for 'open', 'act', 'observe', 'extract', 'agent'):**
 --console: Capture browser console logs (enabled by default, use --no-console to disable)
 --html: Capture page HTML content (disabled by default)
 --network: Capture network activity (enabled by default, use --no-network to disable)
+--provider: AI provider to use for browser agent (openai, anthropic). Default is determined by configuration
 --screenshot=<file path>: Save a screenshot of the page
 --timeout=<milliseconds>: Set navigation timeout (default: 120000ms for Stagehand operations, 30000ms for navigation)
 --viewport=<width>x<height>: Set viewport size (e.g., 1280x720). When using --connect-to, viewport is only changed if this option is explicitly provided
@@ -152,7 +154,7 @@ The \`search\` command helps you discover servers in the MCP Marketplace based o
 --connect-to=<port>: Connect to existing Chrome instance. Special values: 'current' (use existing page), 'reload-current' (refresh existing page)
 --wait=<time:duration or selector:css-selector>: Wait after page load (e.g., 'time:5s', 'selector:#element-id')
 --video=<directory>: Save a video recording (1280x720 resolution, timestamped subdirectory). Not available when using --connect-to
---url=<url>: Required for \`act\`, \`observe\`, and \`extract\` commands. Url to navigate to before the main command or one of the special values 'current' (to stay on the current page without navigating or reloading) or 'reload-current' (to reload the current page)
+--url=<url>: Required for \`act\`, \`observe\`, \`extract\`, and \`agent\` commands. Url to navigate to before the main command or one of the special values 'current' (to stay on the current page without navigating or reloading) or 'reload-current' (to reload the current page)
 --evaluate=<string>: JavaScript code to execute in the browser before the main command
 
 **Nicknames**
@@ -160,6 +162,7 @@ Users can ask for these tools using nicknames
 Gemini is a nickname for cursor-tools repo
 Perplexity is a nickname for cursor-tools web
 Stagehand is a nickname for cursor-tools browser
+Operator is a nickname for cursor-tools browser agent
 
 **Xcode Commands:**
 \`cursor-tools xcode build [buildPath=<path>] [destination=<destination>]\` - Build Xcode project and report errors.

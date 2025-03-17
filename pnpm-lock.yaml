@@ -12,8 +12,8 @@ importers:
         specifier: ^0.39.0
         version: 0.39.0
       '@browserbasehq/stagehand':
-        specifier: ^1.14.0
-        version: 1.14.0(@playwright/test@1.50.1)(deepmerge@4.3.1)(dotenv@16.4.7)(openai@4.85.3(ws@8.18.1)(zod@3.24.2))(zod@3.24.2)
+        specifier: alpha
+        version: 1.15.0-alpha-a41522b1facd855753a771aa13b681712900b17a(@playwright/test@1.50.1)(deepmerge@4.3.1)(dotenv@16.4.7)(openai@4.87.3(ws@8.18.1)(zod@3.24.2))(zod@3.24.2)
       '@modelcontextprotocol/sdk':
         specifier: ^1.5.0
         version: 1.5.0
@@ -36,8 +36,8 @@ importers:
         specifier: ^9.15.1
         version: 9.15.1
       openai:
-        specifier: ^4.85.3
-        version: 4.85.3(ws@8.18.1)(zod@3.24.2)
+        specifier: ^4.87.3
+        version: 4.87.3(ws@8.18.1)(zod@3.24.2)
       p-queue:
         specifier: ^8.1.0
         version: 8.1.0
@@ -96,22 +96,19 @@ importers:
 
 packages:
 
-  '@anthropic-ai/sdk@0.27.3':
-    resolution: {integrity: sha512-IjLt0gd3L4jlOfilxVXTifn42FnVffMgDC04RJK1KDZpmkBWLv0XC92MVVmkxrFZNS/7l3xWgP/I3nqtX1sQHw==}
-
   '@anthropic-ai/sdk@0.39.0':
     resolution: {integrity: sha512-eMyDIPRZbt1CCLErRCi3exlAvNkBtRe+kW5vvJyef93PmNr/clstYgHhtvmkxN82nlKgzyGPCyGxrm0JQ1ZIdg==}
 
   '@browserbasehq/sdk@2.3.0':
     resolution: {integrity: sha512-H2nu46C6ydWgHY+7yqaP8qpfRJMJFVGxVIgsuHe1cx9HkfJHqzkuIqaK/k8mU4ZeavQgV5ZrJa0UX6MDGYiT4w==}
 
-  '@browserbasehq/stagehand@1.14.0':
-    resolution: {integrity: sha512-Hi/EzgMFWz+FKyepxHTrqfTPjpsuBS4zRy3e9sbMpBgLPv+9c0R+YZEvS7Bw4mTS66QtvvURRT6zgDGFotthVQ==}
+  '@browserbasehq/stagehand@1.15.0-alpha-a41522b1facd855753a771aa13b681712900b17a':
+    resolution: {integrity: sha512-wV1BtDv+/1s7DPN5wLO8J9C5baBr5L/1FjbBkr0NVhuwfRiI6goQN1amGx+lbG/TOPiKuGh6wOU29pRF98dDLg==}
     peerDependencies:
       '@playwright/test': ^1.42.1
       deepmerge: ^4.3.1
       dotenv: ^16.4.5
-      openai: ^4.62.1
+      openai: ^4.87.1
       zod: ^3.23.8
 
   '@clack/core@0.4.1':
@@ -1552,8 +1549,8 @@ packages:
     resolution: {integrity: sha512-VXJjc87FScF88uafS3JllDgvAm+c/Slfz06lorj2uAY34rlUu0Nt+v8wreiImcrgAjjIHp1rXpTDlLOGw29WwQ==}
     engines: {node: '>=18'}
 
-  openai@4.85.3:
-    resolution: {integrity: sha512-KTMXAK6FPd2IvsPtglMt0J1GyVrjMxCYzu/mVbCPabzzquSJoZlYpHtE0p0ScZPyt11XTc757xSO4j39j5g+Xw==}
+  openai@4.87.3:
+    resolution: {integrity: sha512-d2D54fzMuBYTxMW8wcNmhT1rYKcTfMJ8t+4KjH2KtvYenygITiGBgHoIrzHwnDQWW+C5oCA+ikIR2jgPCFqcKQ==}
     hasBin: true
     peerDependencies:
       ws: ^8.18.0
@@ -2043,18 +2040,6 @@ packages:
 
 snapshots:
 
-  '@anthropic-ai/sdk@0.27.3':
-    dependencies:
-      '@types/node': 18.19.76
-      '@types/node-fetch': 2.6.12
-      abort-controller: 3.0.0
-      agentkeepalive: 4.6.0
-      form-data-encoder: 1.7.2
-      formdata-node: 4.4.1
-      node-fetch: 2.7.0
-    transitivePeerDependencies:
-      - encoding
-
   '@anthropic-ai/sdk@0.39.0':
     dependencies:
       '@types/node': 18.19.76
@@ -2079,14 +2064,14 @@ snapshots:
     transitivePeerDependencies:
       - encoding
 
-  '@browserbasehq/stagehand@1.14.0(@playwright/test@1.50.1)(deepmerge@4.3.1)(dotenv@16.4.7)(openai@4.85.3(ws@8.18.1)(zod@3.24.2))(zod@3.24.2)':
+  '@browserbasehq/stagehand@1.15.0-alpha-a41522b1facd855753a771aa13b681712900b17a(@playwright/test@1.50.1)(deepmerge@4.3.1)(dotenv@16.4.7)(openai@4.87.3(ws@8.18.1)(zod@3.24.2))(zod@3.24.2)':
     dependencies:
-      '@anthropic-ai/sdk': 0.27.3
+      '@anthropic-ai/sdk': 0.39.0
       '@browserbasehq/sdk': 2.3.0
       '@playwright/test': 1.50.1
       deepmerge: 4.3.1
       dotenv: 16.4.7
-      openai: 4.85.3(ws@8.18.1)(zod@3.24.2)
+      openai: 4.87.3(ws@8.18.1)(zod@3.24.2)
       ws: 8.18.1
       zod: 3.24.2
       zod-to-json-schema: 3.24.3(zod@3.24.2)
@@ -3399,7 +3384,7 @@ snapshots:
     dependencies:
       mimic-function: 5.0.1
 
-  openai@4.85.3(ws@8.18.1)(zod@3.24.2):
+  openai@4.87.3(ws@8.18.1)(zod@3.24.2):
     dependencies:
       '@types/node': 18.19.76
       '@types/node-fetch': 2.6.12
