@@ -314,8 +314,6 @@ Please:
         return;
       }
 
-      let repoContext: { text: string; tokenCount: number };
-      
       const providerName = options?.provider || this.config.doc?.provider || 'openai';
       const model =
         options?.model ||
