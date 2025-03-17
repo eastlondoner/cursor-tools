@@ -111,72 +111,104 @@ export async function getBrowser(
 
   let context: BrowserContext;
   if (options.connectTo) {
-    const browser = await chromium.connectOverCDP(`http://localhost:${options.connectTo}`);
-    logger({
-      category: 'init',
-      message: 'connected to existing browser',
-    });
-
-    // Get or create context
-    context =
-      (await browser.contexts()[0]) ||
-      (await browser.newContext({
-        recordVideo: options.recordVideo,
-        acceptDownloads: true,
-        viewport: options.viewport,
-        locale: 'en-US',
-        timezoneId: 'America/New_York',
-        bypassCSP: true,
-        deviceScaleFactor: 1,
-        colorScheme: null,
-      }));
-
-    // Get existing pages
-    const pages = await context.pages();
-    if (pages.length > 0) {
+    try {
+      const browser = await chromium.connectOverCDP(`http://localhost:${options.connectTo}`);
       logger({
         category: 'init',
-        message: 'using existing page',
-        level: 1,
-        auxiliary: {
-          pageCount: {
-            value: pages.length.toString(),
-            type: 'integer',
-          },
-        },
+        message: 'connected to existing browser',
       });
-      await Promise.all(pages.map((page) => page.evaluate(scriptContent())));
+
+      try {
+        // Get or create context
+        context =
+          (await browser.contexts()[0]) ||
+          (await browser.newContext({
+            recordVideo: options.recordVideo,
+            acceptDownloads: true,
+            viewport: options.viewport,
+            locale: 'en-US',
+            timezoneId: 'America/New_York',
+            bypassCSP: true,
+            deviceScaleFactor: 1,
+            colorScheme: null,
+          }));
+      } catch (contextError) {
+        throw new Error(
+          `Failed to get or create browser context: ${
+            contextError instanceof Error ? contextError.message : 'Unknown error'
+          }`
+        );
+      }
+
+      // Get existing pages
+      try {
+        const pages = await context.pages();
+        if (pages.length > 0) {
+          logger({
+            category: 'init',
+            message: 'using existing page',
+            level: 1,
+            auxiliary: {
+              pageCount: {
+                value: pages.length.toString(),
+                type: 'integer',
+              },
+            },
+          });
+          await Promise.all(pages.map((page) => page.evaluate(scriptContent())));
+        }
+      } catch (pagesError) {
+        throw new Error(
+          `Failed to access or initialize pages: ${
+            pagesError instanceof Error ? pagesError.message : 'Unknown error'
+          }`
+        );
+      }
+
+      logger({
+        category: 'init',
+        message: 'connected to existing browser',
+      });
+    } catch (cdpError) {
+      throw new Error(
+        `Failed to connect to Chrome on port ${options.connectTo}. Make sure Chrome is running with --remote-debugging-port=${options.connectTo}. Error: ${
+          cdpError instanceof Error ? cdpError.message : 'Unknown error'
+        }`
+      );
     }
-
-    logger({
-      category: 'init',
-      message: 'connected to existing browser',
-    });
   } else {
-    context = await chromium.launchPersistentContext(path.join(tmpDir, 'userdir'), {
-      recordVideo: options.recordVideo,
-      acceptDownloads: true,
-      headless: options.headless,
-      viewport: options.viewport,
-      colorScheme: null,
-      locale: 'en-US',
-      timezoneId: 'America/New_York',
-      deviceScaleFactor: 1,
-      args: [
-        '--enable-webgl',
-        '--use-gl=swiftshader',
-        '--enable-accelerated-2d-canvas',
-        '--disable-blink-features=AutomationControlled',
-        '--disable-web-security',
-      ],
-      bypassCSP: true,
-      timeout: 30_000,
-    });
+    try {
+      context = await chromium.launchPersistentContext(path.join(tmpDir, 'userdir'), {
+        recordVideo: options.recordVideo,
+        acceptDownloads: true,
+        headless: options.headless,
+        viewport: options.viewport,
+        colorScheme: null,
+        locale: 'en-US',
+        timezoneId: 'America/New_York',
+        deviceScaleFactor: 1,
+        args: [
+          '--enable-webgl',
+          '--use-gl=swiftshader',
+          '--enable-accelerated-2d-canvas',
+          '--disable-blink-features=AutomationControlled',
+          '--disable-web-security',
+        ],
+        bypassCSP: true,
+        timeout: 30_000,
+      });
 
-    logger({
-      category: 'init',
-      message: 'local browser started successfully.',
-    });
+      logger({
+        category: 'init',
+        message: 'local browser started successfully.',
+      });
+    } catch (launchError) {
+      throw new Error(
+        `Failed to launch browser: ${
+          launchError instanceof Error ? launchError.message : 'Unknown error'
+        }`
+      );
+    }
   }
 
   await applyStealthScripts(context);
@@ -260,71 +292,110 @@ export function overrideStagehandInit() {
           connectTo?: SharedBrowserCommandOptions['connectTo'];
         }
   ): Promise<{ debugUrl: string; sessionUrl: string; sessionId: string }> {
-    const { StagehandPage, StagehandContext } = await patchStagehand();
-    const viewport = initOptions?.viewport?.toLowerCase().split('x').map(Number);
-    const viewportSize = initOptions?.connectTo
-      ? undefined
-      : { width: viewport?.[0] ?? 1280, height: viewport?.[1] ?? 720 };
+    try {
+      const { StagehandPage, StagehandContext } = await patchStagehand();
+      const viewport = initOptions?.viewport?.toLowerCase().split('x').map(Number);
+      const viewportSize = initOptions?.connectTo
+        ? undefined
+        : { width: viewport?.[0] ?? 1280, height: viewport?.[1] ?? 720 };
 
-    const browserResult = await getBrowser(
-      this['apiKey'],
-      this['projectId'],
-      this['env'],
-      {
-        headless: this.headless,
-        recordVideo: initOptions?.recordVideo,
-        viewport: viewportSize,
-        connectTo: initOptions?.connectTo,
-      },
-      this.logger
-    ).catch((e) => {
-      console.error('Error in init:', e);
+      const browserResult = await getBrowser(
+        this['apiKey'],
+        this['projectId'],
+        this['env'],
+        {
+          headless: this.headless,
+          recordVideo: initOptions?.recordVideo,
+          viewport: viewportSize,
+          connectTo: initOptions?.connectTo,
+        },
+        this.logger
+      ).catch((e) => {
+        console.error('Error initializing browser:', e);
+        throw new Error(
+          `Failed to initialize browser: ${e instanceof Error ? e.message : 'Unknown error'}`
+        );
+      });
+
+      this['intEnv'] = browserResult.env;
+      this['contextPath'] = browserResult.contextPath;
+
+      if (!browserResult.context) {
+        throw new Error('Failed to initialize browser context');
+      }
+
+      try {
+        this['stagehandContext'] = await StagehandContext.init(browserResult.context, this);
+      } catch (contextError) {
+        throw new Error(
+          `Failed to initialize Stagehand context: ${
+            contextError instanceof Error ? contextError.message : 'Unknown error'
+          }`
+        );
+      }
+
+      try {
+        const pages = await browserResult.context.pages();
+        const defaultPage =
+          pages.length > 0 ? pages[pages.length - 1] : await browserResult.context.newPage();
+
+        this['stagehandPage'] = await new StagehandPage(
+          defaultPage,
+          this,
+          this['stagehandContext'],
+          this['llmClient'],
+          this['userProvidedInstructions']
+        ).init();
+      } catch (pageError) {
+        throw new Error(
+          `Failed to initialize Stagehand page: ${
+            pageError instanceof Error ? pageError.message : 'Unknown error'
+          }`
+        );
+      }
+
+      // Set the browser to headless mode if specified
+      if (viewportSize && this.headless && !initOptions?.connectTo) {
+        try {
+          await this.page.setViewportSize(viewportSize);
+        } catch (viewportError) {
+          console.error('Warning: Failed to set viewport size:', viewportError);
+          // Don't throw here as this is not a critical error
+        }
+      }
+
+      try {
+        await browserResult.context.addInitScript({
+          content: scriptContent(),
+        });
+      } catch (scriptError) {
+        throw new Error(
+          `Failed to initialize browser scripts: ${
+            scriptError instanceof Error ? scriptError.message : 'Unknown error'
+          }`
+        );
+      }
+
+      this.browserbaseSessionID = browserResult.sessionId;
+
       return {
-        context: undefined,
-        debugUrl: undefined,
-        sessionUrl: undefined,
-        sessionId: undefined,
-        env: this.env,
-        contextPath: undefined,
+        debugUrl: browserResult.debugUrl ?? '',
+        sessionUrl: browserResult.sessionUrl ?? '',
+        sessionId: browserResult.sessionId ?? '',
       };
-    });
-
-    this['intEnv'] = browserResult.env;
-    this['contextPath'] = browserResult.contextPath;
-
-    if (!browserResult.context) {
-      throw new Error('Failed to initialize browser context');
+    } catch (error) {
+      // Ensure we clean up any partially initialized resources on errors
+      try {
+        if (this['stagehandPage']) {
+          await this['stagehandPage'].close();
+        }
+        if (this['stagehandContext']) {
+          await this['stagehandContext'].close();
+        }
+      } catch (cleanupError) {
+        console.error('Error during cleanup:', cleanupError);
+      }
+      throw error;
     }
-
-    this['stagehandContext'] = await StagehandContext.init(browserResult.context, this);
-
-    const pages = await browserResult.context.pages();
-    const defaultPage =
-      pages.length > 0 ? pages[pages.length - 1] : await browserResult.context.newPage();
-
-    this['stagehandPage'] = await new StagehandPage(
-      defaultPage,
-      this,
-      this['stagehandContext'],
-      this['llmClient'],
-      this['userProvidedInstructions']
-    ).init();
-
-    // Set the browser to headless mode if specified
-    if (viewportSize && this.headless && !initOptions?.connectTo) {
-      await this.page.setViewportSize(viewportSize);
-    }
-
-    await browserResult.context.addInitScript({
-      content: scriptContent(),
-    });
-
-    this.browserbaseSessionID = browserResult.sessionId;
-
-    return {
-      debugUrl: browserResult.debugUrl ?? '',
-      sessionUrl: browserResult.sessionUrl ?? '',
-      sessionId: browserResult.sessionId ?? '',
-    };
   };
 }

@@ -147,7 +147,7 @@ export class PrCommand implements Command {
         // PR metadata
         yield `Branch: \`${pr.head.ref}\` → \`${pr.base.ref}\`\n`;
         yield `Commits: ${pr.commits}\n`;
-        yield `Changed files: ${pr.changed_files}\n`;
+        yield `Changed files: ${pr.changed_files || 'N/A'}\n`;
         yield `+${pr.additions} -${pr.deletions}\n\n`;
 
         // Review comments (comments on code)

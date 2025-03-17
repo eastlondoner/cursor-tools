@@ -12,18 +12,24 @@ function verifyStagehandScript() {
   if (!scriptMatch) {
     throw new Error('Could not find STAGEHAND_SCRIPT in bundled file');
   }
-  const bundledScript = scriptMatch[1].replace(/\\n/g, '\n');
+  const bundledScript = scriptMatch[1];
 
   // Read the original script from node_modules
-  const originalScriptPath = resolve(__dirname, '../node_modules/@browserbasehq/stagehand/lib/dom/build/index.js');
+  const originalScriptPath = resolve(__dirname, '../node_modules/@browserbasehq/stagehand/lib/dom/build/scriptContent.ts');
   const originalScript = readFileSync(originalScriptPath, 'utf8');
+  // export const scriptContent = 
+  const originalScriptContentMatch = originalScript.match(/export const scriptContent = "([\s\S]*)";/);
+  if (!originalScriptContentMatch) {
+    throw new Error('Could not find scriptContent in original script');
+  }
+  const originalScriptContent = originalScriptContentMatch[1];
 
   // Compare the scripts
-  if (bundledScript.trim() !== originalScript.trim()) {
+  if (bundledScript.trim() !== originalScriptContent.trim()) {
     throw new Error(
       'Stagehand script mismatch detected!\n' +
       'The bundled script in src/commands/browser/stagehand/stagehandScript.ts does not match\n' +
-      'the script in node_modules/@browserbasehq/stagehand/lib/dom/build/index.js\n\n' +
+      'the script in node_modules/@browserbasehq/stagehand/lib/dom/build/scriptContent.ts\n\n' +
       'Please update the bundled script to match the latest version.'
     );
   }

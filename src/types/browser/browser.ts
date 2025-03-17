@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import type { z } from 'zod';
 
 // Core Stagehand API interface
 export interface Stagehand {

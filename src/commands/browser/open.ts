@@ -1,5 +1,5 @@
 import type { Command, CommandGenerator } from '../../types';
-import { chromium } from 'playwright';
+import { chromium, Page } from 'playwright';
 import { loadConfig } from '../../config.ts';
 import { ensurePlaywright } from './utils.ts';
 import type { OpenCommandOptions } from './browserOptions';
@@ -11,6 +11,7 @@ import {
   setupVideoRecording,
   stopVideoRecording,
 } from './utilsShared';
+import type { Stagehand } from '@browserbasehq/stagehand';
 
 // Helper function to parse time duration string to milliseconds
 function parseTimeDuration(duration: string): number | null {
@@ -69,7 +70,7 @@ function parseWaitParameter(wait: string): { type: 'time' | 'selector'; value: s
 export class OpenCommand implements Command {
   private config = loadConfig();
 
-  async *execute(query: string, options?: OpenCommandOptions): CommandGenerator {
+  async *execute(query: string, options: OpenCommandOptions): CommandGenerator {
     try {
       // Check for Playwright availability first
       await ensurePlaywright();
@@ -104,7 +105,7 @@ export class OpenCommand implements Command {
       const browserType = chromium;
       let browser;
       let context;
-      let page;
+      let page: Page | null = null;
       let consoleMessages: string[] = [];
       let networkMessages: string[] = [];
       let videoPath: string | null = null;

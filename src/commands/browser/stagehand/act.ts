@@ -1,5 +1,5 @@
 import type { Command, CommandGenerator } from '../../../types';
-import { formatOutput, handleBrowserError, ActionError, NavigationError } from './stagehandUtils';
+import { formatOutput, ActionError, NavigationError } from './stagehandUtils';
 import {
   BrowserResult,
   ConstructorParams,
@@ -34,7 +34,7 @@ export type RecordVideoOptions = {
 overrideStagehandInit();
 
 export class ActCommand implements Command {
-  async *execute(query: string, options?: SharedBrowserCommandOptions): CommandGenerator {
+  async *execute(query: string, options: SharedBrowserCommandOptions): CommandGenerator {
     if (!query) {
       yield 'Please provide an instruction and URL. Usage: browser act "<instruction>" --url <url>';
       return;
@@ -61,11 +61,20 @@ export class ActCommand implements Command {
         headless: options?.headless ?? stagehandConfig.headless,
         verbose: options?.debug || stagehandConfig.verbose ? 1 : 0,
         debugDom: options?.debug ?? stagehandConfig.debugDom,
-        modelName: getStagehandModel(stagehandConfig, { model: options?.model }),
+        modelName: getStagehandModel(stagehandConfig, {
+          model: options?.model,
+        }) as 'claude-3-7-sonnet-20250219', // This is needed temporarily because the types for stagehand haven't been updated to include the latest models
         apiKey: getStagehandApiKey(stagehandConfig),
         enableCaching: stagehandConfig.enableCaching,
         logger: stagehandLogger(options?.debug ?? stagehandConfig.verbose),
       } satisfies ConstructorParams;
+
+      if (config.modelName.startsWith('claude-3-7-sonnet')) {
+        console.log(
+          'using claude-3-7-sonnet-20250219 because this is what stagehand supports right now'
+        );
+        config.modelName = 'claude-3-7-sonnet-20250219';
+      }
 
       // Set default values for network and console options
       options = {
@@ -74,7 +83,9 @@ export class ActCommand implements Command {
         console: options?.console === undefined ? true : options.console,
       };
 
-      console.log('using stagehand config', { ...config, apiKey: 'REDACTED' });
+      if (options?.debug) {
+        console.log('using stagehand config', { ...config, apiKey: 'REDACTED' });
+      }
       stagehand = new Stagehand(config);
 
       await using _stagehand = {
@@ -145,11 +156,11 @@ export class ActCommand implements Command {
       );
 
       // Take screenshot if requested
-      await captureScreenshot(stagehand.page, options || {});
+      await captureScreenshot(stagehand.page, options);
 
       // Output result and messages
       yield formatOutput(result, options?.debug);
-      for (const message of outputMessages(consoleMessages, networkMessages, options || {})) {
+      for (const message of outputMessages(consoleMessages, networkMessages, options)) {
         yield message;
       }
 
@@ -165,8 +176,8 @@ export class ActCommand implements Command {
         yield `Screenshot saved to ${options.screenshot}\n`;
       }
     } catch (error) {
-      console.log('error in stagehand loop');
-      yield 'error in stagehand: ' + handleBrowserError(error, options?.debug);
+      console.error('error in stagehand loop', error);
+      throw error;
     }
   }
 
@@ -224,7 +235,7 @@ export class ActCommand implements Command {
 
       return `Successfully performed action: ${instruction}`;
     } catch (error) {
-      console.log('error in stagehand step', error);
+      console.error('error in stagehand step', error);
       if (error instanceof Error) {
         throw new ActionError(`${error.message} Failed to perform action: ${instruction}`, {
           instruction,

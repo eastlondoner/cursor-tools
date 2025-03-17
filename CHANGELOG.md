@@ -2,21 +2,161 @@
 
 All notable changes to this project will be documented in this file.
 
-
 ## [Unreleased]
 
-### Changed
+### Added
+- **Subdirectory Analysis for Repo Command**: Added `--subdir` parameter to the repo command, allowing users to analyze a specific subdirectory instead of the entire repository. This makes the repo command more efficient when working with large codebases by focusing only on relevant subdirectories (e.g., `cursor-tools repo "explain the code" --subdir=src/commands`).
+- **Improved Model Name Resolution**: Enhanced model name handling across providers to better handle experimental and latest model versions:
+  - Automatically resolves `-exp-*` suffixes to find stable model versions
+  - Resolves `-latest` suffixes to the most recent compatible model
+  - For ModelBox and OpenRouter: automatically finds models across providers without requiring provider prefixes (e.g. `gpt-4o` will find `openai/gpt-4o`)
+  - Provides helpful suggestions when models aren't found, showing similar available models
 
+- **Support for OpenRouter when using MCP**
+- By default the `mcp` command uses Anthropic, but now takes a --provider argument that can be set to 'anthropic' or 'openrouter'
+- MCP commands require `ANTHROPIC_API_KEY` or `OPENROUTER_API_KEY` to be set in your environment
+- The '--model' arg can also be used with the MCP command to set the OpenRouter model. It is ignored if the provider is Anthropic.
+
+- **Google Vertex AI Authentication**: Added support for Google Vertex AI authentication using JSON key files or Application Default Credentials (ADC). This update maintains backward compatibility, continuing to support the direct API key string method, while adding additional authentication options. To use this feature, set the `GEMINI_API_KEY` environment variable to the path of your JSON key file or to `adc` to use Application Default Credentials. This enables access to gemini models such as `gemini-2.0-flash` via the Vertex AI. This feature introduces a new dependency: `google-auth-library`.
+  - **Example: Using Service Account JSON Key**
+    Set `GEMINI_API_KEY` to the path of your service account JSON key file:
+    ```env
+    GEMINI_API_KEY="./path/to/service-account.json"
+    ```
+  - **Example: Using Application Default Credentials (ADC)**
+    First, authenticate locally using gcloud:
+    ```bash
+    gcloud auth application-default login
+    ```
+    Then set `GEMINI_API_KEY` to `adc` to use Application Default Credentials:
+    ```env
+    GEMINI_API_KEY="adc"
+    ```
+
+- **New Test Command**: Added comprehensive test command for automated feature behavior testing:
+  - **Real Command Execution**: Tests now execute actual cursor-tools commands in a controlled environment, validating real-world behavior instead of simulated outputs.
+  - Parallel test execution with dynamic worker allocation for faster test suite runtime.
+  - Scenario-specific output buffering for clean parallel execution logs, ensuring readability even with concurrent tests.
+  - Progress tracking showing completed/running/pending scenarios, providing real-time feedback during test runs.
+  - Execution time statistics including total execution time and time saved by parallelization, offering insights into performance gains.
+  - Detailed test reports with:
+    - Test scenario details and results, including clear PASS/FAIL status with visual markers.
+    - Tool execution logs: Detailed record of each tool execution during tests, including arguments, outputs (stdout/stderr), and any errors, providing in-depth insight into test execution flow.
+    - Approach summaries using Gemini: After each test scenario, Gemini is used to summarize the AI agent's approach, providing a natural language overview of the steps and tools used to solve the test scenario.
+  - Test coverage includes various categories of scenarios: Happy Path, Error Handling, Edge Cases, and Performance.
+  - Support for test asset management and references: Introduced a robust system for managing test assets, allowing scenarios to reference external files or inline content, improving test data organization and reusability.
+  - Intelligent retry mechanism with exponential backoff: Implemented a retry system that automatically handles transient errors with exponential backoff and jitter, improving test reliability and reducing false negatives.
+  - Enhanced error handling and reporting: Improved error messages now include detailed information such as error types, stack traces, and context, making debugging test failures more efficient.
+
+## [0.6.0-alpha.7] - 2025-03-05
+
+### Added
+- **Improved ModelBox Provider**: Enhanced the ModelBox provider with improved model name handling. If a requested model is not found, cursor-tools now provides helpful suggestions for similar models. Error messages have also been clarified to better guide users on the requirement for provider prefixes when specifying ModelBox models.
+  - **Example: Improved Error Message**
+    If you use an invalid model with ModelBox, you will now receive suggestions:
+    ```text
+    Error: Model 'invalid-model' not found in ModelBox.
+
+    You requested: invalid-model
+    Similar available models:
+    - openai/gpt-4o
+    - anthropic/claude-3-5-sonnet
+
+    Use --model with one of the above models. Note: ModelBox requires provider prefixes (e.g., 'openai/gpt-4' instead of just 'gpt-4').
+    ```
+- Added support for MCP server overrides in the marketplace
+  - Implemented hardcoded overrides in `MCP_OVERRIDES` map
+  - Added override for google-calendar-mcp to use eastlondoner fork
+  - Overrides can specify custom `githubUrl`, `command`, and `args`
+  - Preserves environment variables when using overrides
+  - Type-safe implementation ensures overrides match the MCPServer interface
+  - Overrides take precedence over marketplace data and automatic GitHub repository checks
+  - Logs when an override is applied using console.log for transparency
+  - Added support for user-configurable overrides in `cursor-tools.config.json`
+    - Users can define custom overrides in the `mcp.overrides` section
+    - Config overrides take precedence over hardcoded overrides
+    - Warns when a config override replaces a hardcoded override
+
+### Changed
+- Updated all references to Claude 3.5 Sonnet models to Claude 3.7 Sonnet models throughout the codebase
+  - Updated model references in configuration files, documentation, and source code
+  - Updated default model settings for Anthropic provider
+  - Updated error messages and model suggestions
+  - Used `claude-3-7-sonnet` for most use cases and `claude-3-7-sonnet-thinking` for MCP client
+- Updated @browserbasehq/stagehand dependency from 1.13.0 to 1.13.1
+- Updated @browserbasehq/stagehand dependency from 1.13.1 to 1.14.0
+- Added new dependencies for test command:
+  - Added `p-queue` for parallel execution management
+  - Added `glob` and `@types/glob` for test file pattern matching
+  - Added `playwright` and `playwright-core` with version pinning
+
+## [0.6.0-alpha.5] - 2024-03-22
+
+### Changed
+- cursor-tools now only recommends global installation
+- Updated install command to check for and warn about cursor-tools dependencies in package.json files
+  - Checks both dependencies and devDependencies in package.json
+  - Provides clear instructions for removing local installations using npm, pnpm, or yarn
+  - This is in response to multiple issues caused by local installation and execution under different js runtimes
+
+## [0.6.0-alpha.4] - 2024-03-22
+
+### Changed
+- Added validation to require --tag alpha or --tag latest when running release command
+
+## [0.6.0-alpha.3] - 2024-03-22
+
+### Added
+- Added ModelBox provider for access to a wider range of models through an OpenAI-compatible API
+- Added OpenRouter provider to enable access to models from various providers including Perplexity
+- New ClickUp integration command for task management
+  - Added ClickUp authentication flow with API token request during installation
+  - Implemented ClickUp command with task management capabilities
+  - Added ClickUp command instructions to template
+- Added instructions for Chrome remote debugging setup in cursor rules
+
+### Changed
+- Improved browser command state management when using `--connect-to`:
+    - Reuses existing browser tabs for subsequent commands in a session, preserving page state
+    - Introduced `reload-current` as a special URL value to refresh the current page without losing the connected session
 - Browser commands (`open`, `act`, `observe`, `extract`) now have `--console` and `--network` options enabled by default. Use `--no-console` and `--no-network` to disable them. 
 - Improved page reuse in browser commands when using `--connect-to`: now reuses existing tabs instead of creating new ones for better state preservation
 - Improved error handling and type safety in cursor rules management
 - Enhanced directory creation order in installation process
+- Added user choice during installation for cursor rules location (legacy `.cursorrules` or new `.cursor/rules/cursor-tools.mdc`)
+- Added `USE_LEGACY_CURSORRULES` environment variable to control cursor rules file location
+- Improved output handling across all commands:
+  - Centralized output handling in main CLI
+  - Commands now yield output consistently
+  - Better error handling for file writes
+  - Added timeout protection for stdout writes
+  - More reliable output flushing
+- Improved security by not logging API keys in stagehand config
+
+## [0.6.0-alpha.1] - 2024-03-22
+
+### Fixed
+- Fixed debug logging in all provider commands to properly pass through the debug flag
+  - Fixed `ask` command to pass debug flag to provider
+  - Fixed `web` command to properly handle debug flag
+  - Fixed `doc` command to include debug flag in options
+  - Fixed `plan` command to pass debug flag to both file and thinking providers
+  - Standardized debug logging format across all providers
+  - Debug logs now show full request and response details when enabled
+
+### Changed
+- Changed default thinking provider for plan command to OpenAI with o3-mini model for significantly faster plan generation, while maintaining plan quality
 
 ### Added
+- New `ask` command for direct model queries
+  - Requires both provider and model parameters
+  - Allows querying any model from any provider directly
+  - Simple and focused command for direct questions
 - Support for new Cursor IDE project rules structure
-  - New installations now use `.cursor/rules/cursor-tools.mdc`
-  - Maintain compatibility with legacy `.cursorrules` file
-  - When both exist, prefer new path and show warning
+  - New installations now use `.cursor/rules/cursor-tools.mdc` by default
+  - Maintain compatibility with legacy `.cursorrules` file via `USE_LEGACY_CURSORRULES=true`
+  - Interactive choice during installation
+  - When both exist, use path based on `USE_LEGACY_CURSORRULES` environment variable
   - Updated documentation to reflect new path structure
 - Added support for the `gpt-4o` model in browser commands (`act`, `extract`, `observe`)
   - The model can be selected using the `--model=gpt-4o` command-line option
@@ -24,6 +164,26 @@ All notable changes to this project will be documented in this file.
   - If no model is specified, a default model is used based on the configured provider (OpenAI or Anthropic)
 - **Internal:** Bundled Stagehand script directly into the codebase to prevent dependency issues
 - **Build:** Added stagehand script verification to the release process
+- Enhanced `plan` command with dual-provider architecture:
+  - Separate providers for file identification and plan generation
+  - `fileProvider` handles repository file analysis
+  - `thinkingProvider` generates implementation plans
+  - New command options:
+    - `--fileProvider`: Provider for file identification (gemini, openai, or openrouter)
+    - `--thinkingProvider`: Provider for plan generation (gemini, openai, or openrouter)
+    - `--fileModel`: Model to use for file identification
+    - `--thinkingModel`: Model to use for plan generation
+    - `--fileMaxTokens`: Maximum tokens for file identification
+    - `--thinkingMaxTokens`: Maximum tokens for plan generation
+- Brand new provider system with enhanced error handling and configuration:
+  - New provider interfaces for specialized tasks
+  - Shared implementations via provider mixins
+  - Better error messages and debugging support
+  - Configurable system prompts for different tasks
+- Added `--quiet` flag to suppress stdout output while still saving to file with `--save-to`
+  - Useful for scripting and automated documentation generation
+  - All commands now support quiet mode
+  - Error messages are still displayed even in quiet mode
 
 ## [0.4.3-alpha.23] - 2024-03-22
 

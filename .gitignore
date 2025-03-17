@@ -35,3 +35,6 @@ repomix-output.txt
 test-videos/
 screenshot.png
 screenshots/
+.specstory/
+
+test-xcode/

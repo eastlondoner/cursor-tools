@@ -2,28 +2,35 @@ import type { Command, CommandGenerator, CommandOptions } from '../../types';
 import { chromium } from 'playwright';
 import { loadConfig } from '../../config.ts';
 import { ensurePlaywright } from './utils.ts';
+import type { SharedBrowserCommandOptions } from './browserOptions';
+import { setupConsoleLogging, setupNetworkMonitoring, outputMessages } from './utilsShared';
 
-interface ElementBrowserOptions extends CommandOptions {
-  url?: string;
+interface ElementBrowserOptions extends SharedBrowserCommandOptions {
   selector?: string;
-  html?: boolean;
   text?: boolean;
-  screenshot?: string;
 }
 
 export class ElementCommand implements Command {
   private config = loadConfig();
 
-  async *execute(query: string, options?: ElementBrowserOptions): CommandGenerator {
+  async *execute(query: string, options: ElementBrowserOptions): CommandGenerator {
     let browser;
+    let consoleMessages: string[] = [];
+    let networkMessages: string[] = [];
+
+    // Set default options
+    options = {
+      ...options,
+      network: options?.network === undefined ? true : options.network,
+      console: options?.console === undefined ? true : options.console,
+    };
+
     try {
       // Check for Playwright availability first
       await ensurePlaywright();
 
       // Parse selector from query if not provided in options
       if (!options?.selector && query) {
-        // If URL is provided in options, use entire query as selector
-        // Otherwise, try to parse URL and selector from query
         if (options?.url) {
           options = { ...options, selector: query };
         } else {
@@ -45,13 +52,15 @@ export class ElementCommand implements Command {
       }
 
       const browserType = chromium;
-
       yield 'Launching browser...';
       browser = await browserType.launch({
         headless: true, // Always headless for element inspection
       });
-
       const page = await browser.newPage();
+
+      // Setup console and network monitoring
+      consoleMessages = await setupConsoleLogging(page, options);
+      networkMessages = await setupNetworkMonitoring(page, options);
 
       yield `Navigating to ${options.url}...`;
       await page.goto(options.url, { timeout: this.config.browser?.timeout ?? 30000 });
@@ -95,6 +104,11 @@ export class ElementCommand implements Command {
         yield '\n\nText:\n';
         yield elementText?.trim() || '';
         yield '\n--- End of Element Content ---\n';
+      }
+
+      // Output console and network messages
+      for (const message of outputMessages(consoleMessages, networkMessages, options)) {
+        yield message;
       }
     } catch (error) {
       yield `Browser element command error: ${error instanceof Error ? error.message : 'Unknown error'}`;

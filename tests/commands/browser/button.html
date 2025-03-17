@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Button Test</title>
+</head>
+<body>
+    <button id="test-button" onclick="handleClick()">Click me!</button>
+    <div id="result"></div>
+
+    <script>
+        function handleClick() {
+            document.getElementById('result').textContent = 'Button was clicked!';
+            console.log('Button clicked!');
+        }
+    </script>
+</body>
+</html> 

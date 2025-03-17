@@ -27,7 +27,7 @@ import { overrideStagehandInit } from './initOverride';
 overrideStagehandInit();
 
 export class ExtractCommand implements Command {
-  async *execute(query: string, options?: SharedBrowserCommandOptions): CommandGenerator {
+  async *execute(query: string, options: SharedBrowserCommandOptions): CommandGenerator {
     if (!query) {
       yield 'Please provide an instruction and URL. Usage: browser extract "<instruction>" --url <url>';
       return;
@@ -54,7 +54,9 @@ export class ExtractCommand implements Command {
         headless: options?.headless ?? stagehandConfig.headless,
         verbose: options?.debug || stagehandConfig.verbose ? 1 : 0,
         debugDom: options?.debug ?? stagehandConfig.debugDom,
-        modelName: getStagehandModel(stagehandConfig, { model: options?.model }),
+        modelName: getStagehandModel(stagehandConfig, {
+          model: options?.model,
+        }) as 'claude-3-7-sonnet-20250219',
         apiKey: getStagehandApiKey(stagehandConfig),
         enableCaching: stagehandConfig.enableCaching,
         logger: stagehandLogger(options?.debug ?? stagehandConfig.verbose),
@@ -67,7 +69,9 @@ export class ExtractCommand implements Command {
         console: options?.console === undefined ? true : options.console,
       };
 
-      console.log('using stagehand config', { ...config, apiKey: 'REDACTED' });
+      if (options?.debug) {
+        console.log('using stagehand config', { ...config, apiKey: 'REDACTED' });
+      }
       stagehand = new Stagehand(config);
 
       await using _stagehand = {

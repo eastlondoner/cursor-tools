@@ -1,130 +1,74 @@
+# cursor-tools Documentation Command Issues and Next Steps
 
+## Current Issues
 
-## Stagehand Integration Plan
+Based on the test report (`tests/reports/feature/openrouter-mcp/doc-command_report_2025-03-12T16-57-15-257Z.md`), the following issues were identified with the `doc` command:
 
-**Overall Goal:** Add support for Stagehand AI browser automation with configuration for both OpenAI and Anthropic providers.
+### 1. Empty Repository Handling (Scenario 7)
+- The command fails when run on empty or nearly empty repositories
+- No specific logic exists to detect and handle this edge case gracefully
+- Users receive technical errors rather than helpful messages
 
-### 1. Configuration Updates
+### 2. Format Parameter Support (Scenario 8)
+- The command does not properly support the `--format` parameter
+- No validation or clear documentation for supported formats
 
-#### A. Config File Structure (`cursor-tools.config.json`)
-Add new configuration sections for Stagehand and its providers:
+### 3. Large Repository Performance (Scenario 9)
+- Performance issues when processing large repositories
+- Potential timeout or memory problems without proper handling
+- No progress indicators or partial results for large repos
 
-```json
-{
-  "stagehand": {
-    "provider": "anthropic", // or "openai"
-    "timeout": 30000,
-    "headless": true,
-    "verbose": false,
-    "debugDom": false,
-    "enableCaching": true,
-    "model": {
-      "anthropic": "claude-3-5-sonnet-latest",
-      "openai": "o3-mini"
-    }
-  }
-}
-```
+### 4. Multiple Parameters Support (Scenario 10)
+- Issues when combining multiple command parameters
+- Possible parameter conflicts or unexpected behavior
+- Lack of validation for parameter combinations
 
-#### B. Environment Variables (`.cursor-tools.env`)
-Add support for provider API keys:
-```
-ANTHROPIC_API_KEY="your-anthropic-api-key"
-OPENAI_API_KEY="your-openai-api-key"
-```
+## Next Steps
 
-### 2. Implementation Tasks
+### 1. Enhance Empty Repository Handling
+- Add detection for empty or nearly empty repositories
+- Provide meaningful documentation even for minimal codebases
+- Return helpful messages instead of errors
+- Example: "Repository contains minimal code. Basic structure documentation generated."
 
-1. **Update Configuration System**
-   - Modify `src/config.ts` to include new Stagehand configuration types and defaults
-   - Add validation for Stagehand-specific configuration
-   - Update environment variable loading to handle new API keys
+### 2. Implement Format Parameter Support
+- Add support for different output formats (markdown, JSON, HTML)
+- Validate format parameter values
+- Document supported formats in help text
 
-2. **Update Installation Process**
-   - Modify `src/commands/install.ts` to:
-     - Prompt for Stagehand provider selection (OpenAI or Anthropic)
-     - Collect appropriate API key based on provider
-     - Set up default configuration in `cursor-tools.config.json`
+### 3. Optimize Large Repository Performance
+- Implement chunking for large repositories
+- Add progress indicators for long-running operations
+- Provide partial results if complete processing fails
+- Consider adding a `--max-size` parameter to limit processing
 
-3. **Stagehand Command Implementation**
-   - Create `src/commands/browser/stagehand/config.ts` for Stagehand-specific configuration
-   - Update `src/commands/browser/stagehand/act.ts` to:
-     - Use configuration from `cursor-tools.config.json`
-     - Handle provider-specific setup (API keys, models)
-     - Implement proper error handling and timeout management
+### 4. Improve Multiple Parameters Support
+- Add validation for parameter combinations
+- Document expected behavior for parameter interactions
+- Handle potential conflicts gracefully
 
-4. **Documentation Updates**
-   - Update README.md with Stagehand configuration instructions
-   - Add examples for both OpenAI and Anthropic usage
-   - Document configuration options and their effects
+### 5. General Improvements
+- Add comprehensive error handling throughout the command
+- Improve retry logic with better user feedback
+- Enhance documentation of command options
+- Add unit tests for edge cases
 
-### 3. Implementation Details
+## Implementation Priority
 
-#### Configuration Loading
-```typescript
-interface StagehandConfig {
-  provider: 'anthropic' | 'openai';
-  timeout: number;
-  headless: boolean;
-  verbose: boolean;
-  debugDom: boolean;
-  enableCaching: boolean;
-  model: {
-    anthropic: string;
-    openai: string;
-  };
-}
+1. Empty Repository Handling - High Priority (Common edge case)
+2. Format Parameter Support - Medium Priority
+3. Multiple Parameters Support - Medium Priority
+4. Large Repository Performance - Low Priority (Requires more extensive changes)
 
-const defaultStagehandConfig: StagehandConfig = {
-  provider: 'anthropic',
-  timeout: 30000,
-  headless: true,
-  verbose: false,
-  debugDom: false,
-  enableCaching: true,
-  model: {
-    anthropic: 'claude-3-5-sonnet-latest',
-    openai: 'o3-mini'
-  }
-};
-```
+## Testing Strategy
 
-#### API Key Management
-- Follow existing pattern of checking both project-level and user-level .env files
-- Add validation to ensure required API key is present based on selected provider
-- Provide clear error messages if required keys are missing
+After implementing fixes:
 
-### 4. Testing Plan
+1. Run the test scenarios again using:
+   ```
+   pnpm dev test tests/feature-behaviors/doc/doc-command.md
+   ```
 
-1. **Configuration Tests**
-   - Test loading and validation of Stagehand configuration
-   - Verify provider selection affects which API key is required
-   - Test fallback to default values
+2. Add additional test cases for edge conditions
 
-2. **Integration Tests**
-   - Test Stagehand initialization with both providers
-   - Verify timeout handling
-   - Test error scenarios (missing API keys, invalid configuration)
-
-3. **Manual Testing**
-   - Test browser automation with both providers
-   - Verify configuration changes affect behavior
-   - Test error handling and user feedback
-
-### 5. Implementation Order
-
-1. Add configuration system updates
-2. Implement API key management
-3. Update installation process
-4. Implement Stagehand command updates
-5. Add documentation
-6. Add tests
-7. Manual testing and refinement
-
-### 6. Future Considerations
-
-- Add support for provider-specific configuration options
-- Consider adding provider-specific timeout settings
-- Add support for custom model configurations
-- Consider adding caching configuration options
-- Add support for session management with Browserbase
+3. Manually verify fixes with real-world repositories of varying sizes and complexities

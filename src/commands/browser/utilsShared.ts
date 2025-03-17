@@ -1,8 +1,8 @@
-import type { Page } from 'playwright';
 import type { SharedBrowserCommandOptions } from './browserOptions';
 import { existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import type { CommandGenerator } from '../../types';
+import type { Page } from 'playwright';
 
 /**
  * Formats a console message with location and stack trace information.

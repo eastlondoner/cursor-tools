@@ -17,7 +17,7 @@ export class StagehandError extends Error {
 export class ActionError extends StagehandError {
   constructor(message: string, details?: any) {
     super(message, details);
-    this.name = 'Actionrror';
+    this.name = 'ActionError';
   }
 }
 

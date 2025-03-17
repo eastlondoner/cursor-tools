@@ -14,7 +14,7 @@ export class BrowserCommand implements Command {
     observe: new ObserveCommand(),
   };
 
-  async *execute(query: string, options?: CommandOptions): CommandGenerator {
+  async *execute(query: string, options: CommandOptions): CommandGenerator {
     const [subcommand, ...rest] = query.split(' ');
     const subQuery = rest.join(' ');
 

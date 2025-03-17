@@ -1,7 +1,8 @@
 import { z } from 'zod';
+import { exhaustiveMatchGuard } from '../../../utils/exhaustiveMatchGuard';
 
 // Define available models
-export const availableModels = z.enum(['claude-3-5-sonnet-latest', 'o3-mini', 'gpt-4o']);
+export const availableModels = z.enum(['claude-3-7-sonnet-latest', 'o3-mini', 'gpt-4o']);
 
 export type AvailableModel = z.infer<typeof availableModels>;
 
@@ -65,7 +66,7 @@ export function loadStagehandConfig(config: Config): StagehandConfig {
       case 'anthropic': {
         if (!process.env.ANTHROPIC_API_KEY) {
           throw new Error(
-            'ANTHROPIC_API_KEY is required for when Stagehand is configured for to use Anthropic. Please set one in your environment or add it to ~/.cursor-tools/.env file.'
+            'ANTHROPIC_API_KEY is required for when Stagehand is configured to use Anthropic. Please set one in your environment or add it to ~/.cursor-tools/.env file.'
           );
         }
         break;
@@ -73,13 +74,13 @@ export function loadStagehandConfig(config: Config): StagehandConfig {
       case 'openai': {
         if (!process.env.OPENAI_API_KEY) {
           throw new Error(
-            'OPENAI_API_KEY is required for when Stagehand is configured for to use Anthropic. Please set one in your environment or add it to ~/.cursor-tools/.env file.'
+            'OPENAI_API_KEY is required for when Stagehand is configured to use OpenAI. Please set one in your environment or add it to ~/.cursor-tools/.env file.'
           );
         }
         break;
       }
       default:
-        throw new Error('Unrecognized AI provider for stagehand ' + provider);
+        throw exhaustiveMatchGuard(provider, 'Unrecognized AI provider for stagehand');
     }
   }
 
@@ -132,7 +133,7 @@ export function getStagehandApiKey(config: StagehandConfig): string {
  * Get the Stagehand model to use based on the following precedence:
  * 1. Command line option (--model)
  * 2. Configuration file (cursor-tools.config.json)
- * 3. Default model based on provider (claude-3-5-sonnet-latest for Anthropic, o3-mini for OpenAI)
+ * 3. Default model based on provider (claude-3-7-sonnet for Anthropic, o3-mini for OpenAI)
  *
  * If both command line and config models are invalid, falls back to the default model for the provider.
  *
@@ -153,7 +154,7 @@ export function getStagehandModel(
     }
     console.warn(
       `Warning: Using unfamiliar model "${modelToUse}" this may be a mistake. ` +
-        `Typical models are "claude-3-5-sonnet-latest" for Anthropic and "o3-mini" or "gpt-4o" for OpenAI.`
+        `Typical models are "claude-3-7-sonnet-latest" for Anthropic and "o3-mini" or "gpt-4o" for OpenAI.`
     );
     return modelToUse as AvailableModel;
   }
@@ -161,7 +162,7 @@ export function getStagehandModel(
   // Otherwise use defaults based on provider
   switch (config.provider) {
     case 'anthropic': {
-      return 'claude-3-5-sonnet-latest';
+      return 'claude-3-7-sonnet-latest';
     }
     case 'openai': {
       return 'o3-mini';

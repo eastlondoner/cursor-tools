@@ -4,10 +4,72 @@
 
 <div align=center><h1>Give Cursor Agent an AI team and advanced skills</h1></div>
 
+## Table of Contents
+- [The AI Team](#the-ai-team)
+- [New Skills](#new-skills-for-your-existing-agent)
+- [How to Use](#how-do-i-use-it)
+  - [Example: Using Perplexity](#asking-perplexity-to-carry-out-web-research)
+  - [Example: Using Gemini](#asking-gemini-for-a-plan)
+- [What is cursor-tools](#what-is-cursor-tools)
+- [Installation](#installation)
+- [Requirements](#requirements)
+- [Tips](#tips)
+- [Additional Examples](#additional-examples)
+  - [GitHub Skills](#github-skills)
+  - [Gemini Code Review](#gemini-code-review)
+- [Detailed Cursor Usage](#detailed-cursor-usage)
+  - [Tool Recommendations](#tool-recommendations)
+  - [Command Nicknames](#command-nicknames)
+  - [Web Search](#use-web-search)
+  - [Repository Search](#use-repo-search)
+  - [Documentation Generation](#use-doc-generation)
+  - [GitHub Integration](#use-github-integration)
+  - [Browser Automation](#use-browser-automation)
+  - [Direct Model Queries](#use-direct-model-queries)
+- [Authentication and API Keys](#authentication-and-api-keys)
+- [AI Team Features](#ai-team-features)
+  - [Perplexity: Web Search & Research](#perplexity-web-search--research)
+  - [Gemini 2.0: Repository Context & Planning](#gemini-20-repository-context--planning)
+  - [Stagehand: Browser Automation](#stagehand-browser-automation)
+    - [Browser Command Options](#browser-command-options)
+    - [Video Recording](#video-recording)
+    - [Console and Network Logging](#console-and-network-logging)
+    - [Complex Actions](#complex-actions)
+    - [Troubleshooting Browser Commands](#troubleshooting-browser-commands)
+- [Skills](#skills)
+  - [GitHub Integration](#github-integration)
+  - [Xcode Tools](#xcode-tools)
+  - [Documentation Generation](#documentation-generation-uses-gemini-20)
+- [Configuration](#configuration)
+  - [cursor-tools.config.json](#cursor-toolsconfigjson)
+  - [GitHub Authentication](#github-authentication)
+  - [Repomix Configuration](#repomix-configuration)
+  - [Model Selection](#model-selection)
+  - [Cursor Configuration](#cursor-configuration)
+    - [Cursor Agent Configuration](#cursor-agent-configuration)
+- [cursor-tools cli](#cursor-tools-cli)
+  - [Command Options](#command-options)
+  - [Execution Methods](#execution-methods)
+- [Troubleshooting](#troubleshooting)
+- [Examples](#examples)
+  - [Web Search Examples](#web-search-examples)
+  - [Repository Context Examples](#repository-context-examples)
+  - [Documentation Examples](#documentation-examples)
+  - [GitHub Integration Examples](#github-integration-examples)
+  - [Xcode Command Examples](#xcode-command-examples)
+  - [Browser Command Examples](#browser-command-examples)
+    - [open subcommand examples](#open-subcommand-examples)
+    - [act, extract, observe subcommands examples](#act-extract-observe-subcommands-examples)
+- [Node Package Manager](#node-package-manager-npm)
+- [Contributing](#contributing)
+- [Sponsors](#sponsors)
+- [License](#license)
+
 ### The AI Team
 - Perplexity to search the web and perform deep research
 - Gemini 2.0 for huge whole-codebase context window, search grounding and reasoning
 - Stagehand for browser operation to test and debug web apps (uses Anthropic or OpenAI models)
+- OpenRouter for access to a variety of models through a unified API (for MCP commands)
 
 
 ### New Skills for your existing Agent
@@ -76,24 +138,34 @@ Here are two examples:
 
 ## What is cursor-tools
 
-`cursor-tools` provides a CLI that your **AI agent can use** to expand its capabilities. `cursor-tools` works with with Cursor (and is compatible with other agents), When you run `cursor-tools install` we automatically add a prompt section to your Cursor project rules (`.cursor/rules/cursor-tools.mdc` or legacy `.cursorrules` file) so that it works out of the box with Cursor, there's no need for additional prompts.
+`cursor-tools` provides a CLI that your **AI agent can use** to expand its capabilities. `cursor-tools` is designed to be installed globally, providing system-wide access to its powerful features. When you run `cursor-tools install` we automatically add a prompt section to your Cursor project rules. During installation, you can choose between:
+- The new `.cursor/rules/cursor-tools.mdc` file (recommended)
+- The legacy `.cursorrules` file (for backward compatibility)
+
+You can also control this using the `USE_LEGACY_CURSORRULES` environment variable:
+- `USE_LEGACY_CURSORRULES=true` - Use legacy `.cursorrules` file
+- `USE_LEGACY_CURSORRULES=false` - Use new `.cursor/rules/cursor-tools.mdc` file
+- If not set, defaults to legacy mode for backward compatibility
 
 `cursor-tools` requires a Perplexity API key and a Google AI API key.
 
-`cursor-tools` is an node package. You can install it globally, at a node project level or run without installation using `npx`.
+`cursor-tools` is a node package that should be installed globally.
 
 ## Installation
 
-Run the interactive setup:
+Install cursor-tools globally:
 ```bash
-npx cursor-tools@latest install .
+npm install -g cursor-tools
+```
+
+Then run the interactive setup:
+```bash
+cursor-tools install .
 ```
 
 This command will:
-
-1. Add `cursor-tools` as a dev dependency in your package.json
-2. Guide you through API key configuration
-3. Update your Cursor project rules for Cursor integration (using `.cursor/rules/cursor-tools.mdc` or existing `.cursorrules`)
+1. Guide you through API key configuration
+2. Update your Cursor project rules for Cursor integration (using `.cursor/rules/cursor-tools.mdc` or existing `.cursorrules`)
 
 ## Requirements
 
@@ -108,23 +180,43 @@ This command will:
 
 `cursor-tools` uses Perplexity because Perplexity has the best web search api and indexes and it does not hallucinate. Perplexity Pro users can get an API key with their pro account and recieve $5/month of free credits (at time of writing). Support for Google search grounding is coming soon but so far testing has shown it still frequently hallucinates things like APIs and libraries that don't exist.
 
-
-## Additional Examples
-
-To see cursor-tools GitHub and Perplexity skills: Check out [this example issue that was solved using Cursor agent and cursor-tools](https://github.com/eastlondoner/cursor-tools/issues/1)
-
-Tips:
+## Tips:
 
 - Ask Cursor Agent to have Gemini review its work
 - Ask Cursor Agent to generate documentation for external dependencies and write it to a local-docs/ folder
 
 If you do something cool with `cursor-tools` please let me know on twitter or make a PR to add to this section!
 
+## Additional Examples
+
+### GitHub Skills
+To see cursor-tools GitHub and Perplexity skills: Check out [this example issue that was solved using Cursor agent and cursor-tools](https://github.com/eastlondoner/cursor-tools/issues/1)
+
+### Gemini code review
+See cursor get approximately 5x more work done per-prompt with Gemini code review:
+<img width="1701" alt="long view export" src="https://github.com/user-attachments/assets/a8a63f4a-1818-4e84-bb1f-0f60d82c1c42" />
+
 ## Detailed Cursor Usage
 
 Use Cursor Composer in agent mode with command execution (not sure what this means, see section below on Cursor Agent configuration). If you have installed the cursor-tools prompt to your .cursorrules (or equivalent) just ask your AI coding agent/assistant to use "cursor-tools" to do things.
 
-Examples usages:
+
+### Tool Recommendations
+- `cursor-tools ask` allows direct querying of any model from any provider. It's best for simple questions where you want to use a specific model or compare responses from different models.
+- `cursor-tools web` uses an AI teammate with web search capability to answer questions. `web` is best for finding up-to-date information from the web that is not specific to the repository such as how to use a library to search for known issues and error messages or to get suggestions on how to do something. Web is a teammate who knows tons of stuff and is always up to date.
+- `cursor-tools repo` uses an AI teammate with large context window capability to answer questions. `repo` sends the entire repo as context so it is ideal for questions about how things work or where to find something, it is also great for code review, debugging and planning.  is a teammate who knows the entire codebase inside out and understands how everything works together.
+- `cursor-tools plan` uses an AI teammate with reasoning capability to plan complex tasks. Plan uses a two step process. First it does a whole repo search with a large context window model to find relevant files. Then it sends only those files as context to a thinking model to generate a plan it is great for planning complex tasks and for debugging and refactoring. Plan is a teammate who is really smart on a well defined problem, although doesn't consider the bigger picture.
+- `cursor-tools doc` uses an AI teammate with large context window capability to generate documentation for local or github hosted repositories by sending the entire repo as context. `doc` can be given precise documentation tasks or can be asked to generate complete docs from scratch it is great for generating docs updates or for generating local documentation for a libary or API that you use! Doc is a teammate who is great at summarising and explaining code, in this repo or in any other repo!
+- `cursor-tools browser` uses an AI teammate with browser control (aka operator) capability to operate web browsers. `browser` can operate in a hidden (headless) mode to invisibly test and debug web apps or it can be used to connect to an existing browser session to interactively share your browser with Cursor agent it is great for testing and debugging web apps and for carrying out any task that can be done in a browser such as reading information from a bug ticket or even filling out a form. Browser is a teammate who can help you test and debug web apps, and can share control of your browser to perform small browser-based tasks.
+
+Note: For repo, doc and plan commands the repository content that is sent as context can be reduced by filtering out files in a .repomixignore file.
+
+### Command Nicknames
+When using cursor-tools with Cursor Composer, you can use these nicknames:
+- "Gemini" is a nickname for `cursor-tools repo`
+- "Perplexity" is a nickname for `cursor-tools web`
+- "Stagehand" is a nickname for `cursor-tools browser`
+
 
 ### Use web search
 "Please implement country specific stripe payment pages for the USA, UK, France and Germany. Use cursor-tools web to check the available stripe payment methods in each country."
@@ -157,16 +249,61 @@ Note: in most cases you can say "fetch issue 123" or "fetch PR 321" instead of "
 
 Note: in most cases you can say "Use Stagehand" instead of "use cursor-tools" and it will work the same.
 
+### Use direct model queries
+"Use cursor-tools ask to compare how different models answer this question: 'What are the key differences between REST and GraphQL?'"
+
+"Ask OpenAI's o3-mini model to explain the concept of dependency injection."
+
+Note: The ask command requires both --provider and --model parameters to be specified. This command is generally less useful than other commands like `repo` or `plan` because it does not include any context from your codebase or repository.
+
 
 ## Authentication and API Keys
-`cursor-tools` requires API keys for both Perplexity AI and Google Gemini. These can be configured in two ways:
+`cursor-tools` requires API keys for Perplexity AI, Google Gemini, and optionally for OpenAI, Anthropic and OpenRouter. These can be configured in two ways:
 
 1. **Interactive Setup**: Run `cursor-tools install` and follow the prompts
 2. **Manual Setup**: Create `~/.cursor-tools/.env` in your home directory or `.cursor-tools.env` in your project root:
    ```env
    PERPLEXITY_API_KEY="your-perplexity-api-key"
    GEMINI_API_KEY="your-gemini-api-key"
+   OPENAI_API_KEY="your-openai-api-key"  # Optional, for Stagehand
+   ANTHROPIC_API_KEY="your-anthropic-api-key" # Optional, for Stagehand and MCP
+   OPENROUTER_API_KEY="your-openrouter-api-key" # Optional, for MCP
+   GITHUB_TOKEN="your-github-token"  # Optional, for enhanced GitHub access
    ```
+   * At least one of `ANTHROPIC_API_KEY` and `OPENROUTER_API_KEY` must be provided to use the `mcp` commands.
+
+### Google Gemini API Authentication
+
+`cursor-tools` supports multiple authentication methods for accessing the Google Gemini API, providing flexibility for different environments and security requirements. You can choose from the following methods:
+
+1. **API Key (Default)**
+   - This is the simplest method and continues to be supported for backward compatibility.
+   - Set the `GEMINI_API_KEY` environment variable to your API key string obtained from Google AI Studio.
+   - **Example:**
+     ```env
+     GEMINI_API_KEY="your-api-key-here"
+     ```
+
+2. **Service Account JSON Key File**
+   - For enhanced security, especially in production environments, use a service account JSON key file.
+   - Set the `GEMINI_API_KEY` environment variable to the **path** of your downloaded service account JSON key file.
+   - **Example:**
+     ```env
+     GEMINI_API_KEY="./path/to/service-account.json"
+     ```
+   - This method enables access to the latest Gemini models available through Vertex AI, such as `gemini-2.0-flash`.
+
+3. **Application Default Credentials (ADC) (Recommended for Google Cloud Environments)**
+   - ADC is ideal when running `cursor-tools` within Google Cloud environments (e.g., Compute Engine, Kubernetes Engine) or for local development using `gcloud`.
+   - Set the `GEMINI_API_KEY` environment variable to `adc`.
+   - **Example:**
+     ```env
+     GEMINI_API_KEY="adc"
+     ```
+   - **Setup Instructions:** First, authenticate locally using gcloud:
+     ```bash
+     gcloud auth application-default login
+     ```
 
 
 ## AI Team Features
@@ -177,18 +314,36 @@ Use Perplexity AI to get up-to-date information directly within Cursor:
 cursor-tools web "What's new in TypeScript 5.7?"
 ```
 
-### Gemini 2.0: Repository Context
-Leverage Google Gemini 2.0 models with 1M+ token context windows for codebase-aware assistance:
+### Gemini 2.0: Repository Context & Planning
+Leverage Google Gemini 2.0 models with 1M+ token context windows for codebase-aware assistance and implementation planning:
+
 ```bash
+# Get context-aware assistance
 cursor-tools repo "Explain the authentication flow in this project, which files are involved?"
+
+# Generate implementation plans
+cursor-tools plan "Add user authentication to the login page"
 ```
+
+The plan command uses multiple AI models to:
+1. Identify relevant files in your codebase (using Gemini by default)
+2. Extract content from those files
+3. Generate a detailed implementation plan (using o3-mini by default)
+
+**Plan Command Options:**
+- `--fileProvider=<provider>`: Provider for file identification (gemini, openai, anthropic, perplexity, modelbox, or openrouter)
+- `--thinkingProvider=<provider>`: Provider for plan generation (gemini, openai, anthropic, perplexity, modelbox, or openrouter)
+- `--fileModel=<model>`: Model to use for file identification
+- `--thinkingModel=<model>`: Model to use for plan generation
+- `--fileMaxTokens=<number>`: Maximum tokens for file identification
+- `--thinkingMaxTokens=<number>`: Maximum tokens for plan generation
+- `--debug`: Show detailed error information
 
 Repository context is created using Repomix. See repomix configuration section below for details on how to change repomix behaviour.
 
 Above 1M tokens cursor-tools will always send requests to Gemini 2.0 Pro as it is the only model that supports 1M+ tokens.
 
 The Gemini 2.0 Pro context limit is 2M tokens, you can add filters to .repomixignore if your repomix context is above this limit.
-
 
 ### Stagehand: Browser Automation
 Automate browser interactions for web scraping, testing, and debugging:
@@ -254,13 +409,14 @@ All browser commands (`open`, `act`, `observe`, `extract`) support these options
 - `--network`: Capture network activity (enabled by default, use `--no-network` to disable)
 - `--screenshot=<file path>`: Save a screenshot of the page
 - `--timeout=<milliseconds>`: Set navigation timeout (default: 120000ms for Stagehand operations, 30000ms for navigation)
-- `--viewport=<width>x<height>`: Set viewport size (e.g., 1280x720).
+- `--viewport=<width>x<height>`: Set viewport size (e.g., 1280x720)
 - `--headless`: Run browser in headless mode (default: true)
 - `--no-headless`: Show browser UI (non-headless mode) for debugging
 - `--connect-to=<port>`: Connect to existing Chrome instance. Special values: 'current' (use existing page), 'reload-current' (refresh existing page)
 - `--wait=<time:duration or selector:css-selector>`: Wait after page load (e.g., 'time:5s', 'selector:#element-id')
 - `--video=<directory>`: Save a video recording (1280x720 resolution, timestamped subdirectory). Not available when using --connect-to
 - `--url=<url>`: Required for `act`, `observe`, and `extract` commands
+- `--evaluate=<string>`: JavaScript code to execute in the browser before the main command
 
 
 **Notes on Connecting to an existing browser session with --connect-to**
@@ -374,11 +530,50 @@ With authentication:
 - Public repositories: 5,000 requests per hour
 - Private repositories: Full access (with appropriate token scopes)
 
+### Xcode Tools
+Automate iOS app building, testing, and running in the simulator:
+
+```bash
+# Available subcommands
+cursor-tools xcode build  # Build Xcode project and report errors
+cursor-tools xcode run    # Build and run app in simulator
+cursor-tools xcode lint   # Analyze code and offer to fix warnings
+```
+
+**Build Command Options:**
+```bash
+# Specify custom build path (derived data)
+cursor-tools xcode build buildPath=/custom/build/path
+
+# Specify target device
+cursor-tools xcode build destination="platform=iOS Simulator,name=iPhone 15"
+```
+
+**Run Command Options:**
+```bash
+# Run on iPhone simulator (default)
+cursor-tools xcode run iphone
+
+# Run on iPad simulator
+cursor-tools xcode run ipad
+
+# Run on specific device with custom build path
+cursor-tools xcode run device="iPhone 16 Pro" buildPath=/custom/build/path
+```
+
+The Xcode commands provide:
+- Automatic project/workspace detection
+- Dynamic app bundle identification
+- Build output streaming with error parsing
+- Simulator device management
+- Support for both iPhone and iPad simulators
+- Custom build path specification to control derived data location
+
 ### Documentation Generation (uses Gemini 2.0)
 Generate comprehensive documentation for your repository or any GitHub repository:
 ```bash
-# Document local repository
-cursor-tools doc --output=docs.md
+# Document local repository and save to file
+cursor-tools doc --save-to=docs.md
 
 # Document remote GitHub repository (both formats supported)
 cursor-tools doc --from-github=username/repo-name@branch
@@ -393,54 +588,52 @@ cursor-tools doc --from-github=eastlondoner/cursor-tools --save-to=docs/CURSOR-T
 
 ## Configuration
 
-### Default Settings
-Customize `cursor-tools` behavior by creating a `cursor-tools.config.json` file:
+### cursor-tools.config.json
+Customize `cursor-tools` behavior by creating a `cursor-tools.config.json` file. This file can be created either globally in `~/.cursor-tools/cursor-tools.config.json` or locally in your project root.
+
+The cursor-tools.config file configures the local default behaviour for each command and provider.
+
+Here is an example of a typical cursor-tools.config.json file, showing some of the most common configuration options:
 ```json
 {
-  "perplexity": {
-    "model": "sonar-pro",
-    "maxTokens": 8000
+  // Commands
+  "repo": {
+    "provider": "openrouter",
+    "model": "google/gemini-2.0-pro-exp-02-05:free",
   },
-  "gemini": {
-    "model": "gemini-2.0-pro-exp-02-05",
-    "maxTokens": 10000
+  "doc": {
+    "provider": "openrouter",
+    "model": "anthropic/claude-3.7-sonnet",
+    "maxTokens": 4096
   },
-  "tokenCount": {
-    "encoding": "o200k_base"
+  "web": {
+    "provider": "gemini",
+    "model": "gemini-2.0-pro-exp",
+  },
+  "plan": {
+    "fileProvider": "gemini",
+    "thinkingProvider": "perplexity",
+    "thinkingModel": "r1-1776"
   },
   "browser": {
-    "defaultViewport": "1280x720",
-    "timeout": 30000,
-    "stagehand": {
-      "env": "LOCAL",
-      "headless": true,
-      "verbose": 1,
-      "debugDom": false,
-      "enableCaching": false,
-      "model": "claude-3-5-sonnet-latest", // For Anthropic provider
-      "provider": "anthropic", // or "openai"
-      "timeout": 30000
-    }
-  }
+    "headless": false,
+  },
+  //...
+
+  // Providers
+  "stagehand": {
+    "model": "claude-3-7-sonnet-latest", // For Anthropic provider
+    "provider": "anthropic", // or "openai"
+    "timeout": 90000
+  },
+  "openai": {
+    "model": "gpt-4o"
+  },
+  //...
 }
 ```
 
-The configuration supports:
-- `perplexity.model`: Perplexity AI model to use
-- `perplexity.maxTokens`: Maximum tokens for Perplexity responses
-- `gemini.model`: Google Gemini model to use
-- `gemini.maxTokens`: Maximum tokens for Gemini responses
-- `tokenCount.encoding`: Tokenizer to use for counting tokens (defaults to `o200k_base` which is optimized for Gemini)
-- `browser.defaultViewport`: Default viewport size for browser commands
-- `browser.timeout`: Default timeout for browser commands
-- `browser.stagehand.env`: Environment for browser commands
-- `browser.stagehand.headless`: Whether to run browser in headless mode
-- `browser.stagehand.verbose`: Verbosity level for browser commands
-- `browser.stagehand.debugDom`: Whether to enable debug output for browser commands
-- `browser.stagehand.enableCaching`: Whether to enable caching for browser commands
-- `browser.stagehand.model`: The default model to use. See "Model Selection" below.
-- `browser.stagehand.provider`: The AI provider to use ("openai" or "anthropic"). Determines which API key is required.
-- `browser.stagehand.timeout`: Timeout for operations in milliseconds
+For details of all configuration options, see [CONFIGURATION.md](CONFIGURATION.md). This includes details of all the configuration options and how to use them.
 
 ### GitHub Authentication
 The GitHub commands support several authentication methods:
@@ -478,7 +671,6 @@ Authentication Status:
 - With authentication (any method):
   - Public repositories: 5,000 requests per hour
   - Private repositories: Full access (if token has required scopes)
-  - Access to all features
 
 cursor-tools will automatically try these authentication methods in order:
 1. `GITHUB_TOKEN` environment variable
@@ -522,8 +714,8 @@ The `browser` commands support different AI models for processing. You can selec
 # Use gpt-4o
 cursor-tools browser act "Click Login" --url "https://example.com" --model=gpt-4o
 
-# Use Claude 3.5 Sonnet
-cursor-tools browser act "Click Login" --url "https://example.com" --model=claude-3-5-sonnet-latest
+# Use Claude 3.7 Sonnet
+cursor-tools browser act "Click Login" --url "https://example.com" --model=claude-3-7-sonnet-latest
 ```
 
 You can set a default provider in your `cursor-tools.config.json` file under the `stagehand` section:
@@ -531,7 +723,9 @@ You can set a default provider in your `cursor-tools.config.json` file under the
 ```json
 {
   "stagehand": {
-    "provider": "openai", // or "anthropic"
+    "model": "claude-3-7-sonnet-latest", // For Anthropic provider
+    "provider": "anthropic", // or "openai"
+    "timeout": 90000
   }
 }
 ```
@@ -550,7 +744,7 @@ You can also set a default model in your `cursor-tools.config.json` file under t
 If no model is specified (either on the command line or in the config), a default model will be used based on your configured provider:
 
 - **OpenAI:** `o3-mini`
-- **Anthropic:** `claude-3-5-sonnet-latest`
+- **Anthropic:** `claude-3-7-sonnet-latest`
 
 Available models depend on your configured provider (OpenAI or Anthropic) in `cursor-tools.config.json` and your API key.
 
@@ -577,37 +771,83 @@ In general you do not need to use the cli directly, your AI coding agent will ca
 All commands support these general options:
 - `--model`: Specify an alternative model
 - `--max-tokens`: Control response length
-- `--save-to`: Save command output to a file (in *addition* to displaying it, like tee)
-- `--help`: View all available options (help has not been implemented for all commands yet)
+- `--save-to`: Save command output to a file (in addition to displaying it, like tee)
+- `--quiet`: Suppress stdout output (only useful with --save-to)
+- `--debug`: Show detailed error information
+- `--help`: View all available options
+- `--provider`: AI provider to use. Valid values: openai, anthropic, perplexity, gemini, openrouter
 
 Documentation command specific options:
 - `--from-github`: Generate documentation for a remote GitHub repository (supports @branch syntax)
+- `--hint`: Provide additional context or focus for documentation generation
+
+Plan command specific options:
+- `--fileProvider`: Provider for file identification (gemini, openai, anthropic, perplexity, modelbox, or openrouter)
+- `--thinkingProvider`: Provider for plan generation (gemini, openai, anthropic, perplexity, modelbox, or openrouter)
+- `--fileModel`: Model to use for file identification
+- `--thinkingModel`: Model to use for plan generation
+- `--fileMaxTokens`: Maximum tokens for file identification
+- `--thinkingMaxTokens`: Maximum tokens for plan generation
 
 GitHub command specific options:
-- `--from-github`: Access PRs/issues from a specific GitHub repository (format: owner/repo)
-- `--repo`: Alternative to --from-github, does the same thing (format: owner/repo)
+- `--from-github=<GitHub username>/<repository name>[@<branch>]`: Access PRs/issues from a specific GitHub repository. `--repo` is an older, still supported synonym for this option.
+
+Xcode command specific options:
+- For the build subcommand:
+  - `buildPath=<path>`: Set a custom derived data path
+  - `destination=<destination string>`: Set a custom simulator destination
+- For the run subcommand:
+  - `iphone` or `ipad`: Select device type
+  - `device=<device name>`: Specify a custom device
+  - `buildPath=<path>`: Set a custom derived data path
+
+Browser command specific options:
+- `--console`: Capture browser console logs (enabled by default, use `--no-console` to disable)
+- `--html`: Capture page HTML content (disabled by default)
+- `--network`: Capture network activity (enabled by default, use `--no-network` to disable)
+- `--screenshot`: Save a screenshot of the page
+- `--timeout`: Set navigation timeout (default: 120000ms for Stagehand operations, 30000ms for navigation)
+- `--viewport`: Set viewport size (e.g., 1280x720)
+- `--headless`: Run browser in headless mode (default: true)
+- `--no-headless`: Show browser UI (non-headless mode) for debugging
+- `--connect-to`: Connect to existing Chrome instance
+- `--wait`: Wait after page load (e.g., 'time:5s', 'selector:#element-id')
+- `--video`: Save a video recording (1280x720 resolution, timestamped subdirectory)
+- `--url`: Required for `act`, `observe`, and `extract` commands. Url to navigate to on connection or one of the special values: 'current' (use existing page), 'reload-current' (refresh existing page).
+- `--evaluate`: JavaScript code to execute in the browser before the main command
 
 ### Execution Methods
-Execute commands in several ways:
+Execute commands using:
 ```bash
-# Global installation
-cursor-tools web "query"
+cursor-tools <command> [options]
+```
 
-# without global installation
-npx -y cursor-tools@latest web "query"
+For example:
+```bash
+cursor-tools web "What's new in TypeScript 5.7?"
 ```
 
 ## Troubleshooting
 
 1. **Command Not Found**
-    - Ensure `cursor-tools` is installed (globally or as a dev dependency)
-    - Check your PATH if installed globally
+    - Ensure `cursor-tools` is installed globally using `npm install -g cursor-tools`
+    - Check your system's PATH environment variable to ensure it includes npm's global bin directory
+    - On Unix-like systems, the global bin directory is typically `/usr/local/bin` or `~/.npm-global/bin`
+    - On Windows, it's typically `%AppData%\npm`
 
 2. **API Key Errors**
     - Verify `.cursor-tools.env` exists and contains valid API keys
     - Run `cursor-tools install` to reconfigure API keys
     - Check that your API keys have the necessary permissions
     - For GitHub operations, ensure your token has the required scopes (repo, read:user)
+    - For Google Vertex AI authentication:
+      - If using a JSON key file, verify the file path is correct and the file is readable
+      - If using ADC, ensure you've run `gcloud auth application-default login` and the account has appropriate permissions
+      - Verify your service account has the necessary roles in Google Cloud Console (typically "Vertex AI User")
+      - For troubleshooting ADC: Run `gcloud auth application-default print-access-token` to check if ADC is working
+    - For MCP commands ensure that *either* the `ANTHROPIC_API_KEY` *or* the `OPENROUTER_API_KEY` are set.
+    - If using OpenRouter for MCP, ensure `OPENROUTER_API_KEY` is set.
+    - If a provider is not specified for an MCP command, Anthropic will be used by default.
 
 3. **Model Errors**
     - Check your internet connection
@@ -657,18 +897,21 @@ cursor-tools repo "Show me examples of error handling in this codebase"
 
 # Debugging help
 cursor-tools repo "Why might the authentication be failing in the login flow?"
+
+# Analyze specific subdirectory
+cursor-tools repo "Explain the code structure" --subdir=src/components
 ```
 
 #### Documentation Examples
 ```bash
-# Document specific aspects
-cursor-tools doc --hint="Focus on the API endpoints and their usage"
+# Document specific aspects and save to file without stdout output
+cursor-tools doc --save-to=docs/api.md --quiet --hint="Focus on the API endpoints and their usage"
 
-# Document with custom output
-cursor-tools doc --save-to=docs/architecture.md --hint="Focus on system architecture"
+# Document with hint to customize the docs output
+cursor-tools doc --save-to=docs/architecture.md --quiet --hint="Focus on system architecture"
 
 # Document dependencies
-cursor-tools doc --from-github=expressjs/express --save-to=docs/EXPRESS.md
+cursor-tools doc --from-github=expressjs/express --save-to=docs/EXPRESS.md --quiet
 ```
 
 #### GitHub Integration Examples
@@ -684,6 +927,24 @@ cursor-tools github pr 123 --from-github microsoft/typescript
 
 # Track issue discussions
 cursor-tools github issue 456 --from-github golang/go
+```
+
+#### Xcode Command Examples
+```bash
+# Build an iOS app with default settings
+cursor-tools xcode build
+
+# Build with custom derived data path
+cursor-tools xcode build buildPath=~/custom/derived/data
+
+# Run in iPhone simulator
+cursor-tools xcode run iphone
+
+# Run on specific iPad model
+cursor-tools xcode run device="iPad Pro (12.9-inch) (6th generation)"
+
+# Analyze code quality 
+cursor-tools xcode lint
 ```
 
 #### Browser Command Examples

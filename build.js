@@ -1,5 +1,7 @@
 import * as esbuild from 'esbuild';
 import { argv } from 'node:process';
+import { chmod } from 'node:fs/promises';
+import { platform } from 'node:os';
 
 const watch = argv.includes('--watch');
 
@@ -74,12 +76,16 @@ const require = createRequire(import.meta.url);
 
 if (watch) {
   const context = await esbuild.context(buildOptions);
-  await context.watch();
-   
   // eslint-disable-next-line no-undef
   console.log('Watching for changes...');
+  await context.watch();
 } else {
   await esbuild.build(buildOptions);
+  
+  // Make the output file executable on Unix-like systems
+  if (platform() !== 'win32') {
+    await chmod('./dist/index.mjs', 0o755);
+  }
    
   // eslint-disable-next-line no-undef
   console.log('Build complete');

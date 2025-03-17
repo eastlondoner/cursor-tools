@@ -1,0 +1,1 @@
+This is a sample asset file that will be referenced using {{path:sample-asset.txt}} in the test scenario.

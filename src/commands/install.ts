@@ -1,12 +1,34 @@
-import type { Command, CommandGenerator, CommandOptions } from '../types.ts';
+import type { Command, CommandGenerator, CommandOptions } from '../types';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
-import { loadEnv } from '../config.ts';
-import { CURSOR_RULES_TEMPLATE, CURSOR_RULES_VERSION, checkCursorRules } from '../cursorrules.ts';
+import { loadEnv } from '../config';
+import { CURSOR_RULES_TEMPLATE, CURSOR_RULES_VERSION, checkCursorRules } from '../cursorrules';
 
 interface InstallOptions extends CommandOptions {
   packageManager?: 'npm' | 'yarn' | 'pnpm';
+  global?: boolean;
+}
+
+// Helper function to check for local cursor-tools dependencies
+async function checkLocalDependencies(targetPath: string): Promise<string | null> {
+  const packageJsonPath = join(targetPath, 'package.json');
+  if (!existsSync(packageJsonPath)) {
+    return null;
+  }
+
+  try {
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
+    const dependencies = packageJson.dependencies || {};
+    const devDependencies = packageJson.devDependencies || {};
+
+    if (dependencies['cursor-tools'] || devDependencies['cursor-tools']) {
+      return `Warning: Found local cursor-tools dependency in package.json. Since cursor-tools is now designed for global installation only, please remove it from your package.json dependencies and run 'npm uninstall cursor-tools', 'pnpm uninstall cursor-tools', or 'yarn remove cursor-tools' to clean up any local installation.\n`;
+    }
+  } catch (error) {
+    console.error('Error reading package.json:', error);
+  }
+  return null;
 }
 
 // Helper function to get user input and properly close stdin
@@ -24,6 +46,26 @@ async function getUserInput(prompt: string): Promise<string> {
   });
 }
 
+async function askForCursorRulesDirectory(): Promise<boolean> {
+  // If USE_LEGACY_CURSORRULES is explicitly set, respect that setting
+  if (process.env.USE_LEGACY_CURSORRULES?.toLowerCase() === 'true') {
+    return false;
+  }
+  if (process.env.USE_LEGACY_CURSORRULES?.toLowerCase() === 'false') {
+    return true;
+  }
+  // If USE_LEGACY_CURSORRULES is set and not empty if we've got to this point it's an unknown value.
+  if (process.env.USE_LEGACY_CURSORRULES && process.env.USE_LEGACY_CURSORRULES.trim() !== '') {
+    throw new Error('USE_LEGACY_CURSORRULES must be either "true" or "false"');
+  }
+
+  // Otherwise, ask the user
+  const answer = await getUserInput(
+    'Would you like to use the new .cursor/rules directory for cursor rules? (y/N): '
+  );
+  return answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes';
+}
+
 export class InstallCommand implements Command {
   private async *setupApiKeys(): CommandGenerator {
     loadEnv(); // Load existing env files if any
@@ -31,32 +73,127 @@ export class InstallCommand implements Command {
     const homeEnvPath = join(homedir(), '.cursor-tools', '.env');
     const localEnvPath = join(process.cwd(), '.cursor-tools.env');
 
+    const apiKeysConfigFileExists = existsSync(homeEnvPath) || existsSync(localEnvPath);
+
     // Check if keys are already set
     const hasPerplexity = !!process.env.PERPLEXITY_API_KEY;
     const hasGemini = !!process.env.GEMINI_API_KEY;
     const hasOpenAI = !!process.env.OPENAI_API_KEY;
     const hasAnthropic = !!process.env.ANTHROPIC_API_KEY;
+    const hasOpenRouter = !!process.env.OPENROUTER_API_KEY;
+    const hasModelBox = !!process.env.MODELBOX_API_KEY;
+    const hasClickUp = !!process.env.CLICKUP_API_TOKEN;
 
     // For Stagehand, we need either OpenAI or Anthropic
     const hasStagehandProvider = hasOpenAI || hasAnthropic;
 
-    if (hasPerplexity && hasGemini && (hasStagehandProvider || process.env.SKIP_STAGEHAND)) {
+    if (
+      (apiKeysConfigFileExists &&
+        hasPerplexity &&
+        hasGemini &&
+        hasOpenRouter &&
+        hasModelBox &&
+        hasClickUp) ||
+      (process.env.SKIP_CLICKUP && (hasStagehandProvider || process.env.SKIP_STAGEHAND))
+    ) {
       return;
     }
 
-    // Function to write keys to a file
+    /**
+     * Writes keys to an environment file while preserving existing content.
+     * Handles comments, empty lines, and special characters in values.
+     *
+     * Features:
+     * - Preserves existing environment variables not being updated
+     * - Maintains comments and empty lines in existing file
+     * - Properly handles values containing equals signs or quotes
+     * - Always quotes values for consistency
+     *
+     * Limitations:
+     * - Does not preserve the exact formatting of the original file
+     * - Assumes UTF-8 encoding for the environment file
+     * - May not handle complex multi-line values
+     * - Assumes basic key=value format with optional comments
+     *
+     * @param filePath - Path to the environment file
+     * @param keys - Record of key-value pairs to write
+     * @throws Will throw an error if file operations fail
+     */
     const writeKeysToFile = (filePath: string, keys: Record<string, string>) => {
-      const envContent =
-        Object.entries(keys)
-          .filter(([_, value]) => value) // Only include keys with values
-          .map(([key, value]) => `${key}=${value}`)
-          .join('\n') + '\n';
+      // Read existing content if file exists
+      let existingEnvVars: Record<string, string> = {};
+      if (existsSync(filePath)) {
+        try {
+          const existingContent = readFileSync(filePath, 'utf-8');
+          // Parse existing .env file content
+          existingContent.split('\n').forEach((line) => {
+            line = line.trim();
+            // Skip empty lines and comments
+            if (!line || line.startsWith('#')) return;
 
-      const dir = join(filePath, '..');
-      if (!existsSync(dir)) {
-        mkdirSync(dir, { recursive: true });
+            // Find first non-escaped equals sign
+            const eqIndex = line.split('').findIndex((char, i) => {
+              if (char !== '=') return false;
+              // Count backslashes before the equals sign
+              let escapeCount = 0;
+              for (let j = i - 1; j >= 0 && line[j] === '\\'; j--) {
+                escapeCount++;
+              }
+              // If odd number of backslashes, equals is escaped
+              return escapeCount % 2 === 0;
+            });
+
+            if (eqIndex !== -1) {
+              const key = line.slice(0, eqIndex).trim();
+              let value = line.slice(eqIndex + 1).trim();
+              // Handle existing quoted values
+              if (
+                (value.startsWith('"') && value.endsWith('"')) ||
+                (value.startsWith("'") && value.endsWith("'"))
+              ) {
+                // Remove surrounding quotes but preserve any escaped quotes within
+                value = value.slice(1, -1);
+              }
+              if (key) {
+                existingEnvVars[key] = value;
+              }
+            }
+          });
+        } catch (error) {
+          console.error(`Warning: Error reading existing .env file at ${filePath}:`, error);
+          // Continue with empty existingEnvVars rather than failing
+        }
       }
-      writeFileSync(filePath, envContent, 'utf-8');
+
+      try {
+        // Merge new keys with existing ones, only updating keys that have values
+        const mergedKeys = {
+          ...existingEnvVars,
+          ...Object.fromEntries(
+            Object.entries(keys).filter(([_, value]) => value) // Only include keys with values
+          ),
+        };
+
+        const envContent =
+          Object.entries(mergedKeys)
+            .map(([key, value]) => {
+              // Normalize the value to a string and handle escaping
+              const normalizedValue = String(value);
+              // Escape any quotes that aren't already escaped
+              const escapedValue = normalizedValue.replace(/(?<!\\)"/g, '\\"');
+              return `${key}="${escapedValue}"`;
+            })
+            .join('\n') + '\n';
+
+        const dir = join(filePath, '..');
+        if (!existsSync(dir)) {
+          mkdirSync(dir, { recursive: true });
+        }
+        writeFileSync(filePath, envContent, 'utf-8');
+      } catch (error) {
+        console.error(`Error writing to .env file at ${filePath}:`, error);
+        throw error; // Rethrow to handle in caller
+      }
     };
 
     // Try to write to home directory first, fall back to local if it fails
@@ -66,6 +203,9 @@ export class InstallCommand implements Command {
         GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
         OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
         ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY || '',
+        OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY || '',
+        MODELBOX_API_KEY: process.env.MODELBOX_API_KEY || '',
+        CLICKUP_API_TOKEN: process.env.CLICKUP_API_TOKEN || '',
         SKIP_STAGEHAND: process.env.SKIP_STAGEHAND || '',
       };
 
@@ -77,6 +217,19 @@ export class InstallCommand implements Command {
       if (!hasGemini) {
         const key = await getUserInput('Enter your Gemini API key (or press Enter to skip): ');
         keys.GEMINI_API_KEY = key;
+      }
+
+      if (!hasOpenRouter) {
+        yield '\nOpenRouter provides access to various AI models including Perplexity models.\n';
+        yield 'It can be used as an alternative to direct Perplexity access for web search.\n';
+        const key = await getUserInput('Enter your OpenRouter API key (or press Enter to skip): ');
+        keys.OPENROUTER_API_KEY = key;
+      }
+
+      if (!hasModelBox) {
+        yield '\nModelBox provides unified access to various AI models through an OpenAI-compatible API.\n';
+        const key = await getUserInput('Enter your ModelBox API key (or press Enter to skip): ');
+        keys.MODELBOX_API_KEY = key;
       }
 
       // Handle Stagehand setup
@@ -109,6 +262,13 @@ export class InstallCommand implements Command {
         }
       }
 
+      if (!hasClickUp) {
+        const key = await getUserInput(
+          '[https://app.clickup.com/settings/apps] Enter your ClickUp API token (or press Enter to skip): '
+        );
+        keys.CLICKUP_API_TOKEN = key;
+      }
+
       try {
         writeKeysToFile(homeEnvPath, keys);
         yield 'API keys written to ~/.cursor-tools/.env\n';
@@ -125,83 +285,41 @@ export class InstallCommand implements Command {
   }
 
   async *execute(targetPath: string, options?: InstallOptions): CommandGenerator {
-    const packageManager = options?.packageManager || 'npm/yarn/pnpm';
     const absolutePath = join(process.cwd(), targetPath);
 
-    // 1. Add cursor-tools to package.json as a dev dependency if it exists
-    const packageJsonPath = join(absolutePath, 'package.json');
-    if (existsSync(packageJsonPath)) {
-      try {
-        const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
-        const currentVersion =
-          packageJson.devDependencies?.['cursor-tools'] ||
-          packageJson.dependencies?.['cursor-tools'];
-
-        if (currentVersion === 'latest') {
-          yield 'cursor-tools is already installed at latest version.\n';
-        } else if (currentVersion) {
-          yield `Found cursor-tools version ${currentVersion}. Would you like to update to latest? (y/N): `;
-          const answer = await getUserInput('');
-
-          if (answer === 'y' || answer === 'yes') {
-            if (!packageJson.devDependencies) {
-              packageJson.devDependencies = {};
-            }
-            packageJson.devDependencies['cursor-tools'] = 'latest';
-            // Remove from dependencies if it exists there
-            if (packageJson.dependencies?.['cursor-tools']) {
-              delete packageJson.dependencies['cursor-tools'];
-            }
-            writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
-            yield `Updated cursor-tools to latest version. Please run \`${packageManager} install\` to complete the update.\n`;
-          } else {
-            yield 'Keeping current version.\n';
-          }
-        } else {
-          const answer = await getUserInput(
-            'Would you like to add cursor-tools as a dev dependency to package.json? (y/N): '
-          );
-
-          if (answer === 'y' || answer === 'yes') {
-            yield 'Adding cursor-tools as a dev dependency to package.json...\n';
-            if (!packageJson.devDependencies) {
-              packageJson.devDependencies = {};
-            }
-            packageJson.devDependencies['cursor-tools'] = 'latest';
-            writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
-            yield `Please run \`${packageManager} install\` to complete the installation.\n`;
-          } else {
-            yield 'Skipping dev dependency installation.\n';
-          }
-        }
-      } catch (error) {
-        yield `Error updating package.json: ${error instanceof Error ? error.message : 'Unknown error'}\n`;
-        return;
-      }
-    } else {
-      yield 'No package.json found - skipping dependency installation\n';
+    // Check for local dependencies first
+    const dependencyWarning = await checkLocalDependencies(absolutePath);
+    if (dependencyWarning) {
+      yield dependencyWarning;
     }
 
-    // 2. Create necessary directories first
-    const rulesDir = join(absolutePath, '.cursor', 'rules');
-    if (!existsSync(rulesDir)) {
-      try {
-        mkdirSync(rulesDir, { recursive: true });
-      } catch (error) {
-        yield `Error creating rules directory: ${error instanceof Error ? error.message : 'Unknown error'}\n`;
-        return;
-      }
-    }
-
-    // 3. Setup API keys
+    // Setup API keys
     yield 'Checking API keys setup...\n';
     for await (const message of this.setupApiKeys()) {
       yield message;
     }
 
-    // 4. Update/create cursor rules
+    // Update/create cursor rules
     try {
       yield 'Checking cursor rules...\n';
+
+      // Ask user for directory preference first
+      const useNewDirectory = await askForCursorRulesDirectory();
+      process.env.USE_LEGACY_CURSORRULES = (!useNewDirectory).toString();
+
+      // Create necessary directories only if using new structure
+      if (useNewDirectory) {
+        const rulesDir = join(absolutePath, '.cursor', 'rules');
+        if (!existsSync(rulesDir)) {
+          try {
+            mkdirSync(rulesDir, { recursive: true });
+          } catch (error) {
+            yield `Error creating rules directory: ${error instanceof Error ? error.message : 'Unknown error'}\n`;
+            return;
+          }
+        }
+      }
+
       const result = checkCursorRules(absolutePath);
 
       if (result.kind === 'error') {
@@ -212,52 +330,74 @@ export class InstallCommand implements Command {
       let existingContent = '';
       let needsUpdate = result.needsUpdate;
 
-      if (result.hasLegacyCursorRulesFile) {
-        yield '\n🚧 Warning: Legacy .cursorrules detected. This file will be deprecated in a future release. To migrate:\n' +
-          '  1) Move your rules to .cursor/rules/cursor-tools.mdc\n' +
-          '  2) Delete .cursorrules\n\n';
+      if (!result.targetPath.endsWith('cursor-tools.mdc')) {
+        yield '\n🚧 Warning: Using legacy .cursorrules file. This file will be deprecated in a future release.\n' +
+          'To migrate to the new format:\n' +
+          '  1) Set USE_LEGACY_CURSORRULES=false in your environment\n' +
+          '  2) Run cursor-tools install . again\n' +
+          '  3) Remove the <cursor-tools Integration> section from .cursorrules\n\n';
+      } else {
+        if (result.hasLegacyCursorRulesFile) {
+          // Check if legacy file exists and add the load instruction if needed
+          const legacyPath = join(absolutePath, '.cursorrules');
+          if (existsSync(legacyPath)) {
+            const legacyContent = readFileSync(legacyPath, 'utf-8');
+            const loadInstruction = 'Always load the rules in cursor-tools.mdc';
+
+            if (!legacyContent.includes(loadInstruction)) {
+              writeFileSync(legacyPath, `${legacyContent.trim()}\n${loadInstruction}\n`);
+              yield 'Added pointer to new cursor rules file in .cursorrules file\n';
+            }
+          }
+        }
+        yield 'Using new .cursor/rules directory for cursor rules.\n';
       }
 
       if (existsSync(result.targetPath)) {
         existingContent = readFileSync(result.targetPath, 'utf-8');
-
-        // Check if cursor-tools section exists and version matches
-        const startTag = '<cursor-tools Integration>';
-        const endTag = '</cursor-tools Integration>';
         const versionMatch = existingContent.match(/<!-- cursor-tools-version: ([\w.-]+) -->/);
         const currentVersion = versionMatch ? versionMatch[1] : '0';
 
-        if (
-          existingContent.includes(startTag) &&
-          existingContent.includes(endTag) &&
-          currentVersion === CURSOR_RULES_VERSION
-        ) {
-          needsUpdate = false;
-          yield 'Cursor rules are up to date.\n';
-        } else {
-          yield `Updating cursor rules from version ${currentVersion} to ${CURSOR_RULES_VERSION}...\n`;
+        if (needsUpdate) {
+          // Ask for confirmation before overwriting
+          yield `\nAbout to update cursor rules file at ${result.targetPath} from version ${currentVersion} to ${CURSOR_RULES_VERSION}.\n`;
+          const answer = await getUserInput('Do you want to continue? (y/N): ');
+          if (answer.toLowerCase() !== 'y' && answer.toLowerCase() !== 'yes') {
+            yield 'Skipping cursor rules update.\n';
+            yield 'Warning: Your cursor rules are outdated. You may be missing new features and instructions.\n';
+            return;
+          }
+          yield `Updating cursor rules...\n`;
         }
       } else {
         yield `Creating new cursor rules file at ${result.targetPath}...\n`;
       }
 
       if (needsUpdate) {
-        // Replace existing cursor-tools section or append if not found
-        const startTag = '<cursor-tools Integration>';
-        const endTag = '</cursor-tools Integration>';
-        const startIndex = existingContent.indexOf(startTag);
-        const endIndex = existingContent.indexOf(endTag);
-
-        if (startIndex !== -1 && endIndex !== -1) {
-          // Replace existing section
-          const newContent =
-            existingContent.slice(0, startIndex) +
-            CURSOR_RULES_TEMPLATE.trim() +
-            existingContent.slice(endIndex + endTag.length);
-          writeFileSync(result.targetPath, newContent);
+        if (result.targetPath.endsWith('.cursorrules')) {
+          // replace entire file with new cursor-tools section
+          writeFileSync(result.targetPath, CURSOR_RULES_TEMPLATE.trim());
         } else {
-          // Append new section
-          writeFileSync(result.targetPath, existingContent + CURSOR_RULES_TEMPLATE);
+          // Replace existing cursor-tools section or append if not found
+          const startTag = '<cursor-tools Integration>';
+          const endTag = '</cursor-tools Integration>';
+          const startIndex = existingContent.indexOf(startTag);
+          const endIndex = existingContent.indexOf(endTag);
+
+          if (startIndex !== -1 && endIndex !== -1) {
+            // Replace existing section
+            const newContent =
+              existingContent.slice(0, startIndex) +
+              CURSOR_RULES_TEMPLATE.trim() +
+              existingContent.slice(endIndex + endTag.length);
+            writeFileSync(result.targetPath, newContent.trim());
+          } else {
+            // Append new section
+            writeFileSync(
+              result.targetPath,
+              (existingContent.trim() + '\n\n' + CURSOR_RULES_TEMPLATE).trim() + '\n'
+            );
+          }
         }
       }
 

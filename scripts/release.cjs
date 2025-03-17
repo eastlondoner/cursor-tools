@@ -1,4 +1,5 @@
 /* eslint-env node, commonjs */
+/* global console, process, __dirname */
 const { execSync } = require('child_process');
 const { readFileSync } = require('fs');
 const { resolve } = require('path');
@@ -23,7 +24,27 @@ function hasGitChanges() {
   }
 }
 
+function isVersionPublished(version) {
+  try {
+    execSync(`npm view cursor-tools@${version} version`, { stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 try {
+  // Get additional arguments to pass to npm publish
+  const args = process.argv.slice(2);
+  const tagIndex = args.indexOf('--tag');
+  const tag = tagIndex !== -1 ? args[tagIndex + 1] : null;
+  const publishArgs = args.join(' ');
+
+  // Validate that --tag is set to either alpha or latest
+  if (!tag || !['alpha', 'latest'].includes(tag)) {
+    throw new Error('--tag must be set to either "alpha" or "latest"');
+  }
+
   // Verify stagehand script matches
   console.log('\nVerifying stagehand script...');
   verifyStagehandScript();
@@ -43,8 +64,19 @@ try {
     run(`git commit -m "release: v${version}"`);
   }
 
-  // Publish to npm
-  run('npm publish');
+  // Check if version is already published
+  if (isVersionPublished(version)) {
+    if (tag) {
+      // If version exists and tag is specified, just update the tag
+      console.log(`Version ${version} already exists, updating tag...`);
+      run(`npm dist-tag add cursor-tools@${version} ${tag}`);
+    } else {
+      throw new Error(`Version ${version} is already published. Please increment the version number or specify a tag to update.`);
+    }
+  } else {
+    // Publish new version to npm with any additional arguments
+    run(`npm publish ${publishArgs}`);
+  }
 
   // Push to GitHub
   run('git push');
