@@ -42,6 +42,13 @@ export class RepoCommand implements Command {
         console.log(`Using maxRepoSizeMB: ${maxRepoSizeMB}`);
         console.log(`Getting GitHub repo context for: ${options.fromGithub}`);
 
+        // Throw an error if subdir is set since we're not handling it with GitHub repos
+        if (options.subdir) {
+          throw new Error(
+            'Subdirectory option (--subdir) is not supported with --from-github. Please clone the repository locally and use the repo command without --from-github to analyze a subdirectory.'
+          );
+        }
+
         try {
           const { text, tokenCount: repoTokenCount } = await getGithubRepoContext(
             options.fromGithub,

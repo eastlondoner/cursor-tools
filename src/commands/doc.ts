@@ -32,6 +32,7 @@ interface DocCommandOptions extends CommandOptions {
   hint?: string;
   debug: boolean;
   provider?: Provider;
+  subdir?: string;
 }
 
 export class DocCommand implements Command {
@@ -68,6 +69,14 @@ export class DocCommand implements Command {
 
       if (options?.fromGithub) {
         console.error(`Fetching repository context for ${options.fromGithub}...\n`);
+
+        // Throw an error if subdir is set since we're not handling it with GitHub repos
+        if (options.subdir) {
+          throw new Error(
+            'Subdirectory option (--subdir) is not supported with --from-github. Please clone the repository locally and use the doc command without --from-github to analyze a subdirectory.'
+          );
+        }
+
         const maxRepoSizeMB = this.config.doc?.maxRepoSizeMB || 100;
         repoContext = await getGithubRepoContext(options.fromGithub, maxRepoSizeMB);
       } else {
