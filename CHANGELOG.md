@@ -2,13 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [unreleased]
+
+## [0.6.0-alpha.14]
+
+### Added
+
+- **GitHub Repository Analysis for Repo Command**: Added `--from-github` parameter to the repo command, enabling analysis of remote GitHub repositories without local cloning. This feature provides the same functionality previously available in the doc command, making it easier to get context-aware assistance for any public GitHub repository (e.g., `cursor-tools repo "explain the authentication flow" --from-github=username/repo-name`).
+
+
+## [0.6.0-alpha.13]
 
 ### Added
 
 - **Support for Custom Repomix Configuration**: Added support for `repomix.config.json` files to customize which files are included/excluded during repository analysis. This configuration file can be placed in the repository root and will be automatically detected by `repo`, `plan`, and `doc` commands, allowing for more precise control over repository content analysis.
 - **Subdirectory Analysis for Repo Command**: Added `--subdir` parameter to the repo command, allowing users to analyze a specific subdirectory instead of the entire repository. This makes the repo command more efficient when working with large codebases by focusing only on relevant subdirectories (e.g., `cursor-tools repo "explain the code" --subdir=src/commands`).
-- **GitHub Repository Analysis for Repo Command**: Added `--from-github` parameter to the repo command, enabling analysis of remote GitHub repositories without local cloning. This feature provides the same functionality previously available in the doc command, making it easier to get context-aware assistance for any public GitHub repository (e.g., `cursor-tools repo "explain the authentication flow" --from-github=username/repo-name`).
 - **Improved Model Name Resolution**: Enhanced model name handling across providers to better handle experimental and latest model versions:
 
   - Automatically resolves `-exp-*` suffixes to find stable model versions
@@ -430,38 +438,3 @@ Initial release with basic functionality:
 - Web search using Perplexity AI
 - Repository context-aware answers using Google Gemini
 - Installation and configuration utilities
-
-## [0.6.0-alpha.13] - 2025-03-23
-
-### Added
-
-- **Support for Custom Repomix Configuration**: Added support for `repomix.config.json` files to customize which files are included/excluded during repository analysis. This configuration file can be placed in the repository root and will be automatically detected by `repo`, `plan`, and `doc` commands, allowing for more precise control over repository content analysis.
-- **Subdirectory Analysis for Repo Command**: Added `--subdir` parameter to the repo command, allowing users to analyze a specific subdirectory instead of the entire repository. This makes the repo command more efficient when working with large codebases by focusing only on relevant subdirectories (e.g., `cursor-tools repo "explain the code" --subdir=src/commands`).
-- **GitHub Repository Analysis for Repo Command**: Added `--from-github` parameter to the repo command, enabling analysis of remote GitHub repositories without local cloning. This feature provides the same functionality previously available in the doc command, making it easier to get context-aware assistance for any public GitHub repository (e.g., `cursor-tools repo "explain the authentication flow" --from-github=username/repo-name`).
-- **Improved Model Name Resolution**: Enhanced model name handling across providers to better handle experimental and latest model versions:
-
-  - Automatically resolves `-exp-*` suffixes to find stable model versions
-  - Resolves `-latest` suffixes to the most recent compatible model
-  - For ModelBox and OpenRouter: automatically finds models across providers without requiring provider prefixes (e.g. `gpt-4o` will find `openai/gpt-4o`)
-  - Provides helpful suggestions when models aren't found, showing similar available models
-
-- **Support for OpenRouter when using MCP**
-- By default the `mcp` command uses Anthropic, but now takes a --provider argument that can be set to 'anthropic' or 'openrouter'
-- MCP commands require `ANTHROPIC_API_KEY` or `OPENROUTER_API_KEY` to be set in your environment
-- The '--model' arg can also be used with the MCP command to set the OpenRouter model. It is ignored if the provider is Anthropic.
-
-- **Google Vertex AI Authentication**: Added support for Google Vertex AI authentication using JSON key files or Application Default Credentials (ADC). This update maintains backward compatibility, continuing to support the direct API key string method, while adding additional authentication options. To use this feature, set the `GEMINI_API_KEY` environment variable to the path of your JSON key file or to `adc` to use Application Default Credentials. This enables access to gemini models such as `gemini-2.0-flash` via the Vertex AI. This feature introduces a new dependency: `google-auth-library`.
-  - **Example: Using Service Account JSON Key**
-    Set `GEMINI_API_KEY` to the path of your service account JSON key file:
-    ```env
-    GEMINI_API_KEY="./path/to/service-account.json"
-    ```
-  - **Example: Using Application Default Credentials (ADC)**
-    First, authenticate locally using gcloud:
-    ```bash
-    gcloud auth application-default login
-    ```
-    Then set `GEMINI_API_KEY` to `adc` to use Application Default Credentials:
-    ```env
-    GEMINI_API_KEY="adc"
-    ```
