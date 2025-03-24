@@ -1,196 +1,360 @@
-# Feature Behavior Testing Plan for cursor-tools
+Using file provider: gemini
+Using file model: gemini-2.0-flash-thinking-exp
+Using thinking provider: openai
+Using thinking model: o3-mini
+Finding relevant files...
+Running repomix to get file listing...
+Found 102 files, approx 88663 tokens.
+Asking gemini to identify relevant files using model: gemini-2.0-flash-thinking-exp with max tokens: 8192...
+Found 9 relevant files:
+local-docs/stagehand.md
+tests/agents/test-stagehand-agent.js
+src/commands/browser/
+tests/commands/browser/
+types/agent.ts
+types/stagehand.ts
+types/act.ts
+lib/agent/
+lib/
 
-This document outlines our approach to regression testing for cursor-tools using AI agents. We create feature behavior files that describe desired behaviors, and AI agents determine how to test these behaviors using cursor-tools. The agents generate detailed reports and simple PASS/FAIL results for automated validation.
+Extracting content from relevant files...
+Generating implementation plan using openai with max tokens: 8192...
+Below is one detailed plan to add a new "browser agent" subcommand. This plan assumes that you want to follow the style of the existing act command (even though its code isn't shown here) and that you wish to expose Stagehand's agent functionality via a command‐line script located in the browser commands folder. The implementation will maintain consistency with the existing browser commands and support the same options.
 
-## Goals
+──────────────────────────────
+Step‐by‐step Implementation Plan
+──────────────────────────────
 
-1. **Comprehensive Feature Testing**: Test all major features and commands of cursor-tools in an automated fashion
-2. **Regression Detection**: Quickly identify when changes break existing functionality
-3. **Parallel Execution**: Run tests concurrently to reduce overall testing time
-4. **Documentation**: Generate detailed reports explaining test outcomes and behavior
-5. **Human-Readable Reports**: Ensure test results are easy to understand and analyze
-6. **Automation-Friendly**: Enable CI/CD integration with simple PASS/FAIL outputs
-7. **Maintainability**: Make it easy to add new tests and update existing ones
-8. **Cross-Version Testing**: Compare behavior across different versions/branches
-9. **AI Agent Flexibility**: Test whether AI agents can correctly interpret and use cursor-tools based on natural language descriptions
+1. Create a New File
 
-## Test Assets Management
+ • Create a new file at:
+  src/commands/browser/browser-agent.ts
 
-The testing framework supports referencing external assets for test scenarios that require specific inputs, such as long queries, sample files, or structured data. This enables consistent testing with predefined inputs.
+ • This file will be the entry point for your new "browser agent" subcommand.
 
-### Asset Storage Structure
+2. Configure Dependencies and Environment
 
-Assets are stored in directories adjacent to their corresponding test files, using the same name as the test file (minus extension):
+ • At the top of the file, import the same dependencies and utilities that are used in the existing browser commands like act.ts
+ • We will NOT use commander or any other CLI argument libraries
+ • The implementation will reuse the shared command structure and utilities from the existing browser commands
 
+3. Implement Command Class Structure
+
+ • Create a class named `AgentCommand` that implements the Command interface, similar to the existing `ActCommand`
+ • Implement the execute method that will handle the command execution
+ • Use the same SharedBrowserCommandOptions type that's used by other browser commands
+ • Include support for all browser command options (network, console, headless, connect-to, etc.)
+
+4. Initialize Stagehand and Browser
+
+ • Import and utilize the same initialization pattern as the act command
+ • Load configuration from the config system
+ • Support both OpenAI and Anthropic API keys and models
+ • Properly handle timeout settings, logger configuration, and other Stagehand initialization options
+ • Setup console logging, network monitoring, and video recording consistent with other browser commands
+
+5. Implement the Agent Functionality
+
+ • After browser initialization, create the Stagehand agent using stagehand.agent()
+ • Pass in a configuration object that includes:
+  – provider (e.g. "openai" by default or from config)
+  – model (from options, config, or default values)
+  – options including API keys (OpenAI or Anthropic)
+  – Simple default instructions that include the current page URL
+ • Call the agent's execute() method with the user's instruction
+
+6. Handle Results and Clean Up
+
+ • Properly format and return the agent's result
+ • Include console and network logs in the output
+ • Capture screenshots if requested
+ • Handle HTML output if requested
+ • Include proper cleanup in a finally block or using resource management
+ • Implement proper error handling consistent with other browser commands
+
+7. Proper API Key Handling
+
+ • Support both OpenAI and Anthropic API keys
+ • Validate the provider and model selection based on available API keys
+ • For Anthropic, support valid models like "claude-3-5-sonnet-20240620" and "claude-3-7-sonnet-20250219"
+ • For OpenAI, support "computer-use-preview-2025-03-11"
+ • Provide clear error messages when required API keys are missing
+
+──────────────────────────────
+Implementation Details
+──────────────────────────────
+
+The code structure should closely mirror the existing browser commands, particularly the act command. Here's a more detailed outline of the implementation:
+
+```typescript
+import type { Command, CommandGenerator } from '../../../types';
+import { formatOutput, ActionError, NavigationError } from './stagehandUtils';
+import {
+  BrowserResult,
+  ConstructorParams,
+  InitResult,
+  LogLine,
+  Stagehand,
+} from '@browserbasehq/stagehand';
+import { loadConfig } from '../../../config';
+import {
+  loadStagehandConfig,
+  validateStagehandConfig,
+  getStagehandApiKey,
+  getStagehandModel,
+} from './config';
+import type { SharedBrowserCommandOptions } from '../browserOptions';
+import {
+  setupConsoleLogging,
+  setupNetworkMonitoring,
+  captureScreenshot,
+  outputMessages,
+  setupVideoRecording,
+} from '../utilsShared';
+import { overrideStagehandInit, stagehandLogger } from './initOverride';
+
+overrideStagehandInit();
+
+export class AgentCommand implements Command {
+  async *execute(query: string, options: SharedBrowserCommandOptions): CommandGenerator {
+    if (!query) {
+      yield 'Please provide an instruction and URL. Usage: browser agent "<instruction>" --url <url>';
+      return;
+    }
+
+    const url = options?.url;
+    if (!url) {
+      yield 'Please provide a URL using the --url option';
+      return;
+    }
+
+    // Load and validate configuration
+    const config = loadConfig();
+    const stagehandConfig = loadStagehandConfig(config);
+    validateStagehandConfig(stagehandConfig);
+
+    let stagehand: Stagehand | undefined;
+    let consoleMessages: string[] = [];
+    let networkMessages: string[] = [];
+
+    try {
+      // Use the same configuration structure as the act command
+      const stagehandInitConfig = {
+        env: 'LOCAL',
+        headless: options?.headless ?? stagehandConfig.headless,
+        verbose: options?.debug || stagehandConfig.verbose ? 1 : 0,
+        debugDom: options?.debug ?? stagehandConfig.debugDom,
+        modelName: getStagehandModel(stagehandConfig, {
+          model: options?.model,
+        }),
+        apiKey: getStagehandApiKey(stagehandConfig),
+        enableCaching: stagehandConfig.enableCaching,
+        logger: stagehandLogger(options?.debug ?? stagehandConfig.verbose),
+      };
+
+      // Set default values for network and console options
+      options = {
+        ...options,
+        network: options?.network === undefined ? true : options.network,
+        console: options?.console === undefined ? true : options.console,
+      };
+
+      if (options?.debug) {
+        console.log('using stagehand config', { ...stagehandInitConfig, apiKey: 'REDACTED' });
+      }
+      stagehand = new Stagehand(stagehandInitConfig);
+
+      // Handle proper resource cleanup
+      await using _stagehand = {
+        [Symbol.asyncDispose]: async () => {
+          console.error('closing stagehand, this can take a while');
+          await Promise.race([
+            options?.connectTo ? undefined : stagehand?.page.close(),
+            stagehand?.close(),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('Page close timeout')), 5000)
+            ),
+          ]);
+          console.error('stagehand closed');
+        },
+      };
+
+      // Initialize with timeout and video recording if requested
+      const initPromise = stagehand.init({
+        ...options,
+        //@ts-ignore
+        recordVideo: options.video
+          ? {
+              dir: await setupVideoRecording(options),
+            }
+          : undefined,
+      });
+      const initTimeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Initialization timeout')), 30000)
+      );
+      await Promise.race([initPromise, initTimeoutPromise]);
+
+      // Setup console and network monitoring
+      consoleMessages = await setupConsoleLogging(stagehand.page, options || {});
+      networkMessages = await setupNetworkMonitoring(stagehand.page, options || {});
+
+      try {
+        // Handle URL navigation with the same logic as act command
+        if (url !== 'current') {
+          const currentUrl = await stagehand.page.url();
+          if (currentUrl !== url) {
+            const gotoPromise = stagehand.page.goto(url);
+            const gotoTimeoutPromise = new Promise((_, reject) =>
+              setTimeout(
+                () => reject(new Error('Navigation timeout')),
+                stagehandConfig.timeout ?? 30000
+              )
+            );
+            await Promise.race([gotoPromise, gotoTimeoutPromise]);
+          } else {
+            console.log('Skipping navigation - already on correct page');
+          }
+        } else {
+          console.log('Skipping navigation - using current page');
+        }
+      } catch (error) {
+        throw new NavigationError(
+          `Failed to navigate to ${url}. Please check if the URL is correct and accessible.`,
+          error
+        );
+      }
+
+      // Execute JS if provided
+      if (options?.evaluate) {
+        await stagehand.page.evaluate(options.evaluate);
+      }
+
+      // Create and execute the agent with timeout
+      console.log(`Creating Stagehand agent...`);
+      
+      // Determine the provider and model based on config and options
+      const provider = options?.provider || stagehandConfig.provider || 'openai';
+      const model = options?.model || 
+                    (provider === 'openai' ? 'computer-use-preview-2025-03-11' : 
+                     'claude-3-7-sonnet-20250219');
+      
+      // Set up API key based on provider
+      const apiKey = provider === 'openai' 
+                    ? process.env.OPENAI_API_KEY
+                    : process.env.ANTHROPIC_API_KEY;
+                    
+      if (!apiKey) {
+        throw new Error(`Missing API key for provider: ${provider}. Please set ${provider.toUpperCase()}_API_KEY.`);
+      }
+
+      // Create the agent
+      const agent = stagehand.agent({
+        provider,
+        model,
+        options: { apiKey },
+        instructions: `You are a browser automation agent currently on: ${stagehand.page.url()}. Do not ask follow up questions; execute instructions directly.`,
+      });
+
+      // Execute the agent task with timeout
+      console.log('Executing agent task...');
+      let totalTimeout: ReturnType<typeof setTimeout> | undefined;
+      const totalTimeoutPromise = new Promise(
+        (_, reject) =>
+          (totalTimeout = setTimeout(() => reject(new Error('Agent execution timeout')), 
+            options?.timeout ?? stagehandConfig.timeout ?? 120000))
+      );
+      
+      const agentResult = await Promise.race([
+        agent.execute(query),
+        totalTimeoutPromise
+      ]);
+      
+      if (totalTimeout) {
+        clearTimeout(totalTimeout);
+      }
+
+      // Take screenshot if requested
+      await captureScreenshot(stagehand.page, options);
+
+      // Format and output result
+      yield formatOutput(agentResult, options?.debug);
+      for (const message of outputMessages(consoleMessages, networkMessages, options)) {
+        yield message;
+      }
+
+      // Output HTML content if requested
+      if (options?.html) {
+        const htmlContent = await stagehand.page.content();
+        yield '\n--- Page HTML Content ---\n\n';
+        yield htmlContent;
+        yield '\n--- End of HTML Content ---\n';
+      }
+
+      if (options?.screenshot) {
+        yield `Screenshot saved to ${options.screenshot}\n`;
+      }
+    } catch (error) {
+      console.error('error in stagehand agent execution', error);
+      throw error;
+    }
+  }
+}
 ```
-tests/feature-behaviors/
-    ask/
-        ask-command.md              # Test file
-        ask-command/                # Assets directory for this test
-            scenario9-long-query.txt
-    browser/
-        browser-open-command.md     # Test file
-        browser-open-command/       # Assets directory for this test
-            test-form.html
-```
 
-## Current Test Coverage
+──────────────────────────────
+Assumptions and Notes:
+──────────────────────────────
+• We will NOT use commander or any external CLI argument parsing libraries
+• The implementation will reuse all the existing command infrastructure from the browser commands
+• For Anthropic, we'll support "claude-3-5-sonnet-20240620" and "claude-3-7-sonnet-20250219" models
+• For OpenAI, we'll support "computer-use-preview-2025-03-11" for CUA
+• The command will support all the same options as the existing browser commands:
+  - network, console, html for logging and output
+  - headless, connectTo for browser control
+  - timeout, evaluate for execution control
+  - screenshot, video for capturing visual output
+  - url for navigation
+  - debug for verbose logging
+• The implementation will handle proper resource cleanup, error cases, and timeouts
+• We'll use the existing configuration loading and validation system
+• The simplified default instructions are: "You are a browser automation agent currently on: {url}. Do not ask follow up questions; execute instructions directly."
 
-Currently, the repository has the following feature behavior tests:
-- `ask/ask-command.md`: Tests for direct model queries
-- `browser/browser-command.md`: Tests for browser automation capabilities
-- `doc/doc-command.md`: Tests for documentation generation
-- `example/test.md`: A sample test file
-- `github/github-command.md`: Tests for GitHub integration
-- `mcp/mcp-command.md` and `mcp-command-edge-cases.md`: Tests for Model Context Protocol interactions
-- `plan/plan-command.md`: Tests for implementation planning
-- `repo/repo-command.md`: Tests for repository context analysis
-- `test/test-command-parallel-example.md`: An example for parallel testing
-- `test/test-command-outputs.md`: Tests for command output handling
-- `web/web-command.md`: Tests for web search functionality
+──────────────────────────────
+Testing the New Subcommand
+──────────────────────────────
+• Run the new command (after building/transpiling if you use TypeScript). For example:
+  ```
+  node dist/commands/browser/index.js agent "Analyze the page and click the first button" --url http://localhost:3000/test.html
+  ```
+• Test with various options to ensure compatibility with the existing browser commands:
+  ```
+  # With screenshot
+  node dist/commands/browser/index.js agent "Fill out the form" --url http://localhost:3000/form.html --screenshot=form.png
+  
+  # With video recording
+  node dist/commands/browser/index.js agent "Complete the checkout process" --url http://localhost:3000/checkout.html --video=./recordings
+  
+  # With non-headless mode for debugging
+  node dist/commands/browser/index.js agent "Debug the login flow" --url http://localhost:3000/login.html --no-headless
+  
+  # With HTML capture
+  node dist/commands/browser/index.js agent "Extract data from the table" --url http://localhost:3000/data.html --html
+  
+  # With custom JavaScript evaluation
+  node dist/commands/browser/index.js agent "Interact with dynamically loaded content" --url http://localhost:3000/dynamic.html --evaluate="window.scrollTo(0, document.body.scrollHeight)"
+  
+  # Using both OpenAI and Anthropic providers
+  node dist/commands/browser/index.js agent "Test the search functionality" --url http://localhost:3000/search.html --provider=openai --model=computer-use-preview-2025-03-11
+  node dist/commands/browser/index.js agent "Test the search functionality" --url http://localhost:3000/search.html --provider=anthropic --model=claude-3-7-sonnet-20250219
+  ```
+• Verify that the agent's actions match those described in tests/agents/test-stagehand-agent.js
+• Check the console output and browser behavior to ensure proper interaction
 
-## Enhancement Plan for Existing Tests
+──────────────────────────────
+Conclusion
+──────────────────────────────
+This updated plan provides a detailed implementation approach for adding a "browser agent" subcommand that is fully consistent with the existing browser commands structure. The implementation will support all the same options as the act command and properly handle both OpenAI and Anthropic providers and models.
 
-### 1. Cross-Command Consistency
-- **Consistent Error Reporting**: Ensure error reporting is consistent across all commands
-- **Consistent Option Handling**: Verify that common options like `--debug`, `--save-to`, and `--quiet` behave consistently
+By reusing the existing command infrastructure, we ensure that the new command seamlessly integrates with the rest of the codebase and provides a consistent user experience. The implementation follows the same patterns for configuration loading, API key handling, browser initialization, and resource cleanup.
 
-### 2. `browser/browser-command.md`
-- **Browser Connect-to Edge Cases**: Add robust test cases for Chrome instance connection scenarios
-- **Browser Viewport Handling**: Test viewport configurations more explicitly
-
-### 3. `mcp/mcp-command.md` and `mcp-command-edge-cases.md`
-- **Refactor Tests**: Break down large edge cases file into more focused test files
-- **Error Handling**: Add specific tests for:
-  - MCP Server Connection Errors
-  - MCP Tool Not Found Errors
-  - MCP Tool Argument Validation Errors
-
-## Planned New Test Files
-
-The following test files are planned for implementation:
-
-### 1. `test/test-command-outputs.md`
-
-**Description**: Tests for the test command itself, focusing on output handling and different output modes.
-
-**Key Scenarios**:
-- **Test Command with Quiet Output**: Test running tests with the `--quiet` flag
-- **Test Command with Save-to Output**: Test saving output to a file
-- **Test Command with Debug Output**: Test debug logging
-- **Test Command Output Combination**: Test combining output flags
-
-### 2. `plan/plan-command.md`
-
-**Description**: Tests for the `plan` command, focusing on generating implementation plans based on user queries and repository context.
-
-**Key Scenarios**:
-- **Basic Plan Generation (Happy Path)**: Test a simple plan generation request.
-- **Plan Generation with Specific Providers (Happy Path)**: Test plan generation using different combinations of `fileProvider` and `thinkingProvider`.
-- **Plan Generation for a Complex Task (Happy Path)**: Test plan generation for a more complex, multi-step task.
-- **Plan Generation with Debug Option (Happy Path)**: Test plan generation with debug output enabled.
-- **Plan Generation Error Handling (Error Handling)**: Test error handling when invalid providers or models are specified.
-
-### 3. `repo/repo-command.md`
-
-**Description**: Tests for the `repo` command, focusing on its ability to analyze repository context and answer questions about the codebase.
-
-**Key Scenarios**:
-- **Basic Repo Analysis (Happy Path)**: Test a simple repository analysis query.
-- **Repo Analysis with Different Providers (Happy Path)**: Test repo analysis using different providers.
-- **Repo Analysis with a Complex Query (Happy Path)**: Test repo analysis with a more complex query requiring understanding of multiple parts of the codebase.
-- **Repo Analysis with Save-to Option (Happy Path)**: Test saving repo analysis results to a file.
-- **Repo Analysis Error Handling (Error Handling)**: Test error handling when invalid parameters are provided.
-
-### 4. `doc/doc-command.md`
-
-**Description**: Tests for the `doc` command, focusing on generating documentation for repositories.
-
-**Key Scenarios**:
-- **Basic Documentation Generation (Happy Path)**: Test generating documentation for the current repository.
-- **Documentation Generation with Output File (Happy Path)**: Test generating documentation and saving it to a specified output file.
-- **Documentation Generation for Remote Repository (Happy Path)**: Test generating documentation for a remote GitHub repository.
-- **Documentation Generation with Hint (Happy Path)**: Test generating documentation with a hint to focus on specific parts of the repository.
-- **Documentation Generation Error Handling (Error Handling)**: Test error handling when invalid parameters are provided.
-
-### 5. `github/github-command.md`
-
-**Description**: Tests for the `github` command and its subcommands (`pr`, `issue`), focusing on GitHub integration.
-
-**Key Scenarios**:
-- **GitHub PR List (Happy Path)**: Test retrieving a list of recent pull requests.
-- **GitHub PR Details (Happy Path)**: Test retrieving details for a specific pull request.
-- **GitHub Issue List (Happy Path)**: Test retrieving a list of recent issues.
-- **GitHub Issue Details (Happy Path)**: Test retrieving details for a specific issue.
-- **GitHub Authentication Method Verification (Happy Path)**: Test each authentication method (env var, GitHub CLI, git credentials) to ensure they work correctly.
-- **GitHub Rate Limit Handling (Error Handling)**: Test error handling when GitHub API rate limits are exceeded.
-- **GitHub Authentication Error (Error Handling)**: Test error handling when GitHub authentication fails.
-- **GitHub Private Repository Access (Edge Case)**: Test accessing a private repository (requires test credentials).
-
-### 6. `clickup/clickup-command.md`
-
-**Description**: Tests for the `clickup` command, focusing on ClickUp integration for task management.
-
-**Key Scenarios**:
-- **ClickUp Task Details (Happy Path)**: Test retrieving details for a specific ClickUp task.
-- **ClickUp Task with Comments (Happy Path)**: Test retrieving a ClickUp task with comments.
-- **ClickUp Task with Attachments (Happy Path)**: Test retrieving a ClickUp task with attachments.
-- **ClickUp Authentication Error (Error Handling)**: Test error handling when ClickUp authentication fails.
-- **ClickUp Invalid Task ID (Error Handling)**: Test error handling when an invalid task ID is provided.
-
-### 7. `xcode/xcode-command.md`
-
-**Description**: Tests for the `xcode` command and its subcommands (`build`, `run`, `lint`), focusing on Xcode integration for iOS/macOS development.
-
-**Key Scenarios**:
-- **Xcode Build Command (Happy Path)**: Test the `xcode build` subcommand to build an Xcode project.
-- **Xcode Run Command (Happy Path)**: Test the `xcode run` subcommand to build and run an Xcode project.
-- **Xcode Run with Device Specification (Happy Path)**: Test the `xcode run` command with different device types (iPhone, iPad, specific device names).
-- **Xcode Lint Command (Happy Path)**: Test the `xcode lint` subcommand to analyze code and report warnings.
-- **Xcode Lint Output Verification (Happy Path)**: Test the output format and content of the linting report.
-- **Xcode Build Error Types (Error Handling)**: Test different types of build failures (compile errors, linking errors, code signing issues) to ensure proper error reporting.
-- **Xcode Build Error Handling (Error Handling)**: Test error handling when the build command fails.
-- **Xcode Missing Project (Error Handling)**: Test error handling when the specified Xcode project is not found.
-
-### 8. `mcp/mcp-command.md`
-
-**Description**: Tests for the `mcp` command and its subcommands (`search`, `run`), focusing on Model Context Protocol server interactions.
-
-**Key Scenarios**:
-- **MCP Search Command (Happy Path)**: Test the `mcp search` subcommand to search for available MCP servers.
-- **MCP Search with No Results (Edge Case)**: Test the `mcp search` command with a query that returns no results.
-- **MCP Run Command (Happy Path)**: Test the `mcp run` subcommand to execute a tool from an MCP server.
-- **MCP Run with Tool Arguments (Happy Path)**: Test passing different types of arguments (strings, numbers, booleans, objects) to MCP tools.
-- **MCP Run with Server Override (Happy Path)**: Test the `mcp run` subcommand with a server override.
-- **MCP Run with Tool Execution Errors (Error Handling)**: Test error handling when MCP tool execution fails (tool not found, invalid arguments, server errors).
-- **MCP Server Not Found (Error Handling)**: Test error handling when no suitable MCP server is found.
-- **MCP API Key Missing (Error Handling)**: Test error handling when the required Anthropic API key is not configured.
-
-### 9. `install/install-command.md`
-
-**Description**: Tests for the `install` command, focusing on its ability to set up cursor-tools in a workspace.
-
-**Key Scenarios**:
-- **Basic Installation (Happy Path)**: Test the basic installation process in a clean workspace.
-- **Installation with Legacy Mode (Happy Path)**: Test installation with legacy mode enabled (using `.cursorrules`).
-- **Installation with New Mode (Happy Path)**: Test installation with new mode enabled (using `.cursor/rules/cursor-tools.mdc`).
-- **Upgrade Scenario (Happy Path)**: Test upgrading an existing installation to a newer version.
-- **Error Handling for File System Permissions (Error Handling)**: Test error handling when file system permissions prevent installation.
-
-## Implementation Strategy
-
-1. **Prioritization**: Implement tests for the most frequently used commands first (web, repo, plan, doc).
-2. **Test Assets**: Create necessary test assets (sample files, mock data) for each test scenario.
-3. **Test Tagging**: Implement a comprehensive tagging system for tests (e.g., `@api-key-required`, `@slow`, `@network-dependent`, `@browser-ui`) to enable flexible test execution.
-4. **Environment Variable Isolation**: Ensure tests are isolated and environment variables from one test scenario don't affect others.
-5. **Test Execution Time Metrics**: Add metrics to track execution time per scenario and overall test suite execution time.
-6. **CI Integration**: Ensure all tests can be run in CI/CD pipelines.
-7. **Documentation**: Update TESTING.md with information about the new tests.
-
-## Next Steps
-
-1. Create directory structure for each new test file
-2. Implement the test files in order of priority
-3. Create necessary test assets and test data generation utilities
-4. Run tests to verify functionality
-5. Update documentation with information about the new tests and how to run them
+Happy coding!

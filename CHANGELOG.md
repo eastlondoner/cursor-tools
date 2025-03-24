@@ -7,6 +7,11 @@ All notable changes to this project will be documented in this file.
 ### Added
 - **Support for Custom Repomix Configuration**: Added support for `repomix.config.json` files to customize which files are included/excluded during repository analysis. This configuration file can be placed in the repository root and will be automatically detected by `repo`, `plan`, and `doc` commands, allowing for more precise control over repository content analysis.
 - **Subdirectory Analysis for Repo Command**: Added `--subdir` parameter to the repo command, allowing users to analyze a specific subdirectory instead of the entire repository. This makes the repo command more efficient when working with large codebases by focusing only on relevant subdirectories (e.g., `cursor-tools repo "explain the code" --subdir=src/commands`).
+- **New 'browser agent' Subcommand**: Added a new `browser agent` subcommand to leverage Stagehand's `agent()` method with execute(). Nickname is "Operator"
+  - Enables autonomous browser interactions for complex multi-step tasks with a single instruction.
+  - Allows agents to make decisions based on page content to achieve goals.
+  - Supports both OpenAI's Computer Use Agent (CUA) and Anthropic's CUA capabilities.
+  - Models supported: `computer-use-preview-2025-03-11` (OpenAI), `claude-3-5-sonnet-20240620` and `claude-3-7-sonnet-20250219` (Anthropic).
 - **Improved Model Name Resolution**: Enhanced model name handling across providers to better handle experimental and latest model versions:
   - Automatically resolves `-exp-*` suffixes to find stable model versions
   - Resolves `-latest` suffixes to the most recent compatible model
