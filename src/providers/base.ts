@@ -61,6 +61,7 @@ export interface ModelOptions {
   webSearch?: boolean; // Whether to enable web search capabilities
   timeout?: number; // Timeout in milliseconds for model API calls
   debug: boolean | undefined; // Enable debug logging
+  reasoningEffort?: 'low' | 'medium' | 'high'; // Support for o1 and o3-mini reasoning effort
 }
 
 // Provider configuration in Config
@@ -1244,7 +1245,8 @@ export class OpenAIProvider extends OpenAIBase {
 
         this.debugLog(options, 'Request messages:', this.truncateForLogging(messages));
 
-        const response = await client.chat.completions.create({
+        // Create request parameters, including model-specific configurations
+        const requestParams: any = {
           model,
           messages,
           ...(model.startsWith('o')
@@ -1254,7 +1256,15 @@ export class OpenAIProvider extends OpenAIBase {
             : {
                 max_tokens: maxTokens,
               }),
-        });
+        };
+
+        // Add reasoning_effort parameter for o1 or o3-mini models if specified
+        if ((model.includes('o1') || model.includes('o3-mini')) && options?.reasoningEffort) {
+          requestParams.reasoning_effort = options.reasoningEffort;
+          this.debugLog(options, `Using reasoning_effort: ${options.reasoningEffort}`);
+        }
+
+        const response = await client.chat.completions.create(requestParams);
 
         this.debugLog(options, 'Response:', JSON.stringify(response, null, 2));
 
@@ -1373,17 +1383,27 @@ export class OpenRouterProvider extends OpenAIBase {
         this.headers
       );
 
-      const response = await client.chat.completions.create(
-        {
-          model,
-          messages,
-          max_tokens: maxTokens,
-        },
-        {
-          timeout: Math.floor(options?.timeout ?? TEN_MINUTES),
-          maxRetries: 3,
-        }
-      );
+      // Create request parameters
+      const requestParams: any = {
+        model,
+        messages,
+        max_tokens: maxTokens,
+      };
+
+      // Add reasoning_effort parameter for o1 or o3-mini models if specified
+      if ((model.includes('o1') || model.includes('o3-mini')) && options?.reasoningEffort) {
+        // OpenRouter has a different format for reasoning parameters
+        // https://openrouter.ai/docs/use-cases/reasoning-tokens
+        requestParams.reasoning = {
+          effort: options.reasoningEffort,
+        };
+        this.debugLog(options, `Using reasoning effort: ${options.reasoningEffort}`);
+      }
+
+      const response = await client.chat.completions.create(requestParams, {
+        timeout: Math.floor(options?.timeout ?? TEN_MINUTES),
+        maxRetries: 3,
+      });
 
       this.debugLog(options, 'Response:', JSON.stringify(response, null, 2));
 

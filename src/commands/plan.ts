@@ -287,15 +287,24 @@ async function generatePlan(
   );
 
   try {
+    // Create model options with all required parameters
+    const modelOptions: ModelOptions = {
+      ...options,
+      systemPrompt:
+        'You are an expert software engineer who generates step-by-step implementation plans for software development tasks. Given a query and a repository context, generate a detailed plan that is consistent with the existing code. Include specific file paths, code snippets, and any necessary commands. Identify assumptions and provide multiple possible options where appropriate.',
+      timeout: timeoutMs,
+    };
+
+    // If reasoningEffort is provided in the options, add it to the model options
+    if (options.reasoningEffort) {
+      modelOptions.reasoningEffort = options.reasoningEffort;
+    }
+
     const result = await provider.executePrompt(
       `Query: ${query}\n\nRepository Context:\n${repoContext}`,
-      {
-        ...options,
-        systemPrompt:
-          'You are an expert software engineer who generates step-by-step implementation plans for software development tasks. Given a query and a repository context, generate a detailed plan that is consistent with the existing code. Include specific file paths, code snippets, and any necessary commands. Identify assumptions and provide multiple possible options where appropriate.',
-        timeout: timeoutMs,
-      }
+      modelOptions
     );
+
     const endTime = Date.now();
     console.log(
       `[${new Date().toLocaleTimeString()}] Plan generation completed in ${((endTime - startTime) / 1000).toFixed(2)} seconds.`

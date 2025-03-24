@@ -24,6 +24,7 @@ type CLIStringOption =
   // Core options
   | 'model'
   | 'provider'
+  | 'reasoningEffort'
   // Output options
   | 'output'
   | 'saveTo'
@@ -76,6 +77,7 @@ interface CLIOptions {
   provider?: string;
   maxTokens?: number;
   debug?: boolean;
+  reasoningEffort?: string;
 
   // Output options
   output?: string;
@@ -124,6 +126,8 @@ const OPTION_KEYS: Record<string, CLIOptionKey> = {
   provider: 'provider',
   maxtokens: 'maxTokens',
   debug: 'debug',
+  reasoningeffort: 'reasoningEffort',
+  'reasoning-effort': 'reasoningEffort',
 
   // Output options
   output: 'output',
@@ -228,6 +232,7 @@ async function main() {
     debug: undefined,
     quiet: undefined,
     json: undefined,
+    reasoningEffort: undefined,
   };
   const queryArgs: string[] = [];
 

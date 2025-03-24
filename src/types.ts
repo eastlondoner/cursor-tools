@@ -12,6 +12,9 @@ export interface CommandOptions {
   url?: string;
   json?: boolean; // Output results as JSON
 
+  // OpenAI and OpenRouter reasoning options
+  reasoningEffort?: 'low' | 'medium' | 'high'; // Support for OpenAI o1 and o3-mini reasoning effort
+
   // Output options
   saveTo?: string; // Path to save output to in addition to stdout
   quiet?: boolean; // Suppress stdout output (only useful with saveTo)

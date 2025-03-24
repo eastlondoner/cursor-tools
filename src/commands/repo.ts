@@ -181,23 +181,35 @@ export class RepoCommand implements Command {
     options: CommandOptions & Partial<ModelOptions>
   ): CommandGenerator {
     const modelProvider = createProvider(provider);
-    const model =
+    const modelName =
       options?.model ||
       this.config.repo?.model ||
       (this.config as Record<string, any>)[provider]?.model ||
       getDefaultModel(provider);
 
-    if (!model) {
+    if (!modelName) {
       throw new ProviderError(`No model specified for ${provider}`);
     }
 
-    yield `Analyzing repository using ${model}...\n`;
+    yield `Analyzing repository using ${modelName}...\n`;
     try {
       const maxTokens =
         options?.maxTokens ||
         this.config.repo?.maxTokens ||
         (this.config as Record<string, any>)[provider]?.maxTokens ||
         defaultMaxTokens;
+
+      // Create modelOptions and add reasoning effort if specified
+      const modelOptions: Omit<ModelOptions, 'systemPrompt'> = {
+        model: modelName,
+        maxTokens,
+        debug: options?.debug,
+      };
+
+      // Add reasoningEffort parameter if specified in options
+      if (options.reasoningEffort) {
+        modelOptions.reasoningEffort = options.reasoningEffort;
+      }
 
       const response = await analyzeRepository(
         modelProvider,
@@ -206,11 +218,7 @@ export class RepoCommand implements Command {
           repoContext,
           cursorRules,
         },
-        {
-          ...options,
-          model,
-          maxTokens,
-        }
+        modelOptions
       );
       yield response;
     } catch (error) {
