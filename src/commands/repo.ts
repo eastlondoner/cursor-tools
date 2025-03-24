@@ -15,6 +15,7 @@ import {
   getNextAvailableProvider,
   getDefaultModel,
 } from '../utils/providerAvailability';
+import { getGithubRepoContext, looksLikeGithubRepo } from '../utils/githubRepo';
 
 export class RepoCommand implements Command {
   private config: Config;
@@ -26,18 +27,76 @@ export class RepoCommand implements Command {
 
   async *execute(query: string, options: CommandOptions & Partial<ModelOptions>): CommandGenerator {
     try {
-      // Determine the directory to analyze. If a subdirectory is provided, resolve it relative to the current working directory.
-      const targetDirectory = options.subdir
-        ? resolve(process.cwd(), options.subdir)
-        : process.cwd();
-
-      // Validate that the target directory exists
-      if (options.subdir && !existsSync(targetDirectory)) {
-        throw new FileError(`The directory "${targetDirectory}" does not exist.`);
+      // Handle query as GitHub repo if it looks like one and --from-github is not set
+      if (query && !options?.fromGithub && looksLikeGithubRepo(query)) {
+        options = { ...options, fromGithub: query };
       }
 
-      if (options.subdir) {
-        yield `Analyzing subdirectory: ${options.subdir}\n`;
+      let repoContext: string;
+      let tokenCount = 0;
+
+      if (options?.fromGithub) {
+        yield `Analyzing GitHub repository: ${options.fromGithub}\n`;
+
+        const maxRepoSizeMB = this.config.repo?.maxRepoSizeMB || 100;
+        console.log(`Using maxRepoSizeMB: ${maxRepoSizeMB}`);
+        console.log(`Getting GitHub repo context for: ${options.fromGithub}`);
+
+        try {
+          const { text, tokenCount: repoTokenCount } = await getGithubRepoContext(
+            options.fromGithub,
+            maxRepoSizeMB
+          );
+          repoContext = text;
+          tokenCount = repoTokenCount;
+          console.log(`Successfully got GitHub repo context with ${tokenCount} tokens`);
+        } catch (error) {
+          console.error('Error getting GitHub repo context:', error);
+          throw error;
+        }
+      } else {
+        // Determine the directory to analyze. If a subdirectory is provided, resolve it relative to the current working directory.
+        const targetDirectory = options.subdir
+          ? resolve(process.cwd(), options.subdir)
+          : process.cwd();
+
+        // Validate that the target directory exists
+        if (options.subdir && !existsSync(targetDirectory)) {
+          throw new FileError(`The directory "${targetDirectory}" does not exist.`);
+        }
+
+        if (options.subdir) {
+          yield `Analyzing subdirectory: ${options.subdir}\n`;
+        }
+
+        yield 'Packing repository using Repomix...\n';
+
+        const repomixConfig = await loadFileConfigWithOverrides(targetDirectory, {
+          output: {
+            filePath: '.repomix-output.txt',
+          },
+        });
+
+        let packResult: AsyncReturnType<typeof pack> | undefined;
+        try {
+          packResult = await pack([targetDirectory], repomixConfig);
+          console.log(
+            `Packed repository. ${packResult.totalFiles} files. Approximate size ${packResult.totalTokens} tokens.`
+          );
+          tokenCount = packResult.totalTokens;
+        } catch (error) {
+          throw new FileError('Failed to pack repository', error);
+        }
+
+        try {
+          repoContext = readFileSync('.repomix-output.txt', 'utf-8');
+        } catch (error) {
+          throw new FileError('Failed to read repository context', error);
+        }
+      }
+
+      if (tokenCount > 200_000) {
+        options.tokenCount = tokenCount;
       }
 
       let cursorRules =
@@ -52,35 +111,6 @@ export class RepoCommand implements Command {
             .map((p) => p.provider)
             .join(', ')}`
         );
-      }
-
-      yield 'Packing repository using Repomix...\n';
-
-      const repomixConfig = await loadFileConfigWithOverrides(targetDirectory, {
-        output: {
-          filePath: '.repomix-output.txt',
-        },
-      });
-
-      let packResult: AsyncReturnType<typeof pack> | undefined;
-      try {
-        packResult = await pack([targetDirectory], repomixConfig);
-        console.log(
-          `Packed repository. ${packResult.totalFiles} files. Approximate size ${packResult.totalTokens} tokens.`
-        );
-      } catch (error) {
-        throw new FileError('Failed to pack repository', error);
-      }
-
-      if (packResult?.totalTokens > 200_000) {
-        options.tokenCount = packResult.totalTokens;
-      }
-
-      let repoContext: string;
-      try {
-        repoContext = readFileSync('.repomix-output.txt', 'utf-8');
-      } catch (error) {
-        throw new FileError('Failed to read repository context', error);
       }
 
       // If provider is explicitly specified, try only that provider

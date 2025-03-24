@@ -19,6 +19,7 @@ export interface CommandOptions {
   // Context options
   hint?: string; // Additional context or hint for the AI
   subdir?: string; // Subdirectory to analyze (for repo command)
+  fromGithub?: string; // GitHub repository to analyze (for repo and doc commands)
 
   // Plan command specific options
   fileProvider?: Provider;
@@ -53,6 +54,7 @@ export interface Config {
     provider: Provider;
     model?: string;
     maxTokens?: number;
+    maxRepoSizeMB?: number; // Maximum repository size in MB for remote processing
   };
   doc?: {
     maxRepoSizeMB?: number; // Maximum repository size in MB for remote processing
