@@ -38,3 +38,7 @@ screenshots/
 .specstory/
 
 test-xcode/
+
+
+#ignore the test reports
+tests/reports/
