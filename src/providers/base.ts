@@ -376,6 +376,21 @@ export abstract class BaseProvider implements BaseModelProvider {
     return str.slice(0, effectiveMaxLength) + '... (truncated)';
   }
 
+  /**
+   * Determines if the given model supports the reasoning effort parameter.
+   * Also checks the OVERRIDE_SAFETY_CHECKS environment variable to allow bypassing model restrictions.
+   */
+  protected doesModelSupportReasoningEffort(model: string): boolean {
+    // If OVERRIDE_SAFETY_CHECKS is set, allow reasoning effort on any model
+    const safetyOverride = process.env.OVERRIDE_SAFETY_CHECKS?.toLowerCase();
+    if (safetyOverride === 'true' || safetyOverride === '1') {
+      return true;
+    }
+
+    // Only o1 and o3-mini models currently support reasoning effort
+    return model.includes('o1') || model.includes('o3-mini');
+  }
+
   abstract supportsWebSearch(
     modelName: string
   ): Promise<{ supported: boolean; model?: string; error?: string }>;
@@ -471,11 +486,27 @@ abstract class OpenAIBase extends BaseProvider {
 
       this.debugLog(options, 'Request messages:', this.truncateForLogging(messages));
 
-      const response = await client.chat.completions.create({
+      const requestParams: any = {
         model,
         messages,
-        max_tokens: maxTokens,
-      });
+        ...(model.includes('o1') || model.includes('o3')
+          ? {
+              max_completion_tokens: maxTokens,
+            }
+          : {
+              max_tokens: maxTokens,
+            }),
+      };
+
+      // Add reasoning_effort parameter for o1 or o3-mini models if specified
+      if (this.doesModelSupportReasoningEffort(model) && options?.reasoningEffort) {
+        requestParams.reasoning_effort = options.reasoningEffort;
+        this.debugLog(options, `Using reasoning_effort: ${options.reasoningEffort}`);
+      } else if (options?.reasoningEffort) {
+        console.log(`Model ${model} does not support reasoning effort. Parameter will be ignored.`);
+      }
+
+      const response = await client.chat.completions.create(requestParams);
 
       const endTime = Date.now();
       this.debugLog(options, `API call completed in ${endTime - startTime}ms`);
@@ -1249,7 +1280,7 @@ export class OpenAIProvider extends OpenAIBase {
         const requestParams: any = {
           model,
           messages,
-          ...(model.startsWith('o')
+          ...(model.includes('o1') || model.includes('o3')
             ? {
                 max_completion_tokens: maxTokens,
               }
@@ -1259,9 +1290,13 @@ export class OpenAIProvider extends OpenAIBase {
         };
 
         // Add reasoning_effort parameter for o1 or o3-mini models if specified
-        if ((model.includes('o1') || model.includes('o3-mini')) && options?.reasoningEffort) {
+        if (this.doesModelSupportReasoningEffort(model) && options?.reasoningEffort) {
           requestParams.reasoning_effort = options.reasoningEffort;
           this.debugLog(options, `Using reasoning_effort: ${options.reasoningEffort}`);
+        } else if (options?.reasoningEffort) {
+          console.log(
+            `Model ${model} does not support reasoning effort. Parameter will be ignored.`
+          );
         }
 
         const response = await client.chat.completions.create(requestParams);
@@ -1391,13 +1426,15 @@ export class OpenRouterProvider extends OpenAIBase {
       };
 
       // Add reasoning_effort parameter for o1 or o3-mini models if specified
-      if ((model.includes('o1') || model.includes('o3-mini')) && options?.reasoningEffort) {
+      if (this.doesModelSupportReasoningEffort(model) && options?.reasoningEffort) {
         // OpenRouter has a different format for reasoning parameters
         // https://openrouter.ai/docs/use-cases/reasoning-tokens
         requestParams.reasoning = {
           effort: options.reasoningEffort,
         };
         this.debugLog(options, `Using reasoning effort: ${options.reasoningEffort}`);
+      } else if (options?.reasoningEffort) {
+        console.log(`Model ${model} does not support reasoning effort. Parameter will be ignored.`);
       }
 
       const response = await client.chat.completions.create(requestParams, {
