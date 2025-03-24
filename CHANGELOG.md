@@ -5,9 +5,12 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+
 - **Support for Custom Repomix Configuration**: Added support for `repomix.config.json` files to customize which files are included/excluded during repository analysis. This configuration file can be placed in the repository root and will be automatically detected by `repo`, `plan`, and `doc` commands, allowing for more precise control over repository content analysis.
 - **Subdirectory Analysis for Repo Command**: Added `--subdir` parameter to the repo command, allowing users to analyze a specific subdirectory instead of the entire repository. This makes the repo command more efficient when working with large codebases by focusing only on relevant subdirectories (e.g., `cursor-tools repo "explain the code" --subdir=src/commands`).
+- **GitHub Repository Analysis for Repo Command**: Added `--from-github` parameter to the repo command, enabling analysis of remote GitHub repositories without local cloning. This feature provides the same functionality previously available in the doc command, making it easier to get context-aware assistance for any public GitHub repository (e.g., `cursor-tools repo "explain the authentication flow" --from-github=username/repo-name`).
 - **Improved Model Name Resolution**: Enhanced model name handling across providers to better handle experimental and latest model versions:
+
   - Automatically resolves `-exp-*` suffixes to find stable model versions
   - Resolves `-latest` suffixes to the most recent compatible model
   - For ModelBox and OpenRouter: automatically finds models across providers without requiring provider prefixes (e.g. `gpt-4o` will find `openai/gpt-4o`)
@@ -19,6 +22,7 @@ All notable changes to this project will be documented in this file.
 - The '--model' arg can also be used with the MCP command to set the OpenRouter model. It is ignored if the provider is Anthropic.
 
 - **Google Vertex AI Authentication**: Added support for Google Vertex AI authentication using JSON key files or Application Default Credentials (ADC). This update maintains backward compatibility, continuing to support the direct API key string method, while adding additional authentication options. To use this feature, set the `GEMINI_API_KEY` environment variable to the path of your JSON key file or to `adc` to use Application Default Credentials. This enables access to gemini models such as `gemini-2.0-flash` via the Vertex AI. This feature introduces a new dependency: `google-auth-library`.
+
   - **Example: Using Service Account JSON Key**
     Set `GEMINI_API_KEY` to the path of your service account JSON key file:
     ```env
@@ -52,9 +56,12 @@ All notable changes to this project will be documented in this file.
 ## [0.6.0-alpha.7] - 2025-03-05
 
 ### Added
+
 - **Improved ModelBox Provider**: Enhanced the ModelBox provider with improved model name handling. If a requested model is not found, cursor-tools now provides helpful suggestions for similar models. Error messages have also been clarified to better guide users on the requirement for provider prefixes when specifying ModelBox models.
+
   - **Example: Improved Error Message**
     If you use an invalid model with ModelBox, you will now receive suggestions:
+
     ```text
     Error: Model 'invalid-model' not found in ModelBox.
 
@@ -65,6 +72,7 @@ All notable changes to this project will be documented in this file.
 
     Use --model with one of the above models. Note: ModelBox requires provider prefixes (e.g., 'openai/gpt-4' instead of just 'gpt-4').
     ```
+
 - Added support for MCP server overrides in the marketplace
   - Implemented hardcoded overrides in `MCP_OVERRIDES` map
   - Added override for google-calendar-mcp to use eastlondoner fork
@@ -79,6 +87,7 @@ All notable changes to this project will be documented in this file.
     - Warns when a config override replaces a hardcoded override
 
 ### Changed
+
 - Updated all references to Claude 3.5 Sonnet models to Claude 3.7 Sonnet models throughout the codebase
   - Updated model references in configuration files, documentation, and source code
   - Updated default model settings for Anthropic provider
@@ -94,6 +103,7 @@ All notable changes to this project will be documented in this file.
 ## [0.6.0-alpha.5] - 2024-03-22
 
 ### Changed
+
 - cursor-tools now only recommends global installation
 - Updated install command to check for and warn about cursor-tools dependencies in package.json files
   - Checks both dependencies and devDependencies in package.json
@@ -103,11 +113,13 @@ All notable changes to this project will be documented in this file.
 ## [0.6.0-alpha.4] - 2024-03-22
 
 ### Changed
+
 - Added validation to require --tag alpha or --tag latest when running release command
 
 ## [0.6.0-alpha.3] - 2024-03-22
 
 ### Added
+
 - Added ModelBox provider for access to a wider range of models through an OpenAI-compatible API
 - Added OpenRouter provider to enable access to models from various providers including Perplexity
 - New ClickUp integration command for task management
@@ -117,10 +129,11 @@ All notable changes to this project will be documented in this file.
 - Added instructions for Chrome remote debugging setup in cursor rules
 
 ### Changed
+
 - Improved browser command state management when using `--connect-to`:
-    - Reuses existing browser tabs for subsequent commands in a session, preserving page state
-    - Introduced `reload-current` as a special URL value to refresh the current page without losing the connected session
-- Browser commands (`open`, `act`, `observe`, `extract`) now have `--console` and `--network` options enabled by default. Use `--no-console` and `--no-network` to disable them. 
+  - Reuses existing browser tabs for subsequent commands in a session, preserving page state
+  - Introduced `reload-current` as a special URL value to refresh the current page without losing the connected session
+- Browser commands (`open`, `act`, `observe`, `extract`) now have `--console` and `--network` options enabled by default. Use `--no-console` and `--no-network` to disable them.
 - Improved page reuse in browser commands when using `--connect-to`: now reuses existing tabs instead of creating new ones for better state preservation
 - Improved error handling and type safety in cursor rules management
 - Enhanced directory creation order in installation process
@@ -137,6 +150,7 @@ All notable changes to this project will be documented in this file.
 ## [0.6.0-alpha.1] - 2024-03-22
 
 ### Fixed
+
 - Fixed debug logging in all provider commands to properly pass through the debug flag
   - Fixed `ask` command to pass debug flag to provider
   - Fixed `web` command to properly handle debug flag
@@ -146,9 +160,11 @@ All notable changes to this project will be documented in this file.
   - Debug logs now show full request and response details when enabled
 
 ### Changed
+
 - Changed default thinking provider for plan command to OpenAI with o3-mini model for significantly faster plan generation, while maintaining plan quality
 
 ### Added
+
 - New `ask` command for direct model queries
   - Requires both provider and model parameters
   - Allows querying any model from any provider directly
@@ -189,47 +205,56 @@ All notable changes to this project will be documented in this file.
 ## [0.4.3-alpha.23] - 2024-03-22
 
 ### Fixed
+
 - Fixed browser commands to respect system color scheme when using `--connect-to` by not forcing a specific color scheme
 
 ## [0.4.3-alpha.22] - 2024-03-22
 
 ### Fixed
+
 - Fixed browser commands to not set viewport size in Stagehand when using `--connect-to`
 
 ## [0.4.3-alpha.21] - 2024-03-22
 
 ### Fixed
+
 - Fixed browser commands to not set viewport size when using `--connect-to` without an explicit `--viewport` option
 
 ## [0.4.3-alpha.20] - 2024-03-22
 
 ### Changed
+
 - Browser commands (`open`, `act`, `observe`, `extract`) now have `--console` and `--network` options enabled by default. Use `--no-console` and `--no-network` to disable them.
 
 ## [0.4.3-alpha.19] - 2024-03-22
 
 ### Fixed
+
 - Fixed browser commands to always reuse existing tabs when using `--connect-to` instead of creating new ones
 
 ## [0.4.3-alpha.18] - 2024-03-22
 
 ### Changed
+
 - Browser commands now preserve viewport size when using `--connect-to` unless `--viewport` is explicitly provided
 - Added validation to prevent using `--video` with `--connect-to` as video recording is not supported when connecting to existing Chrome instances
 
 ## [0.4.3-alpha.17] - 2024-03-22
 
 ### Added
+
 - Added `reload-current` as a special URL value for browser commands when using `--connect-to`. This allows refreshing the current page while maintaining the connection, which is particularly useful in development workflows.
 
 ## [0.4.3-alpha.15] - 2024-03-21
 
 ### Fixed
+
 - Fixed console logging in browser act command by correcting parameter order in outputMessages call
 
 ## [0.4.3-alpha.13] - 2024-03-21
 
 ### Added
+
 - Browser commands now support `--url=current` to skip navigation and use the current page
 - Browser commands now automatically skip navigation if already on the correct URL
 - Improved page reuse when connecting to existing Chrome instance
@@ -237,6 +262,7 @@ All notable changes to this project will be documented in this file.
 ## [0.4.3-alpha.12] - 2025-02-07
 
 ### Added
+
 - New `browser` command for AI-powered web automation and debugging, leveraging Stagehand AI for natural language interaction
   - `act <instruction> --url <url> [options]`: Execute actions on a webpage using natural language instructions
     - `<instruction>`: Natural language instruction describing the action (e.g., "Click Login", "Type 'hello' in the search box")
@@ -283,6 +309,7 @@ All notable changes to this project will be documented in this file.
     - Configurable timeout and debug options
 
 ### Changed
+
 - Moved Playwright from direct dependency to peer dependency
   - Users need to install Playwright separately to use browser commands
   - Added clear installation instructions and error messages
@@ -290,17 +317,20 @@ All notable changes to this project will be documented in this file.
 ## [0.4.3-alpha.10] - 2025-02-07
 
 ### Fixed
+
 - Fixed punycode deprecation warning by properly redirecting both `punycode` and `node:punycode` imports to `punycode/`
 
 ## [0.4.3-alpha.9] - 2025-02-07
 
 ### Fixed
+
 - Fixed dynamic require issues with Node.js built-in modules by using proper ESM imports
 - Improved handling of Node.js built-in modules in build configuration
 
 ## [0.4.1] - 2025-02-06
 
 ### Changed
+
 - Changed default tokenizer to `o200k_base` for better compatibility with Gemini models
 - Added configurable tokenizer support through `tokenCount.encoding` in config file
 - Updated documentation to reflect new tokenizer configuration options
@@ -308,6 +338,7 @@ All notable changes to this project will be documented in this file.
 ## [0.4.0] - 2025-02-06
 
 ### Improvements
+
 - Big improvements to robustness of command line arguments
 - Introduces doc command to generate documentation for local or remote repositories
 - Introduces github command to access PRs and issues from github
@@ -325,6 +356,7 @@ All notable changes to this project will be documented in this file.
 - Added version command to display the current version of cursor-tools
 
 ### Fixed
+
 - Improved GitHub authentication error handling and rate limit messages
 - Better detection of stored GitHub tokens in git credentials
 - Fixed authentication status messages to accurately reflect available methods
@@ -332,6 +364,7 @@ All notable changes to this project will be documented in this file.
 ## [0.3.4] - 2025-02-05
 
 ### Fixed
+
 - Fixed ESM compatibility issues with Node.js built-in modules
 - Removed bundling of Node.js built-ins for better ESM support
 - Reduced bundle size by externalizing Node.js core modules
@@ -339,18 +372,21 @@ All notable changes to this project will be documented in this file.
 ## [0.3.3] - 2025-02-05
 
 ### Fixed
+
 - Fixed dynamic require issues with Node.js built-in modules
 - Updated build configuration to properly handle Node.js built-ins in ESM context
 
 ## [0.3.2] - 2025-02-05
 
 ### Fixed
+
 - Fixed dynamic require of url module in ESM context
 - Updated import-meta-url.js to use proper ESM imports
 
 ## [0.3.1] - 2025-02-05
 
 ### Changed
+
 - Improved release process with dedicated release script
 - Fixed ESM compatibility issues with dependencies
 - Added better error handling for git operations during release
@@ -358,6 +394,7 @@ All notable changes to this project will be documented in this file.
 ## [0.3.0] - 2025-02-05
 
 ### Changed
+
 - Updated build configuration to output ES Module format for better Node.js 20+ compatibility
 - Changed output file from CommonJS (.cjs) to ES Module (.mjs)
 - Fixed ESM compatibility issues with dependencies
@@ -365,6 +402,7 @@ All notable changes to this project will be documented in this file.
 ## [0.2.0] - 2025-02-05
 
 ### Added
+
 - Added branch support for GitHub repositories in `doc` command
   - Support for specifying branch using `@branch` syntax (e.g. `--fromGithub=username/repo@branch`)
   - Works with both HTTPS URLs and shorthand format
@@ -373,6 +411,7 @@ All notable changes to this project will be documented in this file.
 ## [0.1.0] - 2025-02-04
 
 ### Added
+
 - New `doc` command to generate comprehensive repository documentation
   - Support for local repository documentation generation
   - Support for remote GitHub repository documentation via `--fromGithub` option
@@ -380,12 +419,14 @@ All notable changes to this project will be documented in this file.
 - Development mode support via `pnpm dev` for running latest code without building
 
 ### Changed
+
 - Updated `.cursorrules` to include documentation for the new `doc` command
 - Improved command-line argument parsing for better option handling
 
 ## [0.0.14] - Previous Release
 
 Initial release with basic functionality:
+
 - Web search using Perplexity AI
 - Repository context-aware answers using Google Gemini
 - Installation and configuration utilities
@@ -393,9 +434,12 @@ Initial release with basic functionality:
 ## [0.6.0-alpha.13] - 2025-03-23
 
 ### Added
+
 - **Support for Custom Repomix Configuration**: Added support for `repomix.config.json` files to customize which files are included/excluded during repository analysis. This configuration file can be placed in the repository root and will be automatically detected by `repo`, `plan`, and `doc` commands, allowing for more precise control over repository content analysis.
 - **Subdirectory Analysis for Repo Command**: Added `--subdir` parameter to the repo command, allowing users to analyze a specific subdirectory instead of the entire repository. This makes the repo command more efficient when working with large codebases by focusing only on relevant subdirectories (e.g., `cursor-tools repo "explain the code" --subdir=src/commands`).
+- **GitHub Repository Analysis for Repo Command**: Added `--from-github` parameter to the repo command, enabling analysis of remote GitHub repositories without local cloning. This feature provides the same functionality previously available in the doc command, making it easier to get context-aware assistance for any public GitHub repository (e.g., `cursor-tools repo "explain the authentication flow" --from-github=username/repo-name`).
 - **Improved Model Name Resolution**: Enhanced model name handling across providers to better handle experimental and latest model versions:
+
   - Automatically resolves `-exp-*` suffixes to find stable model versions
   - Resolves `-latest` suffixes to the most recent compatible model
   - For ModelBox and OpenRouter: automatically finds models across providers without requiring provider prefixes (e.g. `gpt-4o` will find `openai/gpt-4o`)

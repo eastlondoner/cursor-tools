@@ -65,7 +65,7 @@ when using web for complex queries suggest writing the output to a file somewher
 --max-tokens=<number>: Maximum tokens for response
 
 **Repository Context:**
-\`cursor-tools repo "<your question>" [--subdir=<path>]\` - Get context-aware answers about this repository using Google Gemini (e.g., \`cursor-tools repo "explain authentication flow"\`). Use the optional \`--subdir\` parameter to analyze a specific subdirectory instead of the entire repository (e.g., \`cursor-tools repo "explain the code structure" --subdir=src/components\`)
+\`cursor-tools repo "<your question>" [--subdir=<path>] [--from-github=<username/repo>]\` - Get context-aware answers about this repository using Google Gemini (e.g., \`cursor-tools repo "explain authentication flow"\`). Use the optional \`--subdir\` parameter to analyze a specific subdirectory instead of the entire repository (e.g., \`cursor-tools repo "explain the code structure" --subdir=src/components\`). Use the optional \`--from-github\` parameter to analyze a remote GitHub repository without cloning it locally (e.g., \`cursor-tools repo "explain the authentication system" --from-github=username/repo-name\`).
 
 **Documentation Generation:**
 \`cursor-tools doc [options]\` - Generate comprehensive documentation for this repository (e.g., \`cursor-tools doc --output docs.md\`)
