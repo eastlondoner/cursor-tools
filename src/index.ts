@@ -443,7 +443,17 @@ async function main() {
       console.log(`Output saved to: ${options.saveTo}`);
     }
   } catch (error) {
-    console.error('Error:', error instanceof Error ? error.message : 'Unknown error');
+    // Use the formatUserMessage method for CursorToolsError instances to display provider errors
+    if (
+      error &&
+      typeof error === 'object' &&
+      'formatUserMessage' in error &&
+      typeof error.formatUserMessage === 'function'
+    ) {
+      console.error('Error:', error.formatUserMessage(options.debug));
+    } else {
+      console.error('Error:', error instanceof Error ? error.message : 'Unknown error');
+    }
     process.exit(1);
   }
 }

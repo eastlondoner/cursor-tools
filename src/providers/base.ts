@@ -538,13 +538,19 @@ abstract class OpenAIBase extends BaseProvider {
       return content;
     } catch (error) {
       this.debugLog(options, `Error in ${this.constructor.name} executePrompt:`, error);
+      // Always log the full error details for better debugging
+      console.error(
+        'Full error details:',
+        JSON.stringify(error, Object.getOwnPropertyNames(error))
+      );
+
       if (error instanceof ProviderError) {
         throw error;
       }
       if (error instanceof BadRequestError) {
         // BadRequestError if logged unmodified will leak credentials.
         // Remove headers from error object before logging
-        Object.keys(error.headers).forEach((key) => delete error.headers[key]);
+        Object.keys(error.headers || {}).forEach((key) => delete error.headers[key]);
         throw new NetworkError(`Failed to communicate with ${this.constructor.name} API`, error);
       }
       throw new NetworkError(`Failed to communicate with ${this.constructor.name} API`, error);
@@ -1212,7 +1218,7 @@ export class GoogleGenerativeLanguageProvider extends BaseProvider {
 
           return formattedContent;
         } catch (error) {
-          if (error instanceof ProviderError) {
+          if (error instanceof ProviderError || error instanceof NetworkError) {
             throw error;
           }
           throw new NetworkError(
@@ -1332,13 +1338,48 @@ export class OpenAIProvider extends OpenAIBase {
         }
       } catch (error) {
         this.debugLog(options, `Error in ${this.constructor.name} executePrompt chunk`, error);
+
+        // Only log full error details in debug mode
+        if (options?.debug) {
+          console.error(
+            'Full error details:',
+            JSON.stringify(error, Object.getOwnPropertyNames(error))
+          );
+        }
+
         if (error instanceof ProviderError) {
           throw error;
         }
+
+        // Check if this is a model not found error
+        if (
+          error &&
+          typeof error === 'object' &&
+          'code' in error &&
+          error.code === 'model_not_found' &&
+          'message' in error &&
+          typeof error.message === 'string'
+        ) {
+          throw new ModelNotFoundError(
+            `${this.constructor.name.replace('Provider', '')}\n\nYou requested: ${model}\n\nError details: ${error.message}`
+          );
+        }
+
         if (error instanceof BadRequestError) {
+          // Check if this is a model not found error based on message
+          if (
+            error.message.includes('model not found') ||
+            error.message.includes('does not exist') ||
+            error.message.toLowerCase().includes('no model')
+          ) {
+            throw new ModelNotFoundError(
+              `${this.constructor.name.replace('Provider', '')}\n\nYou requested: ${model}\n\nError details: ${error.message}`
+            );
+          }
+
           // BadRequestError if logged unmodified will leak credentials.
           // Remove headers from error object before logging
-          Object.keys(error.headers).forEach((key) => delete error.headers[key]);
+          Object.keys(error.headers || {}).forEach((key) => delete error.headers[key]);
           throw new NetworkError(`Failed to communicate with ${this.constructor.name} API`, error);
         }
         throw new NetworkError(`Failed to communicate with ${this.constructor.name} API`, error);
@@ -1473,9 +1514,38 @@ export class OpenRouterProvider extends OpenAIBase {
       }
       return content;
     } catch (error) {
-      console.error('OpenRouter Provider: Error during API call:', error);
+      // Only log full error details in debug mode
+      this.debugLog(options, 'OpenRouter Provider: Error during API call:', error);
+
       if (error instanceof ProviderError || error instanceof NetworkError) {
         throw error;
+      }
+
+      // Check if this is a model not found error
+      if (
+        error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        error.code === 'model_not_found' &&
+        'message' in error &&
+        typeof error.message === 'string'
+      ) {
+        throw new ModelNotFoundError(
+          `${this.constructor.name.replace('Provider', '')}\n\nYou requested: ${model}\n\nError details: ${error.message}`
+        );
+      }
+
+      if (error instanceof BadRequestError) {
+        // Check if this is a model not found error
+        if (
+          error.message.includes('model not found') ||
+          error.message.includes('does not exist') ||
+          error.message.toLowerCase().includes('no model')
+        ) {
+          throw new ModelNotFoundError(
+            `${this.constructor.name.replace('Provider', '')}\n\nYou requested: ${model}\n\nError details: ${error.message}`
+          );
+        }
       }
       throw new NetworkError(`Failed to communicate with ${this.constructor.name} API`, error);
     }
@@ -1572,9 +1642,25 @@ export class PerplexityProvider extends BaseProvider {
 
           return content;
         } catch (error) {
+          this.debugLog(options, 'Perplexity Provider: Error during API call:', error);
+
           if (error instanceof ProviderError || error instanceof NetworkError) {
             throw error;
           }
+
+          // Check if this is a model not found error
+          if (
+            error instanceof Error &&
+            (error.message.includes('model not found') ||
+              error.message.includes('no model') ||
+              error.message.includes('invalid model') ||
+              (error.message.includes('The model') && error.message.includes('does not exist')))
+          ) {
+            throw new ModelNotFoundError(
+              `${this.constructor.name.replace('Provider', '')}\n\nYou requested: ${model}\n\nError details: ${error.message}`
+            );
+          }
+
           throw new NetworkError('Failed to communicate with Perplexity API', error);
         }
       },
@@ -1788,10 +1874,25 @@ export class ModelBoxProvider extends OpenAIBase {
       }
       return content;
     } catch (error) {
-      console.error('ModelBox Provider: Error during API call:', error);
+      this.debugLog(options, 'ModelBox Provider: Error during API call:', error);
+
       if (error instanceof ProviderError || error instanceof NetworkError) {
         throw error;
       }
+
+      // Check if this is a model not found error
+      if (
+        error instanceof Error &&
+        (error.message.includes('model not found') ||
+          error.message.includes('no model') ||
+          error.message.includes('invalid model') ||
+          (error.message.includes('The model') && error.message.includes('does not exist')))
+      ) {
+        throw new ModelNotFoundError(
+          `${this.constructor.name.replace('Provider', '')}\n\nYou requested: ${model}\n\nError details: ${error.message}`
+        );
+      }
+
       throw new NetworkError(`Failed to communicate with ${this.constructor.name} API`, error);
     }
   }
@@ -1972,10 +2073,55 @@ export class AnthropicProvider extends BaseProvider {
         return content.text;
       }
     } catch (error) {
-      console.error('Anthropic Provider: Error during API call:', error);
-      if (error instanceof ProviderError) {
+      this.debugLog(options, 'Error executing Anthropic prompt:', error);
+
+      if (error instanceof ProviderError || error instanceof NetworkError) {
         throw error;
       }
+
+      // Only log full error details in debug mode
+      if (options?.debug) {
+        console.error(
+          'Full error details:',
+          JSON.stringify(error, Object.getOwnPropertyNames(error))
+        );
+      }
+
+      // Check if this is a model not found error based on specific error codes or messages
+      if (
+        error &&
+        typeof error === 'object' &&
+        (('code' in error &&
+          (error.code === 'model_not_found' ||
+            error.code === 'invalid_model' ||
+            error.code === 'model_not_available')) ||
+          ('type' in error &&
+            (error.type === 'invalid_request_error' || error.type === 'model_error')) ||
+          ('status' in error && error.status === 404)) &&
+        'message' in error &&
+        typeof error.message === 'string'
+      ) {
+        throw new ModelNotFoundError(
+          `${this.constructor.name.replace('Provider', '')}\n\nYou requested: ${model}\n\nError details: ${error.message}`
+        );
+      }
+
+      // Check if this is a model not found error in Anthropic based on error message patterns
+      if (
+        error instanceof Error &&
+        (error.message.includes('model not found') ||
+          error.message.includes('no model') ||
+          error.message.includes('invalid model') ||
+          error.message.includes('does not exist') ||
+          error.message.includes('unavailable model') ||
+          error.message.toLowerCase().includes('model invalid') ||
+          error.message.toLowerCase().includes('model is not supported'))
+      ) {
+        throw new ModelNotFoundError(
+          `${this.constructor.name.replace('Provider', '')}\n\nYou requested: ${model}\n\nError details: ${error.message}`
+        );
+      }
+
       throw new NetworkError('Failed to communicate with Anthropic API', error);
     }
   }
