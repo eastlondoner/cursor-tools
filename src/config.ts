@@ -41,6 +41,7 @@ export const defaultConfig: Config = {
     model: 'sonar-pro',
     maxTokens: defaultMaxTokens,
   },
+  reasoningEffort: 'medium', // Default reasoning effort for all commands
 
   // Note that it is also permitted to add provider-specific config options
   // in the config file, even though they are not shown in this interface.

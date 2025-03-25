@@ -75,7 +75,7 @@ export class AskCommand implements Command {
         debug: options?.debug,
         systemPrompt:
           'You are a helpful assistant. Answer the following question directly and concisely.',
-        reasoningEffort: options?.reasoningEffort,
+        reasoningEffort: options?.reasoningEffort ?? this.config.reasoningEffort,
       };
 
       // Execute the prompt with the provider

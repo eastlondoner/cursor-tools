@@ -41,6 +41,7 @@ export interface CommandMap {
 
 // Interface for the cursor-tools.config.json config file
 export interface Config {
+  reasoningEffort?: 'low' | 'medium' | 'high'; // Global default reasoning effort setting
   perplexity?: {
     model?: string;
     maxTokens?: number;

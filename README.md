@@ -369,7 +369,6 @@ The plan command uses multiple AI models to:
 - `--thinkingModel=<model>`: Model to use for plan generation
 - `--fileMaxTokens=<number>`: Maximum tokens for file identification
 - `--thinkingMaxTokens=<number>`: Maximum tokens for plan generation
-- `--reasoning-effort=<low|medium|high>`: Control the depth of reasoning for supported models (OpenAI o1/o3-mini and Claude 3.7 Sonnet). Useful for complex planning tasks that require deep analysis.
 - `--debug`: Show detailed error information
 
 Repository context is created using Repomix. See repomix configuration section below for details on how to change repomix behaviour.
@@ -885,7 +884,7 @@ Plan command specific options:
 - `--thinkingModel`: Model to use for plan generation
 - `--fileMaxTokens`: Maximum tokens for file identification
 - `--thinkingMaxTokens`: Maximum tokens for plan generation
-- `--reasoning-effort`: Control the depth of reasoning for supported models (particularly useful for the thinking phase)
+- `--debug`: Show detailed error information
 
 GitHub command specific options:
 

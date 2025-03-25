@@ -199,12 +199,11 @@ export class RepoCommand implements Command {
         (this.config as Record<string, any>)[provider]?.maxTokens ||
         defaultMaxTokens;
 
-      // Create modelOptions and add reasoning effort if specified
+      // Create modelOptions 
       const modelOptions: Omit<ModelOptions, 'systemPrompt'> = {
         model: modelName,
         maxTokens,
         debug: options?.debug,
-        reasoningEffort: options.reasoningEffort,
       };
 
       const response = await analyzeRepository(
