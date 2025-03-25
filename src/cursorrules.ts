@@ -41,6 +41,12 @@ Use the following commands to get AI assistance:
 **Direct Model Queries:**
 \`cursor-tools ask "<your question>" --provider <provider> --model <model>\` - Ask any model from any provider a direct question (e.g., \`cursor-tools ask "What is the capital of France?" --provider openai --model o3-mini\`). Note that this command is generally less useful than other commands like \`repo\` or \`plan\` because it does not include any context from your codebase or repository.
 
+**Ask Command Options:**
+--provider=<provider>: AI provider to use (openai, anthropic, perplexity, gemini, modelbox, or openrouter)
+--model=<model>: Model to use (required for the ask command)
+--max-tokens=<number>: Maximum tokens for response
+--reasoning-effort=<low|medium|high>: Control the depth of reasoning for supported models (OpenAI o1/o3-mini models and Claude 3.7 Sonnet). Higher values produce more thorough responses for complex questions.
+
 **Implementation Planning:**
 \`cursor-tools plan "<query>"\` - Generate a focused implementation plan using AI (e.g., \`cursor-tools plan "Add user authentication to the login page"\`)
 The plan command uses multiple AI models to:
@@ -130,6 +136,8 @@ The \`search\` command helps you discover servers in the MCP Marketplace based o
 --provider=<provider>: AI provider to use (gemini, openai, openrouter, perplexity, or modelbox)
 --model=<model>: Model to use for repository analysis
 --max-tokens=<number>: Maximum tokens for response
+--from-github=<GitHub username>/<repository name>[@<branch>]: Analyze a remote GitHub repository without cloning it locally
+--subdir=<path>: Analyze a specific subdirectory instead of the entire repository
 
 **Documentation Command Options:**
 --from-github=<GitHub username>/<repository name>[@<branch>]: Generate documentation for a remote GitHub repository

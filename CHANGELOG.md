@@ -8,6 +8,15 @@ All notable changes to this project will be documented in this file.
 
 - Updated default Gemini Pro model from 2.0 to gemini-2.5-pro-exp for improved performance
 
+### Added
+
+- **Support for Reasoning Effort Parameter**: Added `--reasoning-effort` parameter to enhance the quality of responses for complex queries:
+  - Supports `low`, `medium`, and `high` values for controlling reasoning depth
+  - Compatible with OpenAI o1 and o3-mini models directly
+  - Translated to extended thinking with appropriate token budgets for Claude 3.7 Sonnet models
+  - Works with OpenRouter provider using a compatible format
+  - Can be overridden for custom models by setting the `OVERRIDE_SAFETY_CHECKS=true` environment variable
+
 ## [0.6.0-alpha.14]
 
 ### Added
