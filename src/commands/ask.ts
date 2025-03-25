@@ -3,6 +3,7 @@ import { loadEnv, loadConfig, defaultMaxTokens } from '../config';
 import { createProvider } from '../providers/base';
 import { ProviderError, ModelNotFoundError } from '../errors';
 import { getAllProviders } from '../utils/providerAvailability';
+import type { ModelOptions } from '../providers/base';
 
 export class AskCommand implements Command {
   private config;
@@ -67,14 +68,22 @@ export class AskCommand implements Command {
     const provider = createProvider(providerName);
     let answer: string;
     try {
-      // Provide a very simple system prompt
-      answer = await provider.executePrompt(query, {
+      // Build the model options
+      const modelOptions: ModelOptions = {
         model,
         maxTokens,
         debug: options?.debug,
         systemPrompt:
           'You are a helpful assistant. Answer the following question directly and concisely.',
-      });
+      };
+
+      // Add reasoningEffort if specified in options
+      if (options?.reasoningEffort) {
+        modelOptions.reasoningEffort = options.reasoningEffort;
+      }
+
+      // Execute the prompt with the provider
+      answer = await provider.executePrompt(query, modelOptions);
     } catch (error) {
       throw new ProviderError(
         error instanceof Error ? error.message : 'Unknown error during ask command execution',

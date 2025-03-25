@@ -158,6 +158,7 @@ export abstract class BaseProvider implements BaseModelProvider {
     // If we found similar models, check if any contain the exact model string
     if (similarModels.length > 0) {
       // Check if the first similar model contains our exact model string
+      
       if (similarModels[0].includes(model)) {
         console.log(
           `[${this.constructor.name}] Model '${model}' not found. Using similar model '${similarModels[0]}' that contains requested model string.`
@@ -387,8 +388,24 @@ export abstract class BaseProvider implements BaseModelProvider {
       return true;
     }
 
-    // Only o1 and o3-mini models currently support reasoning effort
-    return model.includes('o1') || model.includes('o3-mini');
+    // Extract model name without provider prefix if present
+    const modelWithoutPrefix = model.includes('/') ? model.split('/')[1] : model;
+
+    // OpenAI models that support reasoning effort
+    const openAIModelsSupported =
+      modelWithoutPrefix === 'o1' ||
+      modelWithoutPrefix === 'o3-mini' ||
+      model === 'o1' ||
+      model === 'o3-mini';
+
+    // Claude models that support extended thinking
+    const claudeModelsSupported =
+      modelWithoutPrefix.includes('claude-3-7-sonnet') ||
+      modelWithoutPrefix.includes('claude-3.7-sonnet') ||
+      model.includes('claude-3-7-sonnet') ||
+      model.includes('claude-3.7-sonnet');
+
+    return openAIModelsSupported || claudeModelsSupported;
   }
 
   abstract supportsWebSearch(
@@ -505,6 +522,9 @@ abstract class OpenAIBase extends BaseProvider {
       } else if (options?.reasoningEffort) {
         console.log(`Model ${model} does not support reasoning effort. Parameter will be ignored.`);
       }
+
+      // Log full request parameters in debug mode
+      this.debugLog(options, 'Full request parameters:', this.truncateForLogging(requestParams));
 
       const response = await client.chat.completions.create(requestParams);
 
@@ -1299,6 +1319,9 @@ export class OpenAIProvider extends OpenAIBase {
           );
         }
 
+        // Log full request parameters in debug mode
+        this.debugLog(options, 'Full request parameters:', this.truncateForLogging(requestParams));
+
         const response = await client.chat.completions.create(requestParams);
 
         this.debugLog(options, 'Response:', JSON.stringify(response, null, 2));
@@ -1820,28 +1843,129 @@ export class AnthropicProvider extends BaseProvider {
     );
 
     try {
-      const requestBody = {
+      // Debug logging for reasoning effort support
+      const supportsReasoningEffort = this.doesModelSupportReasoningEffort(model);
+      console.log(`Model ${model} supports reasoning effort: ${supportsReasoningEffort}`);
+      console.log(`Reasoning effort option: ${options?.reasoningEffort || 'not set'}`);
+      console.log(`Model includes claude-3-7-sonnet: ${model.includes('claude-3-7-sonnet')}`);
+      console.log(`Model includes claude-3.7-sonnet: ${model.includes('claude-3.7-sonnet')}`);
+
+      // Create base message parameters according to Anthropic SDK requirements
+      const requestParams = {
         model,
         max_tokens: maxTokens,
         system: systemPrompt,
         messages: [{ role: 'user' as const, content: prompt }],
       };
 
-      this.debugLog(options, 'Request body:', this.truncateForLogging(requestBody));
+      // Add extended thinking if supported by the model and reasoningEffort is set
+      if (this.doesModelSupportReasoningEffort(model) && options?.reasoningEffort) {
+        // Map reasoning effort levels to token budgets
+        let budgetTokens: number;
+        switch (options.reasoningEffort) {
+          case 'low':
+            budgetTokens = 4000;
+            break;
+          case 'medium':
+            budgetTokens = 8000;
+            break;
+          case 'high':
+            budgetTokens = 16000;
+            break;
+          default:
+            budgetTokens = 8000; // Default to medium if somehow invalid
+        }
 
-      const response = await this.client.messages.create(requestBody);
+        // Ensure budget tokens is less than max tokens
+        if (budgetTokens >= maxTokens) {
+          budgetTokens = Math.floor(maxTokens * 0.7); // Use 70% of max tokens if budget exceeds max
+        }
 
-      const endTime = Date.now();
-      this.debugLog(options, `API call completed in ${endTime - startTime}ms`);
-      this.debugLog(options, 'Response:', this.truncateForLogging(response));
+        console.log(`Using extended thinking with budget: ${budgetTokens} tokens`);
 
-      const content = response.content?.[0];
-      if (!content || content.type !== 'text') {
-        console.error('Anthropic returned an invalid response:', response);
-        throw new ProviderError('Anthropic returned an invalid response');
+        // Create the final params with thinking included
+        const requestParamsWithThinking = {
+          ...requestParams,
+          thinking: {
+            type: 'enabled' as const,
+            budget_tokens: budgetTokens,
+          },
+        };
+
+        // Show full request body for debugging
+        if (options?.debug) {
+          console.log('Full request body:', JSON.stringify(requestParamsWithThinking, null, 2));
+        }
+
+        const response = await this.client.messages.create(requestParamsWithThinking);
+
+        const endTime = Date.now();
+        this.debugLog(options, `API call completed in ${endTime - startTime}ms`);
+        this.debugLog(options, 'Response:', this.truncateForLogging(response));
+
+        // Handle response with thinking content blocks
+        let content;
+        if (response.content && Array.isArray(response.content)) {
+          // Log the thinking blocks if available and debug is enabled
+          if (options?.debug) {
+            const thinkingBlocks = response.content.filter(
+              (block) => block.type === 'thinking' || block.type === 'redacted_thinking'
+            );
+            if (thinkingBlocks.length > 0) {
+              console.log(`Found ${thinkingBlocks.length} thinking blocks in response`);
+              if (thinkingBlocks[0].type === 'thinking') {
+                console.log(
+                  'First thinking block:',
+                  thinkingBlocks[0].thinking?.substring(0, 200) + '...'
+                );
+              } else {
+                console.log('Redacted thinking block present');
+              }
+            }
+          }
+
+          // Filter for text blocks only (ignoring thinking blocks)
+          const textBlocks = response.content.filter((block) => block.type === 'text');
+          if (textBlocks.length > 0 && textBlocks[0].type === 'text') {
+            content = textBlocks[0].text;
+          } else {
+            console.error('Anthropic returned no text blocks:', response);
+            throw new ProviderError('Anthropic returned no text blocks');
+          }
+        } else {
+          console.error('Anthropic returned an invalid response:', response);
+          throw new ProviderError('Anthropic returned an invalid response');
+        }
+
+        return content;
+      } else {
+        // No thinking requested or model doesn't support it
+        if (options?.reasoningEffort) {
+          console.log(
+            `Model ${model} does not support extended thinking. Parameter will be ignored.`
+          );
+        }
+
+        // Show full request body for debugging
+        if (options?.debug) {
+          console.log('Full request body:', JSON.stringify(requestParams, null, 2));
+        }
+
+        const response = await this.client.messages.create(requestParams);
+
+        const endTime = Date.now();
+        this.debugLog(options, `API call completed in ${endTime - startTime}ms`);
+        this.debugLog(options, 'Response:', this.truncateForLogging(response));
+
+        // Handle regular response without thinking
+        const content = response.content?.[0];
+        if (!content || content.type !== 'text') {
+          console.error('Anthropic returned an invalid response:', response);
+          throw new ProviderError('Anthropic returned an invalid response');
+        }
+
+        return content.text;
       }
-
-      return content.text;
     } catch (error) {
       console.error('Anthropic Provider: Error during API call:', error);
       if (error instanceof ProviderError) {
