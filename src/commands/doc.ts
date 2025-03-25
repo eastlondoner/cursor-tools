@@ -12,11 +12,7 @@ import {
 import type { ModelOptions, BaseModelProvider } from '../providers/base';
 import { createProvider } from '../providers/base';
 import { ModelNotFoundError } from '../errors';
-import {
-  ignorePatterns,
-  includePatterns,
-  loadFileConfigWithOverrides,
-} from '../repomix/repomixConfig';
+import { loadFileConfigWithOverrides } from '../repomix/repomixConfig';
 import {
   getAllProviders,
   getNextAvailableProvider,

@@ -63,6 +63,18 @@ when using doc for remote repos suggest writing the output to a file somewhere l
 **ClickUp Information:**
 `cursor-tools clickup task <task_id>` - Get detailed information about a ClickUp task including description, comments, status, assignees, and metadata (e.g., `cursor-tools clickup task "task_id"`)
 
+**YouTube Video Analysis:**
+`cursor-tools youtube "<youtube-url>" [question] [options]` - Analyze YouTube videos and generate detailed reports (e.g., `cursor-tools youtube "https://youtu.be/43c-Sm5GMbc" --type=summary`)
+
+**YouTube Command Options:**
+--type=<summary|transcript|plan|review|custom>: Type of analysis to perform (default: summary)
+--provider=<provider>: AI provider to use (only Gemini is supported)
+--model=<model>: Model to use for video analysis (default: gemini-2.0-flash)
+--max-tokens=<number>: Maximum tokens for response (default: 8192)
+--save-to=<file path>: Save command output to a file
+
+**Note:** The YouTube command requires a `GEMINI_API_KEY` to be set in your environment or .cursor-tools.env file.
+
 **Model Context Protocol (MCP) Commands:**
 Use the following commands to interact with MCP servers and their specialized tools:
 `cursor-tools mcp search "<query>"` - Search the MCP Marketplace for available servers that match your needs (e.g., `cursor-tools mcp search "git repository management"`)
@@ -100,6 +112,7 @@ The `search` command helps you discover servers in the MCP Marketplace based on 
 - `cursor-tools doc` generates documentation for local or remote repositories.
 - `cursor-tools browser` is useful for testing and debugging web apps and uses Stagehand
 - `cursor-tools mcp` enables interaction with specialized tools through MCP servers (e.g., for Git operations, file system tasks, or custom tools)
+- `cursor-tools youtube` analyzes YouTube videos to generate summaries, transcripts, implementation plans, or custom analyses
 
 **Running Commands:**
 1. Use `cursor-tools <command>` to execute commands (make sure cursor-tools is installed globally using npm install -g cursor-tools so that it is in your PATH)
