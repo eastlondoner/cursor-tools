@@ -158,7 +158,7 @@ export abstract class BaseProvider implements BaseModelProvider {
     // If we found similar models, check if any contain the exact model string
     if (similarModels.length > 0) {
       // Check if the first similar model contains our exact model string
-      
+
       if (similarModels[0].includes(model)) {
         console.log(
           `[${this.constructor.name}] Model '${model}' not found. Using similar model '${similarModels[0]}' that contains requested model string.`
@@ -392,11 +392,7 @@ export abstract class BaseProvider implements BaseModelProvider {
     const modelWithoutPrefix = model.includes('/') ? model.split('/')[1] : model;
 
     // OpenAI models that support reasoning effort
-    const openAIModelsSupported =
-      modelWithoutPrefix === 'o1' ||
-      modelWithoutPrefix === 'o3-mini' ||
-      model === 'o1' ||
-      model === 'o3-mini';
+    const openAIModelsSupported = modelWithoutPrefix.startsWith('o') || model.startsWith('o');
 
     // Claude models that support extended thinking
     const claudeModelsSupported =
@@ -520,7 +516,9 @@ abstract class OpenAIBase extends BaseProvider {
         requestParams.reasoning_effort = options.reasoningEffort;
         this.debugLog(options, `Using reasoning_effort: ${options.reasoningEffort}`);
       } else if (options?.reasoningEffort) {
-        console.log(`Model ${model} does not support reasoning effort. Parameter will be ignored.`);
+        console.log(
+          `Model ${model} does not support reasoning effort. Parameter will be ignored. Set OVERRIDE_SAFETY_CHECKS=true to bypass this check and pass the reasoning effort parameter to the provider API`
+        );
       }
 
       // Log full request parameters in debug mode
@@ -1315,7 +1313,7 @@ export class OpenAIProvider extends OpenAIBase {
           this.debugLog(options, `Using reasoning_effort: ${options.reasoningEffort}`);
         } else if (options?.reasoningEffort) {
           console.log(
-            `Model ${model} does not support reasoning effort. Parameter will be ignored.`
+            `Model ${model} does not support reasoning effort. Parameter will be ignored. Set OVERRIDE_SAFETY_CHECKS=true to bypass this check and pass the reasoning effort parameter to the provider API`
           );
         }
 
@@ -1457,7 +1455,9 @@ export class OpenRouterProvider extends OpenAIBase {
         };
         this.debugLog(options, `Using reasoning effort: ${options.reasoningEffort}`);
       } else if (options?.reasoningEffort) {
-        console.log(`Model ${model} does not support reasoning effort. Parameter will be ignored.`);
+        console.log(
+          `Model ${model} does not support reasoning effort. Parameter will be ignored. Set OVERRIDE_SAFETY_CHECKS=true to bypass this check and pass the reasoning effort parameter to the provider API`
+        );
       }
 
       const response = await client.chat.completions.create(requestParams, {
@@ -1845,10 +1845,10 @@ export class AnthropicProvider extends BaseProvider {
     try {
       // Debug logging for reasoning effort support
       const supportsReasoningEffort = this.doesModelSupportReasoningEffort(model);
-      console.log(`Model ${model} supports reasoning effort: ${supportsReasoningEffort}`);
-      console.log(`Reasoning effort option: ${options?.reasoningEffort || 'not set'}`);
-      console.log(`Model includes claude-3-7-sonnet: ${model.includes('claude-3-7-sonnet')}`);
-      console.log(`Model includes claude-3.7-sonnet: ${model.includes('claude-3.7-sonnet')}`);
+      if (options?.debug) {
+        console.log(`Model ${model} supports reasoning effort: ${supportsReasoningEffort}`);
+        console.log(`Reasoning effort option: ${options?.reasoningEffort || 'not set'}`);
+      }
 
       // Create base message parameters according to Anthropic SDK requirements
       const requestParams = {
@@ -1873,15 +1873,20 @@ export class AnthropicProvider extends BaseProvider {
             budgetTokens = 16000;
             break;
           default:
+            console.log(
+              `Unrecognized reasoning effort value ${options.reasoningEffort}, using default reasoning effort (medium).`
+            );
             budgetTokens = 8000; // Default to medium if somehow invalid
         }
 
         // Ensure budget tokens is less than max tokens
-        if (budgetTokens >= maxTokens) {
+        if (budgetTokens > maxTokens) {
           budgetTokens = Math.floor(maxTokens * 0.7); // Use 70% of max tokens if budget exceeds max
         }
 
-        console.log(`Using extended thinking with budget: ${budgetTokens} tokens`);
+        if (options?.debug) {
+          console.log(`Using extended thinking with budget: ${budgetTokens} tokens`);
+        }
 
         // Create the final params with thinking included
         const requestParamsWithThinking = {
@@ -1942,7 +1947,7 @@ export class AnthropicProvider extends BaseProvider {
         // No thinking requested or model doesn't support it
         if (options?.reasoningEffort) {
           console.log(
-            `Model ${model} does not support extended thinking. Parameter will be ignored.`
+            `Model ${model} does not support extended thinking. Parameter will be ignored. Set OVERRIDE_SAFETY_CHECKS=true to bypass this check and pass the reasoning effort parameter to the provider API`
           );
         }
 

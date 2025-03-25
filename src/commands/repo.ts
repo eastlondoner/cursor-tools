@@ -204,12 +204,8 @@ export class RepoCommand implements Command {
         model: modelName,
         maxTokens,
         debug: options?.debug,
+        reasoningEffort: options.reasoningEffort,
       };
-
-      // Add reasoningEffort parameter if specified in options
-      if (options.reasoningEffort) {
-        modelOptions.reasoningEffort = options.reasoningEffort;
-      }
 
       const response = await analyzeRepository(
         modelProvider,
