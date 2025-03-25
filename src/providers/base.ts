@@ -1,4 +1,5 @@
 import type { Config } from '../types';
+import type { VideoAnalysisOptions } from '../types';
 import { loadConfig, loadEnv } from '../config';
 import OpenAI, { BadRequestError } from 'openai';
 import { ApiKeyMissingError, ModelNotFoundError, NetworkError, ProviderError } from '../errors';
@@ -1236,6 +1237,171 @@ export class GoogleGenerativeLanguageProvider extends BaseProvider {
           return errorText.includes('429') || errorText.includes('resource exhausted');
         }
         return false;
+      }
+    );
+  }
+
+  // Add executeVideoPrompt method
+  async executeVideoPrompt(prompt: string, options: VideoAnalysisOptions): Promise<string> {
+    const model = await this.getModel(options);
+    const maxTokens = options.maxTokens;
+    const systemPrompt = this.getSystemPrompt(options);
+    const videoUrl = options.videoUrl;
+
+    if (!videoUrl) {
+      throw new Error('Video URL is required for video analysis');
+    }
+
+    const startTime = Date.now();
+
+    this.logRequestStart(
+      options,
+      model,
+      maxTokens,
+      systemPrompt,
+      'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent'
+    );
+
+    return retryWithBackoff(
+      async () => {
+        try {
+          // Set default generationConfig
+          const generationConfig = {
+            maxOutputTokens: maxTokens,
+            temperature: 1,
+            topK: 40,
+            topP: 0.95,
+            responseMimeType: 'text/plain',
+          };
+
+          // Use custom generationConfig from options if provided
+          if (options.temperature !== undefined) {
+            generationConfig.temperature = options.temperature;
+          }
+          if (options.topK !== undefined) {
+            generationConfig.topK = options.topK;
+          }
+          if (options.topP !== undefined) {
+            generationConfig.topP = options.topP;
+          }
+
+          const requestBody = {
+            contents: [
+              {
+                role: 'user',
+                parts: [
+                  {
+                    fileData: {
+                      fileUri: videoUrl,
+                      mimeType: 'video/*',
+                    },
+                  },
+                  {
+                    text: prompt,
+                  },
+                ],
+              },
+            ],
+            generationConfig,
+            ...(systemPrompt
+              ? {
+                  systemInstruction: {
+                    role: 'user',
+                    parts: [{ text: systemPrompt }],
+                  },
+                }
+              : {}),
+          };
+
+          this.debugLog(options, 'Request body:', this.truncateForLogging(requestBody));
+
+          const apiKey = await this.getAPIKey();
+          const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+          const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestBody),
+          });
+
+          const endTime = Date.now();
+          this.debugLog(options, `API call completed in ${endTime - startTime}ms`);
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            const status = response.status;
+
+            // Handle specific error codes
+            if (status === 400) {
+              if (errorText.includes('fileData.fileUri is not a valid YouTube video URL')) {
+                throw new NetworkError(
+                  `Invalid YouTube URL: ${videoUrl}. Please provide a valid URL.`
+                );
+              } else if (errorText.includes('video is too long')) {
+                throw new NetworkError('The video is too long for analysis. Try a shorter video.');
+              } else {
+                throw new NetworkError(`Bad Request (400): ${errorText}`);
+              }
+            } else if (status === 403) {
+              throw new NetworkError(
+                'Access denied (403). The video might be private or age-restricted.'
+              );
+            } else if (status === 404) {
+              throw new NetworkError(
+                'Video not found (404). The URL might be incorrect or the video was removed.'
+              );
+            } else if (status === 429) {
+              throw new NetworkError('Rate limit or quota exceeded (429). Please try again later.');
+            } else if (status >= 500) {
+              throw new NetworkError(
+                `Server error (${status}): ${errorText}. Please try again later.`
+              );
+            } else {
+              throw new NetworkError(
+                `Google Generative Language API error (${status}): ${errorText}`
+              );
+            }
+          }
+
+          const data = await response.json();
+          this.debugLog(options, 'Response:', this.truncateForLogging(data));
+
+          // Handle response similar to executePrompt
+          if (!data.candidates) {
+            console.error(
+              'Google Generative Language returned an unexpected response:',
+              JSON.stringify(data, null, 2)
+            );
+            throw new ProviderError('Google Generative Language returned an unexpected response');
+          }
+
+          const content = data.candidates[0]?.content?.parts[0]?.text || '';
+          return content;
+        } catch (error) {
+          if (error instanceof NetworkError) {
+            throw error;
+          }
+
+          throw new NetworkError(
+            'Failed to execute video prompt with Google Generative Language API',
+            error instanceof Error ? error : new Error(String(error))
+          );
+        }
+      },
+      5, // maxRetries
+      1000, // initialDelay
+      (error) => {
+        // Only retry on server errors (5xx) or temporary network issues
+        if (error instanceof NetworkError) {
+          const statusMatch = error.message.match(/\((\d+)\)/);
+          if (statusMatch) {
+            const status = parseInt(statusMatch[1], 10);
+            return status >= 500 || status === 429; // Retry on server errors and rate limiting
+          }
+        }
+        return false; // Don't retry on other errors
       }
     );
   }

@@ -109,4 +109,40 @@ export interface Config {
     model?: string;
     maxTokens?: number;
   };
+  youtube?: {
+    provider?: Provider;
+    model?: string;
+    maxTokens?: number;
+    defaultType?: 'summary' | 'transcript' | 'plan' | 'review' | 'custom';
+    defaultFormat?: 'markdown' | 'json' | 'text';
+    maxRetries?: number;
+    retryDelay?: number;
+  };
+}
+
+export interface ModelOptions {
+  model: string;
+  maxTokens: number;
+  systemPrompt: string;
+  tokenCount?: number; // For handling large token counts
+  webSearch?: boolean; // Whether to enable web search capabilities
+  timeout?: number; // Timeout in milliseconds for model API calls
+  debug: boolean | undefined; // Enable debug logging
+}
+
+// Add video analysis options
+export interface VideoAnalysisOptions extends ModelOptions {
+  videoUrl: string;
+  temperature?: number;
+  topK?: number;
+  topP?: number;
+}
+
+export interface BaseModelProvider {
+  executePrompt(prompt: string, options?: ModelOptions): Promise<string>;
+  supportsWebSearch(
+    modelName: string
+  ): Promise<{ supported: boolean; model?: string; error?: string }>;
+  // Add this optional method for video analysis
+  executeVideoPrompt?(prompt: string, options: VideoAnalysisOptions): Promise<string>;
 }

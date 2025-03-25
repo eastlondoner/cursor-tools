@@ -11,6 +11,7 @@ import { MCPCommand } from './mcp/mcp.ts';
 import { XcodeCommand } from './xcode/xcode.ts';
 import { ClickUpCommand } from './clickup.ts';
 import TestCommand from './test/index.ts';
+import YouTubeCommand from './youtube/index.ts';
 
 export const commands: CommandMap = {
   web: new WebCommand(),
@@ -25,4 +26,5 @@ export const commands: CommandMap = {
   xcode: new XcodeCommand(),
   clickup: new ClickUpCommand(),
   test: new TestCommand(),
+  youtube: new YouTubeCommand(),
 };

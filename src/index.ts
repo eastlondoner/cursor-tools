@@ -46,6 +46,9 @@ type CLIStringOption =
   | 'thinkingProvider'
   | 'fileModel'
   | 'thinkingModel'
+  // YouTube options
+  | 'type'
+  | 'format'
   // Test options
   | 'scenarios';
 
@@ -113,6 +116,10 @@ interface CLIOptions {
   fileModel?: string;
   thinkingModel?: string;
 
+  // YouTube options
+  type?: string;
+  format?: string;
+
   // Test options
   parallel?: number;
   scenarios?: string;
@@ -161,6 +168,10 @@ const OPTION_KEYS: Record<string, CLIOptionKey> = {
   thinkingprovider: 'thinkingProvider',
   filemodel: 'fileModel',
   thinkingmodel: 'thinkingModel',
+  
+  // YouTube options
+  type: 'type',
+  format: 'format',
 
   // Test options
   parallel: 'parallel',
