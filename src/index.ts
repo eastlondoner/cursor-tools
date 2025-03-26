@@ -127,7 +127,6 @@ const OPTION_KEYS: Record<string, CLIOptionKey> = {
   maxtokens: 'maxTokens',
   debug: 'debug',
   reasoningeffort: 'reasoningEffort',
-  'reasoning-effort': 'reasoningEffort',
 
   // Output options
   output: 'output',
