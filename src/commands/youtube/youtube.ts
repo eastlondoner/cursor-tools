@@ -56,7 +56,7 @@ export class YouTubeCommand implements Command {
       const provider = createProvider('gemini');
 
       // Get model, default to gemini-2.0-flash which supports video
-      const model = options?.model || this.config.youtube?.model || 'gemini-2.0-flash';
+      const model = options?.model || this.config.youtube?.model || 'gemini-2.5-pro-exp-03-25';
 
       // Get max tokens, default to 8192 for detailed responses
       const maxTokens = options?.maxTokens || this.config.youtube?.maxTokens || 8192;
