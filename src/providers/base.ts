@@ -1315,7 +1315,7 @@ export class OpenRouterProvider extends OpenAIBase {
   protected handleLargeTokenCount(tokenCount: number): { model?: string; error?: string } {
     if (tokenCount > 800_000) {
       return {
-        model: 'google/gemini-2.5-pro-exp-03-25:free',
+        model: 'google/gemini-2.0-pro-exp-02-05:free',
       };
     }
     if (tokenCount > 180_000) {
