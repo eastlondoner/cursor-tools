@@ -25,5 +25,5 @@ pnpm dev ask --provider gemini --model gemini-2.0-flash-exp-21-05 "what is today
 
 Automatic detection of exact substring match
 ```
-pnpm dev doc "what does this do" --debug --provider=openrouter --model=gemini-2.0-pro-exp
+pnpm dev doc "what does this do" --debug --provider=openrouter --model=gemini-2.5-pro-exp
 ```

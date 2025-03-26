@@ -4,12 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [unreleased]
 
+### Changed
+
+- Updated default Gemini Pro model from 2.0 to gemini-2.5-pro-exp for improved performance
+
 ## [0.6.0-alpha.14]
 
 ### Added
 
 - **GitHub Repository Analysis for Repo Command**: Added `--from-github` parameter to the repo command, enabling analysis of remote GitHub repositories without local cloning. This feature provides the same functionality previously available in the doc command, making it easier to get context-aware assistance for any public GitHub repository (e.g., `cursor-tools repo "explain the authentication flow" --from-github=username/repo-name`).
-
 
 ## [0.6.0-alpha.13]
 

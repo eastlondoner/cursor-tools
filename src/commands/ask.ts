@@ -50,7 +50,7 @@ export class AskCommand implements Command {
       const defaultModels: Record<Provider, string> = {
         openai: 'gpt-3.5-turbo',
         anthropic: 'claude-3-haiku-20240307',
-        gemini: 'gemini-pro',
+        gemini: 'gemini-2.5-pro-exp-03-25',
         perplexity: 'sonar-small-online',
         openrouter: 'openai/gpt-3.5-turbo',
         modelbox: 'openai/gpt-3.5-turbo',

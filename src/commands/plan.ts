@@ -25,11 +25,11 @@ interface PlanCommandOptions extends CommandOptions {
 }
 
 const DEFAULT_FILE_MODELS: Record<FileProvider, string> = {
-  gemini: 'gemini-2.0-pro-exp', // largest context window (2M tokens)
+  gemini: 'gemini-2.5-pro-exp', // largest context window (2M tokens)
   openai: 'o3-mini', // largest context window (200k)
   perplexity: 'sonar-pro', // largest context window (200k tokens)
-  openrouter: 'google/gemini-2.0-pro-exp-02-05:free', // largest context window (2M tokens)
-  modelbox: 'google/gemini-2.0-pro-exp',
+  openrouter: 'google/gemini-2.5-pro-exp-03-25:free', // largest context window (2M tokens)
+  modelbox: 'google/gemini-2.5-pro-exp',
   anthropic: 'claude-3-7-sonnet-latest',
 };
 

@@ -3,12 +3,16 @@
 This document provides detailed configuration information for cursor-tools.
 
 ## Configuration Overview
+
 cursor-tools can be configured through two main mechanisms:
+
 1. Environment variables (API keys and core settings)
 2. JSON configuration file (provider settings, model preferences, and command options)
 
 ## Environment Variables
+
 Create `.cursor-tools.env` in your project root or `~/.cursor-tools/.env` in your home directory:
+
 ```env
 # Required API Keys
 PERPLEXITY_API_KEY="your-perplexity-api-key"    # Required for web search
@@ -25,54 +29,56 @@ USE_LEGACY_CURSORRULES="true"                   # Use legacy .cursorrules file (
 ```
 
 ## Configuration File (cursor-tools.config.json)
+
 Create this file in your project root to customize behavior. Here's a comprehensive example with all available options:
+
 ```json
 {
   "perplexity": {
-    "model": "sonar-pro",           // Default model for web search
-    "maxTokens": 8000               // Maximum tokens for responses
+    "model": "sonar-pro", // Default model for web search
+    "maxTokens": 8000 // Maximum tokens for responses
   },
   "gemini": {
-    "model": "gemini-2.0-pro-exp",  // Default model for repository analysis
-    "maxTokens": 10000              // Maximum tokens for responses
+    "model": "gemini-2.5-pro-exp", // Default model for repository analysis
+    "maxTokens": 10000 // Maximum tokens for responses
   },
   "plan": {
-    "fileProvider": "gemini",       // Provider for file identification
-    "thinkingProvider": "openai",   // Provider for plan generation
-    "fileMaxTokens": 8192,          // Tokens for file identification
-    "thinkingMaxTokens": 8192       // Tokens for plan generation
+    "fileProvider": "gemini", // Provider for file identification
+    "thinkingProvider": "openai", // Provider for plan generation
+    "fileMaxTokens": 8192, // Tokens for file identification
+    "thinkingMaxTokens": 8192 // Tokens for plan generation
   },
   "repo": {
-    "provider": "gemini",           // Default provider for repo command
-    "maxTokens": 10000              // Maximum tokens for responses
+    "provider": "gemini", // Default provider for repo command
+    "maxTokens": 10000 // Maximum tokens for responses
   },
   "doc": {
-    "maxRepoSizeMB": 100,          // Maximum repository size for remote docs
-    "provider": "gemini",          // Default provider for doc generation
-    "maxTokens": 10000             // Maximum tokens for responses
+    "maxRepoSizeMB": 100, // Maximum repository size for remote docs
+    "provider": "gemini", // Default provider for doc generation
+    "maxTokens": 10000 // Maximum tokens for responses
   },
   "browser": {
     "defaultViewport": "1280x720", // Default browser window size
-    "timeout": 30000,              // Default timeout in milliseconds
+    "timeout": 30000, // Default timeout in milliseconds
     "stagehand": {
-      "env": "LOCAL",              // Stagehand environment
-      "headless": true,            // Run browser in headless mode
-      "verbose": 1,                // Logging verbosity (0-2)
-      "debugDom": false,           // Enable DOM debugging
-      "enableCaching": false,      // Enable response caching
-      "model": "claude-3-7-sonnet-latest",  // Default Stagehand model
-      "provider": "anthropic",     // AI provider (anthropic or openai)
-      "timeout": 30000            // Operation timeout
+      "env": "LOCAL", // Stagehand environment
+      "headless": true, // Run browser in headless mode
+      "verbose": 1, // Logging verbosity (0-2)
+      "debugDom": false, // Enable DOM debugging
+      "enableCaching": false, // Enable response caching
+      "model": "claude-3-7-sonnet-latest", // Default Stagehand model
+      "provider": "anthropic", // AI provider (anthropic or openai)
+      "timeout": 30000 // Operation timeout
     }
   },
   "tokenCount": {
-    "encoding": "o200k_base"      // Token counting method
+    "encoding": "o200k_base" // Token counting method
   },
   "openai": {
-    "maxTokens": 8000  // Will be used when provider is "openai"
+    "maxTokens": 8000 // Will be used when provider is "openai"
   },
   "anthropic": {
-    "maxTokens": 8000  // Will be used when provider is "anthropic"
+    "maxTokens": 8000 // Will be used when provider is "anthropic"
   }
 }
 ```
@@ -80,30 +86,36 @@ Create this file in your project root to customize behavior. Here's a comprehens
 ## Configuration Sections
 
 ### Perplexity Settings
+
 - `model`: The AI model to use for web searches
 - `maxTokens`: Maximum tokens in responses
 
 ### Gemini Settings
+
 - `model`: The AI model for repository analysis
 - `maxTokens`: Maximum tokens in responses
-- Note: For repositories >800K tokens, automatically switches to gemini-2.0-pro-exp
+- Note: For repositories >800K tokens, automatically switches to gemini-2.5-pro-exp
 
 ### Plan Command Settings
+
 - `fileProvider`: AI provider for identifying relevant files
 - `thinkingProvider`: AI provider for generating implementation plans
 - `fileMaxTokens`: Token limit for file identification
 - `thinkingMaxTokens`: Token limit for plan generation
 
 ### Repository Command Settings
+
 - `provider`: Default AI provider for repository analysis
 - `maxTokens`: Maximum tokens in responses
 
 ### Documentation Settings
+
 - `maxRepoSizeMB`: Size limit for remote repositories
 - `provider`: Default AI provider for documentation
 - `maxTokens`: Maximum tokens in responses
 
 ### Browser Automation Settings
+
 - `defaultViewport`: Browser window size
 - `timeout`: Navigation timeout
 - `stagehand`: Stagehand-specific settings including:
@@ -117,14 +129,17 @@ Create this file in your project root to customize behavior. Here's a comprehens
   - `timeout`: Operation timeout
 
 ### Token Counting Settings
+
 - `encoding`: Method used for counting tokens
   - `o200k_base`: Optimized for Gemini (default)
   - `gpt2`: Traditional GPT-2 encoding
 
 ## GitHub Authentication
+
 The GitHub commands support several authentication methods:
 
 1. **Environment Variable**: Set `GITHUB_TOKEN` in your environment:
+
    ```env
    GITHUB_TOKEN=your_token_here
    ```
@@ -136,6 +151,7 @@ The GitHub commands support several authentication methods:
    - Fall back to using Basic Auth with your git credentials
 
 To set up git credentials:
+
 1. Configure git to use HTTPS instead of SSH:
    ```bash
    git config --global url."https://github.com/".insteadOf git@github.com:
@@ -149,7 +165,9 @@ To set up git credentials:
 3. The next time you perform a git operation requiring authentication, your credentials will be stored
 
 Authentication Status:
+
 - Without authentication:
+
   - Public repositories: Limited to 60 requests per hour
   - Private repositories: Not accessible
   - Some features may be restricted
@@ -159,6 +177,7 @@ Authentication Status:
   - Private repositories: Full access (if token has required scopes)
 
 cursor-tools will automatically try these authentication methods in order:
+
 1. `GITHUB_TOKEN` environment variable
 2. GitHub CLI token (if `gh` is installed and logged in)
 3. Git credentials (stored token or Basic Auth)
@@ -168,6 +187,7 @@ If no authentication is available, it will fall back to unauthenticated access w
 ## Repomix Configuration
 
 When generating documentation, cursor-tools uses Repomix to analyze your repository. By default, it excludes certain files and directories that are typically not relevant for documentation:
+
 - Node modules and package directories (`node_modules/`, `packages/`, etc.)
 - Build output directories (`dist/`, `build/`, etc.)
 - Version control directories (`.git/`)
@@ -179,6 +199,7 @@ When generating documentation, cursor-tools uses Repomix to analyze your reposit
 You can customize the files and folders to exclude by adding a `.repomixignore` file to your project root.
 
 Example `.repomixignore` file for a Laravel project:
+
 ```
 vendor/
 public/
@@ -208,7 +229,7 @@ You can set a default provider in your `cursor-tools.config.json` file under the
 ```json
 {
   "stagehand": {
-    "provider": "openai", // or "anthropic"
+    "provider": "openai" // or "anthropic"
   }
 }
 ```
@@ -232,7 +253,9 @@ If no model is specified (either on the command line or in the config), a defaul
 Available models depend on your configured provider (OpenAI or Anthropic) in `cursor-tools.config.json` and your API key.
 
 ## Cursor Configuration
+
 `cursor-tools` automatically configures Cursor by updating your project rules during installation. This provides:
+
 - Command suggestions
 - Usage examples
 - Context-aware assistance
@@ -243,36 +266,40 @@ For new installations, we use the recommended `.cursor/rules/cursor-tools.mdc` p
 
 To get the benefits of cursor-tools you should use Cursor agent in "yolo mode". Ideal settings:
 
-![image](https://github.com/user-attachments/assets/783e26cf-c339-4cae-9629-857da0359cef) 
+![image](https://github.com/user-attachments/assets/783e26cf-c339-4cae-9629-857da0359cef)
 
 ## Command-Specific Configuration
 
 ### Ask Command
+
 The `ask` command requires both a provider and a model to be specified. While these must be provided via command-line arguments, the maxTokens can be configured through the provider-specific settings:
 
 ```json
 {
   "openai": {
-    "maxTokens": 8000  // Will be used when provider is "openai"
+    "maxTokens": 8000 // Will be used when provider is "openai"
   },
   "anthropic": {
-    "maxTokens": 8000  // Will be used when provider is "anthropic"
+    "maxTokens": 8000 // Will be used when provider is "anthropic"
   }
 }
 ```
 
 ### Plan Command
+
 The plan command uses two different models:
-1. A file identification model (default: Gemini with gemini-2.0-pro-exp)
+
+1. A file identification model (default: Gemini with gemini-2.5-pro-exp)
 2. A thinking model for plan generation (default: OpenAI with o3-mini)
 
 You can configure both models and their providers:
+
 ```json
 {
   "plan": {
     "fileProvider": "gemini",
     "thinkingProvider": "openai",
-    "fileModel": "gemini-2.0-pro-exp",
+    "fileModel": "gemini-2.5-pro-exp",
     "thinkingModel": "o3-mini",
     "fileMaxTokens": 8192,
     "thinkingMaxTokens": 8192
@@ -280,7 +307,7 @@ You can configure both models and their providers:
 }
 ```
 
-The OpenAI o3-mini model is chosen as the default thinking provider for its speed and efficiency in generating implementation plans. 
+The OpenAI o3-mini model is chosen as the default thinking provider for its speed and efficiency in generating implementation plans.
 
 ## MCP Configuration
 
@@ -288,11 +315,12 @@ The `cursor-tools mcp run` command supports using OpenRouter as a provider. You 
 
 - **`--provider` (Command-line option):** Specify the provider to use. Valid values are `anthropic` (default) and `openrouter`.
 - **`--model` (Command-line option):** Specify the OpenRouter model to use (e.g., `openai/o3-mini`). This option is ignored if the provider is Anthropic.
-- **Environment Variable:** You *must* set either `ANTHROPIC_API_KEY` or `OPENROUTER_API_KEY` in your environment.
+- **Environment Variable:** You _must_ set either `ANTHROPIC_API_KEY` or `OPENROUTER_API_KEY` in your environment.
 
 **Default Behavior:**
+
 - If `--provider` is not specified, `anthropic` is used by default.
 - If `--model` is not specified and the provider is `openrouter` a provider default model is used.
 
 **Example `cursor-tools.config.json`:**
-The `cursor-tools.config.json` is not currently used to configure MCP. 
+The `cursor-tools.config.json` is not currently used to configure MCP.
