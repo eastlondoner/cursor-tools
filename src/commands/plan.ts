@@ -34,7 +34,7 @@ const DEFAULT_FILE_MODELS: Record<FileProvider, string> = {
 };
 
 const DEFAULT_THINKING_MODELS: Record<ThinkingProvider, string> = {
-  gemini: 'gemini-2.0-flash-thinking-exp',
+  gemini: 'gemini-2.5-pro-exp-03-25',
   openai: 'o3-mini',
   perplexity: 'r1-1776',
   openrouter: 'openai/o3-mini',

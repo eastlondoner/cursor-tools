@@ -1576,7 +1576,7 @@ export class OpenRouterProvider extends OpenAIBase {
     }
     if (tokenCount > 180_000) {
       return {
-        model: 'google/gemini-2.0-flash-thinking-exp:free',
+        model: 'google/gemini-2.5-pro-exp-03-25:free',
       };
     }
     return {};
