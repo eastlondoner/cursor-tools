@@ -7,7 +7,7 @@ cursor-tools should enable users to analyze YouTube videos using Gemini's video 
 
 ### Scenario 1: Basic Video Summary (Happy Path)
 **Task Description:**
-Use cursor-tools to generate a summary of a YouTube video about a technical topic.
+Use cursor-tools to generate a summary of the YouTube video https://youtu.be/eh89VE3Mk5g?si=omgHsY9F-j0cMJdt.
 
 **Expected Behavior:**
 - The AI agent should determine the appropriate command to use
@@ -16,13 +16,14 @@ Use cursor-tools to generate a summary of a YouTube video about a technical topi
 
 **Success Criteria:**
 - AI agent correctly uses youtube command with appropriate parameters
-- Response contains a relevant summary of the video
+- AI agent does not use the browser command
+- Response contains a relevant summary of the video. This MUST include how to publish an npm package
 - No error messages are displayed
 - Command completes within a reasonable time
 
 ### Scenario 2: Generate Implementation Plan from Video (Happy Path)
 **Task Description:**
-Use cursor-tools to generate an implementation plan from a YouTube video that provides a tutorial or guide.
+Use cursor-tools to generate an implementation plan for publishing a npm package from the YouTube video https://youtu.be/eh89VE3Mk5g?si=omgHsY9F-j0cMJdt.
 
 **Expected Behavior:**
 - The AI agent should use the youtube command with type=plan option
@@ -31,13 +32,14 @@ Use cursor-tools to generate an implementation plan from a YouTube video that pr
 
 **Success Criteria:**
 - AI agent correctly uses youtube command with type=plan parameter
-- Response contains a detailed implementation plan based on the video
-- Plan includes actionable steps and relevant details from the video
+- AI agent does not use the browser command
+- Response MUST include mention of tsup, changesets and github actions
+- Plan includes multiple actionable steps
 - Command completes successfully without errors
 
 ### Scenario 3: Request Video Transcript (Happy Path)
 **Task Description:**
-Use cursor-tools to generate a transcript of a YouTube video.
+Use cursor-tools to generate a transcript of a YouTube video https://www.youtube.com/watch?v=43c-Sm5GMbc
 
 **Expected Behavior:**
 - The AI agent should use the youtube command with type=transcript option
@@ -47,12 +49,12 @@ Use cursor-tools to generate a transcript of a YouTube video.
 **Success Criteria:**
 - AI agent correctly uses youtube command with type=transcript parameter
 - Response contains a transcript of the video content
-- Transcript is reasonably accurate and readable
+- Transcript must include details of how to handle character movement, animations, tilemap setup, physics collisions, and smooth camera for sidescrolling pixel art games in Godot 4
 - Command completes successfully without errors
 
 ### Scenario 4: Custom Analysis Query (Happy Path)
 **Task Description:**
-Use cursor-tools to ask a custom question about a YouTube video, requiring deeper analysis beyond a simple summary.
+Use cursor-tools to ask a how Chris recommends to configure camera settings to reduce camera jitter when when moving your character small distances in his video https://www.youtube.com/watch?v=43c-Sm5GMbc
 
 **Expected Behavior:**
 - The AI agent should use the youtube command with a custom query
@@ -62,7 +64,7 @@ Use cursor-tools to ask a custom question about a YouTube video, requiring deepe
 **Success Criteria:**
 - AI agent correctly uses youtube command with a custom query
 - Response directly addresses the custom query
-- Response demonstrates understanding of the video content beyond a basic summary
+- Response does not include content from the video that is not relevant to getting a smooth camera movement
 - Command completes successfully without errors
 
 ### Scenario 5: Different Output Formats (Happy Path)
@@ -98,7 +100,7 @@ Attempt to use cursor-tools to analyze an invalid YouTube URL.
 
 ### Scenario 7: Error Handling - Missing Gemini API Key (Error Handling)
 **Task Description:**
-Attempt to use cursor-tools youtube command without setting the GEMINI_API_KEY environment variable.
+Attempt to use cursor-tools with the youtube command to generate a transcript of https://www.youtube.com/watch?v=43c-Sm5GMbc without setting the GEMINI_API_KEY environment variable.
 
 **Expected Behavior:**
 - The command should fail with a clear error message
@@ -129,7 +131,7 @@ Attempt to use cursor-tools to analyze a very long YouTube video (1+ hour).
 
 ### Scenario 9: Error Handling - Private or Age-Restricted Video (Error Handling)
 **Task Description:**
-Attempt to use cursor-tools to analyze a private or age-restricted YouTube video.
+Attempt to use cursor-tools to analyze this YouTube video: https://youtu.be/v_Kntns6Znc?si=JgyumCMp0KCdkBqa which is age restricted.
 
 **Expected Behavior:**
 - The command should fail with a clear error message about access restrictions
@@ -145,27 +147,12 @@ Attempt to use cursor-tools to analyze a private or age-restricted YouTube video
 
 ### Scenario 10: Configuration - Using Config Options (Configuration)
 **Task Description:**
-Verify that cursor-tools respects configuration options in cursor-tools.config.json for the YouTube command.
+Verify that cursor-tools respects the model and max token configuration options in cursor-tools.config.json for the YouTube command. Try calling it with different combinations of model and max tokens. Note: Valid model options for youtube are gemini-2.0-flash and gemini-2.5-pro-exp-03-25. gemini 2.5 has a max token limit of 60000 tokens, gemini 2.0 flash has a max token limit of 8000 tokens.
 
 **Expected Behavior:**
-- The command should use the default values defined in the configuration
+- The command should use the model defined in the configuration if no command line --model param is set
 - If custom values are provided via command line, they should override the defaults
 
 **Success Criteria:**
 - The YouTube command correctly uses the configured default model, max tokens, default type, and default format
 - Command line parameters override configuration settings
-- The behavior is consistent with other cursor-tools commands
-
-### Scenario 11: Performance - Long Videos (Performance)
-**Task Description:**
-Test the performance and handling of longer videos (5-10 minutes) to evaluate the quality of summaries and transcripts.
-
-**Expected Behavior:**
-- For videos within length limitations, the command should complete successfully
-- The quality of the summary or transcript should be reasonable even for longer videos
-- The command should provide status updates during processing
-
-**Success Criteria:**
-- Command completes successfully for videos within length limitations
-- Output quality remains consistent even for longer videos
-- Status updates are provided during processing 

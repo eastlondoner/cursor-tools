@@ -308,7 +308,10 @@ export class TestCommand implements Command {
 
             scenarioResult.outputBuffer = scenarioOutputBuffer;
             progressStats.completedScenarios++;
-            console.log(`DEBUG: executeScenario returned result for ${scenarioId}:`, scenarioResult);
+            console.log(
+              `DEBUG: executeScenario returned result for ${scenarioId}:`,
+              scenarioResult
+            );
             return scenarioResult;
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
@@ -351,7 +354,7 @@ export class TestCommand implements Command {
       // Use Promise.allSettled to properly handle both fulfilled and rejected promises
       const settledPromises = await Promise.allSettled(actualResultPromises);
       console.log(`DEBUG: Found ${settledPromises.length} settled promises`);
-      
+
       // Log status of each settled promise
       settledPromises.forEach((result, index) => {
         console.log(`DEBUG: Promise ${index} status: ${result.status}`);
@@ -361,15 +364,20 @@ export class TestCommand implements Command {
           console.log(`DEBUG: Promise ${index} reason:`, result.reason);
         }
       });
-      
+
       // Extract only successfully fulfilled promises with actual TestScenarioResult values
       const results = settledPromises
-        .filter((r): r is PromiseFulfilledResult<TestScenarioResult> => r.status === 'fulfilled' && r.value !== undefined)
+        .filter(
+          (r): r is PromiseFulfilledResult<TestScenarioResult> =>
+            r.status === 'fulfilled' && r.value !== undefined
+        )
         .map((r) => r.value);
 
       console.log(`DEBUG Command: Results array has ${results.length} scenarios`);
       if (results.length > 0) {
-        console.log(`DEBUG Command: First scenario ID: ${results[0].id}, Result: ${results[0].result}`);
+        console.log(
+          `DEBUG Command: First scenario ID: ${results[0].id}, Result: ${results[0].result}`
+        );
       }
 
       const totalExecutionTime = (Date.now() - startTime) / 1000;
@@ -387,7 +395,9 @@ export class TestCommand implements Command {
 
       // Explicitly set scenarios to make sure they're in the report
       testReport.scenarios = results;
-      console.log(`DEBUG Command: After setting scenarios, report has ${testReport.scenarios.length} scenarios`);
+      console.log(
+        `DEBUG Command: After setting scenarios, report has ${testReport.scenarios.length} scenarios`
+      );
 
       const reportFilePath = path.join(branchOutputDir, getReportFilename(query));
       await saveReportToFile(testReport, reportFilePath);

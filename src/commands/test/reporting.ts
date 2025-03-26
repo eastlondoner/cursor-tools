@@ -23,7 +23,9 @@ export function formatReportAsMarkdown(report: TestReport): string {
     totalExecutionTime,
   } = report;
 
-  console.log(`DEBUG: formatReportAsMarkdown - Number of scenarios: ${scenarios ? scenarios.length : 0}`);
+  console.log(
+    `DEBUG: formatReportAsMarkdown - Number of scenarios: ${scenarios ? scenarios.length : 0}`
+  );
   if (scenarios && scenarios.length > 0) {
     console.log(`DEBUG: First scenario ID: ${scenarios[0].id}, Result: ${scenarios[0].result}`);
   }
