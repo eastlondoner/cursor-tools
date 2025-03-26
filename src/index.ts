@@ -168,7 +168,7 @@ const OPTION_KEYS: Record<string, CLIOptionKey> = {
   thinkingprovider: 'thinkingProvider',
   filemodel: 'fileModel',
   thinkingmodel: 'thinkingModel',
-  
+
   // YouTube options
   type: 'type',
   format: 'format',

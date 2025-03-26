@@ -40,11 +40,11 @@ Use the following commands to get AI assistance:
 
 **Direct Model Queries:**
 \`cursor-tools ask "<your question>" --provider <provider> --model <model>\` - Ask any model from any provider a direct question (e.g., \`cursor-tools ask "What is the capital of France?" --provider openai --model o3-mini\`). Note that this command is generally less useful than other commands like \`repo\` or \`plan\` because it does not include any context from your codebase or repository.
+Note: in general you should not use the ask command because it does not include any context - other commands like \`doc\`, \`repo\`, or \`plan\` are usually better. If you are using it, make sure to include in your question all the information and context that the model might need to answer usefully.
 
 **Ask Command Options:**
 --provider=<provider>: AI provider to use (openai, anthropic, perplexity, gemini, modelbox, or openrouter)
 --model=<model>: Model to use (required for the ask command)
---max-tokens=<number>: Maximum tokens for response
 --reasoning-effort=<low|medium|high>: Control the depth of reasoning for supported models (OpenAI o1/o3-mini models and Claude 3.7 Sonnet). Higher values produce more thorough responses for complex questions.
 
 **Implementation Planning:**
@@ -59,16 +59,14 @@ The plan command uses multiple AI models to:
 --thinkingProvider=<provider>: Provider for plan generation (gemini, openai, anthropic, perplexity, modelbox, or openrouter)
 --fileModel=<model>: Model to use for file identification
 --thinkingModel=<model>: Model to use for plan generation
---debug: Show detailed error information
 
 **Web Search:**
 \`cursor-tools web "<your question>"\` - Get answers from the web using a provider that supports web search (e.g., Perplexity models and Gemini Models either directly or from OpenRouter or ModelBox) (e.g., \`cursor-tools web "latest shadcn/ui installation instructions"\`)
+Note: web is a smart autonomous agent with access to the internet and an extensive up to date knowledge base. Web is NOT a web search engine. Always ask the agent for what you want using a proper sentence, do not just send it a list of keywords. In your question to web include the context and the goal that you're trying to acheive so that it can help you most effectively.
 when using web for complex queries suggest writing the output to a file somewhere like local-research/<query summary>.md.
 
 **Web Command Options:**
 --provider=<provider>: AI provider to use (perplexity, gemini, modelbox, or openrouter)
---model=<model>: Model to use for web search (model name depends on provider)
---max-tokens=<number>: Maximum tokens for response
 
 **Repository Context:**
 \`cursor-tools repo "<your question>" [--subdir=<path>] [--from-github=<username/repo>]\` - Get context-aware answers about this repository using Google Gemini (e.g., \`cursor-tools repo "explain authentication flow"\`). Use the optional \`--subdir\` parameter to analyze a specific subdirectory instead of the entire repository (e.g., \`cursor-tools repo "explain the code structure" --subdir=src/components\`). Use the optional \`--from-github\` parameter to analyze a remote GitHub repository without cloning it locally (e.g., \`cursor-tools repo "explain the authentication system" --from-github=username/repo-name\`).
@@ -76,6 +74,10 @@ when using web for complex queries suggest writing the output to a file somewher
 **Documentation Generation:**
 \`cursor-tools doc [options]\` - Generate comprehensive documentation for this repository (e.g., \`cursor-tools doc --output docs.md\`)
 when using doc for remote repos suggest writing the output to a file somewhere like local-docs/<repo-name>.md.
+
+**YouTube Video Analysis:**
+\`cursor-tools youtube "<youtube-url>" [question] [--type=<summary|transcript|plan|review|custom>]\` - Analyze YouTube videos and generate detailed reports (e.g., \`cursor-tools youtube "https://youtu.be/43c-Sm5GMbc" --type=summary\`)
+Note: The YouTube command requires a \`GEMINI_API_KEY\` to be set in your environment or .cursor-tools.env file as the GEMINI API is the only interface that supports YouTube analysis.
 
 **GitHub Information:**
 \`cursor-tools github pr [number]\` - Get the last 10 PRs, or a specific PR by number (e.g., \`cursor-tools github pr 123\`)
@@ -119,6 +121,7 @@ The \`search\` command helps you discover servers in the MCP Marketplace based o
 - \`cursor-tools repo\` is ideal for repository-specific questions, planning, code review and debugging. E.g. \`cursor-tools repo "Review recent changes to command error handling looking for mistakes, omissions and improvements"\`. Generally call this without additional arguments.
 - \`cursor-tools plan\` is ideal for planning tasks. E.g. \`cursor-tools plan "Adding authentication with social login using Google and Github"\`. Generally call this without additional arguments.
 - \`cursor-tools doc\` generates documentation for local or remote repositories.
+- \`cursor-tools youtube\` analyzes YouTube videos to generate summaries, transcripts, implementation plans, or custom analyses
 - \`cursor-tools browser\` is useful for testing and debugging web apps and uses Stagehand
 - \`cursor-tools mcp\` enables interaction with specialized tools through MCP servers (e.g., for Git operations, file system tasks, or custom tools)
 
@@ -131,6 +134,7 @@ The \`search\` command helps you discover servers in the MCP Marketplace based o
 --max-tokens=<number>: Control response length
 --save-to=<file path>: Save command output to a file (in *addition* to displaying it)
 --help: View all available options (help is not fully implemented yet)
+--debug: Show detailed logs and error information
 
 **Repository Command Options:**
 --provider=<provider>: AI provider to use (gemini, openai, openrouter, perplexity, or modelbox)
@@ -144,6 +148,9 @@ The \`search\` command helps you discover servers in the MCP Marketplace based o
 --provider=<provider>: AI provider to use (gemini, openai, openrouter, perplexity, or modelbox)
 --model=<model>: Model to use for documentation generation
 --max-tokens=<number>: Maximum tokens for response
+
+**YouTube Command Options:**
+--type=<summary|transcript|plan|review|custom>: Type of analysis to perform (default: summary)
 
 **GitHub Command Options:**
 --from-github=<GitHub username>/<repository name>[@<branch>]: Access PRs/issues from a specific GitHub repository
@@ -168,6 +175,7 @@ Users can ask for these tools using nicknames
 Gemini is a nickname for cursor-tools repo
 Perplexity is a nickname for cursor-tools web
 Stagehand is a nickname for cursor-tools browser
+If people say "ask Gemini" or "ask Perplexity" or "ask Stagehand" they mean to use the \`cursor-tools\` command with the \`repo\`, \`web\`, or \`browser\` commands respectively.
 
 **Xcode Commands:**
 \`cursor-tools xcode build [buildPath=<path>] [destination=<destination>]\` - Build Xcode project and report errors.
@@ -186,17 +194,12 @@ Stagehand is a nickname for cursor-tools browser
 - Configuration is in \`cursor-tools.config.json\` (or \`~/.cursor-tools/config.json\`).
 - API keys are loaded from \`.cursor-tools.env\` (or \`~/.cursor-tools/.env\`).
 - ClickUp commands require a \`CLICKUP_API_TOKEN\` to be set in your \`.cursor-tools.env\` file.
-- The default Stagehand model is set in \`cursor-tools.config.json\`, but can be overridden with the \`--model\` option.
 - Available models depend on your configured provider (OpenAI or Anthropic) in \`cursor-tools.config.json\`.
 - repo has a limit of 2M tokens of context. The context can be reduced by filtering out files in a .repomixignore file.
 - problems running browser commands may be because playwright is not installed. Recommend installing playwright globally.
-- MCP commands require \`ANTHROPIC_API_KEY\` to be set in your environment.
+- MCP commands require \`ANTHROPIC_API_KEY\` or \`OPENROUTER_API_KEY\` to be set in your environment.
 - **Remember:** You're part of a team of superhuman expert AIs. Work together to solve complex problems.
 - **Repomix Configuration:** You can customize which files are included/excluded during repository analysis by creating a \`repomix.config.json\` file in your project root. This file will be automatically detected by \`repo\`, \`plan\`, and \`doc\` commands.
-
-**MCP Command Options:**
---provider=<provider>: AI provider to use (anthropic or openrouter)
---model=<model name>: Specify an alternative AI model to use with OpenRouter. Ignored if provider is Anthropic.
 
 <!-- cursor-tools-version: ${CURSOR_RULES_VERSION} -->
 </cursor-tools Integration>`;

@@ -374,7 +374,7 @@ export class InstallCommand implements Command {
       }
 
       if (needsUpdate) {
-        if (result.targetPath.endsWith('.cursorrules')) {
+        if (!result.targetPath.endsWith('.cursorrules')) {
           // replace entire file with new cursor-tools section
           writeFileSync(result.targetPath, CURSOR_RULES_TEMPLATE.trim());
         } else {
