@@ -328,10 +328,13 @@ export async function processFeatureFile(
     await queue.onIdle();
     await Promise.allSettled(resultPromises);
 
-    // Use the collected results array
-
     // Use the collected results
     const results = scenarioResults;
+
+    console.log(`DEBUG: Results array has ${results.length} scenarios`);
+    if (results.length > 0) {
+      console.log(`DEBUG: First scenario ID: ${results[0].id}, Result: ${results[0].result}`);
+    }
 
     const totalExecutionTime = (Date.now() - startTime) / 1000;
 
@@ -345,6 +348,9 @@ export async function processFeatureFile(
       commonConfig.model,
       totalExecutionTime
     );
+
+    // Make sure the scenarios are added to the report
+    testReport.scenarios = results;
 
     // Save report files
     const reportFilePath = path.join(commonConfig.branchOutputDir, getReportFilename(file));

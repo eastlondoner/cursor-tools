@@ -17,6 +17,10 @@ All notable changes to this project will be documented in this file.
   - Works with OpenRouter provider using a compatible format
   - Can be overridden for custom models by setting the `OVERRIDE_SAFETY_CHECKS=true` environment variable
 
+### Fixed
+
+- **Test Reporting Displays Detailed Scenario Results**: Fixed an issue in `src/commands/test/command.ts` where test scenario details were not being correctly displayed in generated reports. The fix ensures that the promises returned by `queue.add()` are properly handled, allowing detailed scenario information to appear in test reports.
+
 ## [0.6.0-alpha.14]
 
 ### Added

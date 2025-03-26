@@ -282,9 +282,10 @@ export class TestCommand implements Command {
       };
 
       const queue = createExecutionQueue(options, startTime, progressStats);
-      const resultPromises: Promise<TestScenarioResult | void>[] = [];
+      const actualResultPromises: Promise<TestScenarioResult>[] = [];
 
       for (const scenario of scenarios) {
+        console.log(`DEBUG: Adding scenario ${scenario.id} to queue for result collection`);
         const result = queue.add(async (): Promise<TestScenarioResult> => {
           const scenarioId = scenario.id;
           const scenarioOutputBuffer: string[] = [];
@@ -307,6 +308,7 @@ export class TestCommand implements Command {
 
             scenarioResult.outputBuffer = scenarioOutputBuffer;
             progressStats.completedScenarios++;
+            console.log(`DEBUG: executeScenario returned result for ${scenarioId}:`, scenarioResult);
             return scenarioResult;
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
@@ -340,32 +342,35 @@ export class TestCommand implements Command {
           }
         });
 
-        resultPromises.push(
-          result.then(async (result) => {
-            if (result && !options.skipIntermediateOutput) {
-              await yieldOutput(
-                `\n${'='.repeat(80)}\n` +
-                  `📝 Scenario: ${result.id}\n` +
-                  `${'='.repeat(80)}\n\n` +
-                  `${
-                    result.outputBuffer && result.outputBuffer.length > 0
-                      ? result.outputBuffer.join('')
-                      : 'No logs available for this scenario.\n'
-                  }` +
-                  `\n${'='.repeat(80)}\n\n`,
-                options
-              );
-            }
-          })
-        );
+        actualResultPromises.push(result);
       }
 
       await queue.onIdle();
-      await Promise.allSettled(resultPromises);
+      await Promise.allSettled(actualResultPromises);
 
-      const results = (await Promise.all(resultPromises)).filter(
-        (r): r is TestScenarioResult => !!r
-      );
+      // Use Promise.allSettled to properly handle both fulfilled and rejected promises
+      const settledPromises = await Promise.allSettled(actualResultPromises);
+      console.log(`DEBUG: Found ${settledPromises.length} settled promises`);
+      
+      // Log status of each settled promise
+      settledPromises.forEach((result, index) => {
+        console.log(`DEBUG: Promise ${index} status: ${result.status}`);
+        if (result.status === 'fulfilled') {
+          console.log(`DEBUG: Promise ${index} value:`, result.value);
+        } else {
+          console.log(`DEBUG: Promise ${index} reason:`, result.reason);
+        }
+      });
+      
+      // Extract only successfully fulfilled promises with actual TestScenarioResult values
+      const results = settledPromises
+        .filter((r): r is PromiseFulfilledResult<TestScenarioResult> => r.status === 'fulfilled' && r.value !== undefined)
+        .map((r) => r.value);
+
+      console.log(`DEBUG Command: Results array has ${results.length} scenarios`);
+      if (results.length > 0) {
+        console.log(`DEBUG Command: First scenario ID: ${results[0].id}, Result: ${results[0].result}`);
+      }
 
       const totalExecutionTime = (Date.now() - startTime) / 1000;
 
@@ -379,6 +384,10 @@ export class TestCommand implements Command {
         model,
         totalExecutionTime
       );
+
+      // Explicitly set scenarios to make sure they're in the report
+      testReport.scenarios = results;
+      console.log(`DEBUG Command: After setting scenarios, report has ${testReport.scenarios.length} scenarios`);
 
       const reportFilePath = path.join(branchOutputDir, getReportFilename(query));
       await saveReportToFile(testReport, reportFilePath);
