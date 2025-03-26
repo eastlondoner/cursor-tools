@@ -402,7 +402,9 @@ async function main() {
       provider: options.provider as Provider,
       fileProvider: options.fileProvider as Provider,
       thinkingProvider: options.thinkingProvider as Provider,
-      reasoningEffort: options.reasoningEffort ? reasoningEffortSchema.parse(options.reasoningEffort) : undefined,
+      reasoningEffort: options.reasoningEffort
+        ? reasoningEffortSchema.parse(options.reasoningEffort)
+        : undefined,
     };
     for await (const output of commandHandler.execute(query, commandOptions)) {
       // Only write to stdout if not in quiet mode
