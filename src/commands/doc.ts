@@ -2,21 +2,11 @@ import type { Command, CommandGenerator, CommandOptions, Config, Provider } from
 import { defaultMaxTokens, loadConfig, loadEnv } from '../config';
 import { pack } from 'repomix';
 import { readFileSync } from 'node:fs';
-import {
-  ApiKeyMissingError,
-  CursorToolsError,
-  FileError,
-  NetworkError,
-  ProviderError,
-} from '../errors';
+import { ApiKeyMissingError, CursorToolsError, FileError, ProviderError } from '../errors';
 import type { ModelOptions, BaseModelProvider } from '../providers/base';
 import { createProvider } from '../providers/base';
 import { ModelNotFoundError } from '../errors';
-import {
-  ignorePatterns,
-  includePatterns,
-  loadFileConfigWithOverrides,
-} from '../repomix/repomixConfig';
+import { loadFileConfigWithOverrides } from '../repomix/repomixConfig';
 import {
   getAllProviders,
   getNextAvailableProvider,

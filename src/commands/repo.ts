@@ -199,7 +199,7 @@ export class RepoCommand implements Command {
         (this.config as Record<string, any>)[provider]?.maxTokens ||
         defaultMaxTokens;
 
-      // Create modelOptions 
+      // Create modelOptions
       const modelOptions: Omit<ModelOptions, 'systemPrompt'> = {
         model: modelName,
         maxTokens,

@@ -1,6 +1,12 @@
+import * as z from 'zod';
+
 export type CommandGenerator = AsyncGenerator<string, void, unknown>;
 
 export type Provider = 'gemini' | 'openai' | 'openrouter' | 'perplexity' | 'modelbox' | 'anthropic';
+
+// Zod schema for reasoning effort
+export const reasoningEffortSchema = z.enum(['low', 'medium', 'high']);
+export type ReasoningEffort = z.infer<typeof reasoningEffortSchema>;
 
 // Base options shared by all commands
 export interface CommandOptions {
@@ -13,7 +19,7 @@ export interface CommandOptions {
   json?: boolean; // Output results as JSON
 
   // OpenAI and OpenRouter reasoning options
-  reasoningEffort?: 'low' | 'medium' | 'high'; // Support for OpenAI o1 and o3-mini reasoning effort
+  reasoningEffort?: ReasoningEffort; // Support for OpenAI o1 and o3-mini reasoning effort
 
   // Output options
   saveTo?: string; // Path to save output to in addition to stdout
@@ -41,7 +47,7 @@ export interface CommandMap {
 
 // Interface for the cursor-tools.config.json config file
 export interface Config {
-  reasoningEffort?: 'low' | 'medium' | 'high'; // Global default reasoning effort setting
+  reasoningEffort?: ReasoningEffort; // Global default reasoning effort setting
   perplexity?: {
     model?: string;
     maxTokens?: number;
