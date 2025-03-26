@@ -37,6 +37,7 @@
     - [Console and Network Logging](#console-and-network-logging)
     - [Complex Actions](#complex-actions)
     - [Troubleshooting Browser Commands](#troubleshooting-browser-commands)
+  - [YouTube Video Analysis](#youtube-video-analysis)
 - [Skills](#skills)
   - [GitHub Integration](#github-integration)
   - [Xcode Tools](#xcode-tools)
@@ -61,6 +62,7 @@
   - [Browser Command Examples](#browser-command-examples)
     - [open subcommand examples](#open-subcommand-examples)
     - [act, extract, observe subcommands examples](#act-extract-observe-subcommands-examples)
+  - [YouTube Command Examples](#youtube-command-examples)
 - [Node Package Manager](#node-package-manager-npm)
 - [Contributing](#contributing)
 - [Sponsors](#sponsors)
@@ -77,6 +79,7 @@
 
 - Work with GitHub Issues and Pull Requests
 - Generate local agent-accessible documentation for external dependencies
+- Analyze YouTube videos to extract insights, summaries, and implementation plans
 
 `cursor-tools` is optimized for Cursor Composer Agent but it can be used by any coding agent that can execute commands
 
@@ -216,6 +219,7 @@ Use Cursor Composer in agent mode with command execution (not sure what this mea
 - `cursor-tools plan` uses an AI teammate with reasoning capability to plan complex tasks. Plan uses a two step process. First it does a whole repo search with a large context window model to find relevant files. Then it sends only those files as context to a thinking model to generate a plan it is great for planning complex tasks and for debugging and refactoring. Plan is a teammate who is really smart on a well defined problem, although doesn't consider the bigger picture.
 - `cursor-tools doc` uses an AI teammate with large context window capability to generate documentation for local or github hosted repositories by sending the entire repo as context. `doc` can be given precise documentation tasks or can be asked to generate complete docs from scratch it is great for generating docs updates or for generating local documentation for a libary or API that you use! Doc is a teammate who is great at summarising and explaining code, in this repo or in any other repo!
 - `cursor-tools browser` uses an AI teammate with browser control (aka operator) capability to operate web browsers. `browser` can operate in a hidden (headless) mode to invisibly test and debug web apps or it can be used to connect to an existing browser session to interactively share your browser with Cursor agent it is great for testing and debugging web apps and for carrying out any task that can be done in a browser such as reading information from a bug ticket or even filling out a form. Browser is a teammate who can help you test and debug web apps, and can share control of your browser to perform small browser-based tasks.
+- `cursor-tools youtube` uses an AI teammate with video analysis capability to understand YouTube content. `youtube` can generate summaries, extract transcripts, create implementation plans from tutorials, and answer specific questions about video content. It's great for extracting value from technical talks, tutorials, and presentations without spending time watching the entire video. YouTube is a teammate who can watch and analyze videos for you, distilling the key information.
 
 Note: For repo, doc and plan commands the repository content that is sent as context can be reduced by filtering out files in a .repomixignore file.
 
@@ -540,6 +544,40 @@ Common issues and solutions:
    - Use `--headless` mode for better performance (default)
    - Reduce the viewport size with `--viewport`
    - Consider using `--connect-to` for development
+
+### YouTube Video Analysis
+
+Use Gemini-powered YouTube video analysis to extract insights, summaries, and implementation plans:
+
+```bash
+# Generate a video summary
+cursor-tools youtube "https://www.youtube.com/watch?v=VIDEO_ID" --type=summary
+
+# Get a detailed transcript
+cursor-tools youtube "https://www.youtube.com/watch?v=VIDEO_ID" --type=transcript
+
+# Create an implementation plan based on tutorial content
+cursor-tools youtube "https://www.youtube.com/watch?v=VIDEO_ID" --type=plan
+
+# Ask specific questions about the video
+cursor-tools youtube "https://www.youtube.com/watch?v=VIDEO_ID" "How does the authentication flow work?"
+
+# Save summary to a file
+cursor-tools youtube "https://www.youtube.com/watch?v=VIDEO_ID" --type=summary --save-to=video-summary.md
+```
+
+The YouTube command leverages Gemini models' native ability to understand video content, enabling you to:
+
+- Extract key insights and summaries from technical talks, tutorials, and presentations
+- Generate complete transcripts of video content
+- Create implementation plans based on tutorial videos
+- Perform quality reviews of educational content
+- Get answers to specific questions about the video content
+
+**YouTube Command Options:**
+- `--type=<summary|transcript|plan|custom>`: Type of analysis to perform (default: summary)
+
+**Note:** The YouTube command requires a `GEMINI_API_KEY` to be set in your environment or .cursor-tools.env file as the Gemini API is currently the only interface that reliably supports YouTube video analysis.
 
 ## Skills
 
@@ -1108,6 +1146,31 @@ cursor-tools browser extract "Get the main content" --url "https://example.com/b
 
 # AI-powered observation
 cursor-tools browser observe "What can I do on this page?" --url "https://example.com"
+```
+
+#### YouTube Command Examples
+
+```bash
+# Generate a comprehensive summary of a technical talk
+cursor-tools youtube "https://www.youtube.com/watch?v=dQw4w9WgXcQ" --type=summary
+
+# Get a complete transcript with speaker annotations
+cursor-tools youtube "https://www.youtube.com/watch?v=dQw4w9WgXcQ" --type=transcript --save-to=transcript.md
+
+# Create an implementation plan from a coding tutorial
+cursor-tools youtube "https://www.youtube.com/watch?v=dQw4w9WgXcQ" --type=plan
+
+# Generate a critical review of a tutorial's accuracy and quality
+cursor-tools youtube "https://www.youtube.com/watch?v=dQw4w9WgXcQ" --type=review
+
+# Ask specific questions about video content
+cursor-tools youtube "https://www.youtube.com/watch?v=dQw4w9WgXcQ" "What libraries does the tutorial use for authentication?"
+
+# Use a specific model for analysis
+cursor-tools youtube "https://www.youtube.com/watch?v=dQw4w9WgXcQ" --model=gemini-2.5-pro-exp
+
+# Use custom analysis type for specialized insights
+cursor-tools youtube "https://www.youtube.com/watch?v=dQw4w9WgXcQ" --type=custom "Extract all code examples and explain them in detail"
 ```
 
 ## Node Package Manager (npm)

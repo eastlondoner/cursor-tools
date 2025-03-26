@@ -282,7 +282,7 @@ export class TestCommand implements Command {
       };
 
       const queue = createExecutionQueue(options, startTime, progressStats);
-      const actualResultPromises: Promise<TestScenarioResult>[] = [];
+      const actualResultPromises: Promise<TestScenarioResult | void>[] = [];
 
       for (const scenario of scenarios) {
         console.log(`DEBUG: Adding scenario ${scenario.id} to queue for result collection`);

@@ -10,6 +10,14 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Youtube command**: Added `youtube` command that can be used to analyze YouTube videos and generate detailed reports:
+  - Support for multiple analysis types: summaries, transcripts, implementation plans, reviews, or custom analysis
+  - Optional questions parameter for targeted insights about video content
+  - Uses Gemini models which have native YouTube video understanding capabilities
+  - Results can be saved to files for reference and sharing
+  - Requires `GEMINI_API_KEY` to be set in your environment or .cursor-tools.env file
+
+
 - **Support for Reasoning Effort Parameter**: Added `--reasoning-effort` parameter to enhance the quality of responses for complex queries:
   - Supports `low`, `medium`, and `high` values for controlling reasoning depth
   - Compatible with OpenAI o1 and o3-mini models directly
