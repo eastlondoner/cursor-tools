@@ -11,6 +11,7 @@ import { existsSync, readFileSync } from 'fs';
 import { execSync } from 'child_process';
 import { once } from '../utils/once';
 import { getAllProviders } from '../utils/providerAvailability';
+import { isModelNotFoundError } from './notFoundErrors';
 
 const TEN_MINUTES = 600000;
 // Interfaces for Gemini response types
@@ -1352,31 +1353,13 @@ export class OpenAIProvider extends OpenAIBase {
         }
 
         // Check if this is a model not found error
-        if (
-          error &&
-          typeof error === 'object' &&
-          'code' in error &&
-          error.code === 'model_not_found' &&
-          'message' in error &&
-          typeof error.message === 'string'
-        ) {
+        if (isModelNotFoundError(error)) {
           throw new ModelNotFoundError(
-            `${this.constructor.name.replace('Provider', '')}\n\nYou requested: ${model}\n\nError details: ${error.message}`
+            `${this.constructor.name.replace('Provider', '')}\n\nYou requested: ${model}\n\nError details: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
         }
 
         if (error instanceof BadRequestError) {
-          // Check if this is a model not found error based on message
-          if (
-            error.message.includes('model not found') ||
-            error.message.includes('does not exist') ||
-            error.message.toLowerCase().includes('no model')
-          ) {
-            throw new ModelNotFoundError(
-              `${this.constructor.name.replace('Provider', '')}\n\nYou requested: ${model}\n\nError details: ${error.message}`
-            );
-          }
-
           // BadRequestError if logged unmodified will leak credentials.
           // Remove headers from error object before logging
           Object.keys(error.headers || {}).forEach((key) => delete error.headers[key]);
@@ -1514,7 +1497,6 @@ export class OpenRouterProvider extends OpenAIBase {
       }
       return content;
     } catch (error) {
-      // Only log full error details in debug mode
       this.debugLog(options, 'OpenRouter Provider: Error during API call:', error);
 
       if (error instanceof ProviderError || error instanceof NetworkError) {
@@ -1522,31 +1504,12 @@ export class OpenRouterProvider extends OpenAIBase {
       }
 
       // Check if this is a model not found error
-      if (
-        error &&
-        typeof error === 'object' &&
-        'code' in error &&
-        error.code === 'model_not_found' &&
-        'message' in error &&
-        typeof error.message === 'string'
-      ) {
+      if (isModelNotFoundError(error)) {
         throw new ModelNotFoundError(
-          `${this.constructor.name.replace('Provider', '')}\n\nYou requested: ${model}\n\nError details: ${error.message}`
+          `${this.constructor.name.replace('Provider', '')}\n\nYou requested: ${model}\n\nError details: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
       }
 
-      if (error instanceof BadRequestError) {
-        // Check if this is a model not found error
-        if (
-          error.message.includes('model not found') ||
-          error.message.includes('does not exist') ||
-          error.message.toLowerCase().includes('no model')
-        ) {
-          throw new ModelNotFoundError(
-            `${this.constructor.name.replace('Provider', '')}\n\nYou requested: ${model}\n\nError details: ${error.message}`
-          );
-        }
-      }
       throw new NetworkError(`Failed to communicate with ${this.constructor.name} API`, error);
     }
   }
@@ -1649,15 +1612,9 @@ export class PerplexityProvider extends BaseProvider {
           }
 
           // Check if this is a model not found error
-          if (
-            error instanceof Error &&
-            (error.message.includes('model not found') ||
-              error.message.includes('no model') ||
-              error.message.includes('invalid model') ||
-              (error.message.includes('The model') && error.message.includes('does not exist')))
-          ) {
+          if (isModelNotFoundError(error)) {
             throw new ModelNotFoundError(
-              `${this.constructor.name.replace('Provider', '')}\n\nYou requested: ${model}\n\nError details: ${error.message}`
+              `${this.constructor.name.replace('Provider', '')}\n\nYou requested: ${model}\n\nError details: ${error instanceof Error ? error.message : 'Unknown error'}`
             );
           }
 
@@ -1881,15 +1838,9 @@ export class ModelBoxProvider extends OpenAIBase {
       }
 
       // Check if this is a model not found error
-      if (
-        error instanceof Error &&
-        (error.message.includes('model not found') ||
-          error.message.includes('no model') ||
-          error.message.includes('invalid model') ||
-          (error.message.includes('The model') && error.message.includes('does not exist')))
-      ) {
+      if (isModelNotFoundError(error)) {
         throw new ModelNotFoundError(
-          `${this.constructor.name.replace('Provider', '')}\n\nYou requested: ${model}\n\nError details: ${error.message}`
+          `${this.constructor.name.replace('Provider', '')}\n\nYou requested: ${model}\n\nError details: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
       }
 
@@ -2087,38 +2038,10 @@ export class AnthropicProvider extends BaseProvider {
         );
       }
 
-      // Check if this is a model not found error based on specific error codes or messages
-      if (
-        error &&
-        typeof error === 'object' &&
-        (('code' in error &&
-          (error.code === 'model_not_found' ||
-            error.code === 'invalid_model' ||
-            error.code === 'model_not_available')) ||
-          ('type' in error &&
-            (error.type === 'invalid_request_error' || error.type === 'model_error')) ||
-          ('status' in error && error.status === 404)) &&
-        'message' in error &&
-        typeof error.message === 'string'
-      ) {
+      // Check if this is a model not found error
+      if (isModelNotFoundError(error)) {
         throw new ModelNotFoundError(
-          `${this.constructor.name.replace('Provider', '')}\n\nYou requested: ${model}\n\nError details: ${error.message}`
-        );
-      }
-
-      // Check if this is a model not found error in Anthropic based on error message patterns
-      if (
-        error instanceof Error &&
-        (error.message.includes('model not found') ||
-          error.message.includes('no model') ||
-          error.message.includes('invalid model') ||
-          error.message.includes('does not exist') ||
-          error.message.includes('unavailable model') ||
-          error.message.toLowerCase().includes('model invalid') ||
-          error.message.toLowerCase().includes('model is not supported'))
-      ) {
-        throw new ModelNotFoundError(
-          `${this.constructor.name.replace('Provider', '')}\n\nYou requested: ${model}\n\nError details: ${error.message}`
+          `${this.constructor.name.replace('Provider', '')}\n\nYou requested: ${model}\n\nError details: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
       }
 
