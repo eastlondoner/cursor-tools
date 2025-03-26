@@ -813,9 +813,9 @@ export class GoogleVertexAIProvider extends BaseProvider {
     if (tokenCount > 800_000 && tokenCount < 2_000_000) {
       // 1M is the limit but token counts are very approximate so play it safe
       console.error(
-        `Repository content is large (${Math.round(tokenCount / 1000)}K tokens), switching to gemini-2.5-pro-exp model...`
+        `Repository content is large (${Math.round(tokenCount / 1000)}K tokens), switching to gemini-2.0-pro-exp model...`
       );
-      return { model: 'gemini-2.5-pro-exp-03-25' }; // correct name for vertex ai
+      return { model: 'gemini-2.0-pro-exp' }; // correct name for vertex ai
     }
 
     if (tokenCount >= 2_000_000) {
@@ -1233,8 +1233,13 @@ export class GoogleGenerativeLanguageProvider extends BaseProvider {
       1000,
       (error) => {
         if (error instanceof NetworkError) {
-          const errorText = error.message.toLowerCase();
-          return errorText.includes('429') || errorText.includes('resource exhausted');
+          const errorText = error.message?.toLowerCase();
+          return (
+            errorText?.includes('429') ||
+            errorText?.includes('resource exhausted') ||
+            errorText?.includes('rate limit') ||
+            errorText?.includes('try again later')
+          );
         }
         return false;
       }
@@ -1395,11 +1400,13 @@ export class GoogleGenerativeLanguageProvider extends BaseProvider {
       (error) => {
         // Only retry on server errors (5xx) or temporary network issues
         if (error instanceof NetworkError) {
-          const statusMatch = error.message.match(/\((\d+)\)/);
-          if (statusMatch) {
-            const status = parseInt(statusMatch[1], 10);
-            return status >= 500 || status === 429; // Retry on server errors and rate limiting
-          }
+          const errorText = error.message?.toLowerCase();
+          return (
+            errorText?.includes('429') ||
+            errorText?.includes('resource exhausted') ||
+            errorText?.includes('rate limit') ||
+            errorText?.includes('try again later')
+          );
         }
         return false; // Don't retry on other errors
       }
@@ -1410,9 +1417,9 @@ export class GoogleGenerativeLanguageProvider extends BaseProvider {
     if (tokenCount > 800_000 && tokenCount < 2_000_000) {
       // 1M is the limit but token counts are very approximate so play it safe
       console.error(
-        `Repository content is large (${Math.round(tokenCount / 1000)}K tokens), switching to gemini-2.5-pro-exp model...`
+        `Repository content is large (${Math.round(tokenCount / 1000)}K tokens), switching to gemini-2.0-pro-exp model...`
       );
-      return { model: 'gemini-2.5-pro-exp' };
+      return { model: 'gemini-2.0-pro-exp' };
     }
 
     if (tokenCount >= 2_000_000) {
