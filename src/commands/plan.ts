@@ -42,6 +42,38 @@ const DEFAULT_THINKING_MODELS: Record<ThinkingProvider, string> = {
   anthropic: 'claude-3-7-sonnet-latest',
 };
 
+// Helper function to infer provider from model name
+function inferProviderFromModel(modelName: string): FileProvider | undefined {
+  if (!modelName) return undefined;
+
+  // Convert to lowercase for case-insensitive comparison
+  const model = modelName.toLowerCase();
+
+  if (model.includes('gemini') || model.startsWith('google/')) {
+    return 'gemini';
+  } else if (model.includes('gpt') || model.includes('o3-') || model.startsWith('openai/')) {
+    return 'openai';
+  } else if (model.includes('claude') || model.startsWith('anthropic/')) {
+    return 'anthropic';
+  } else if (
+    model.includes('sonar') ||
+    model.includes('mixtral') ||
+    model.includes('mistral') ||
+    model.startsWith('perplexity/')
+  ) {
+    return 'perplexity';
+  } else if (model.includes('/')) {
+    // For models with provider prefixes (like in OpenRouter or ModelBox)
+    const providerPrefix = model.split('/')[0].toLowerCase();
+    if (providerPrefix === 'google') return 'gemini';
+    if (providerPrefix === 'openai') return 'openai';
+    if (providerPrefix === 'anthropic') return 'anthropic';
+    if (providerPrefix === 'perplexity') return 'perplexity';
+  }
+
+  return undefined;
+}
+
 export class PlanCommand implements Command {
   private config: Config;
 
@@ -59,11 +91,46 @@ export class PlanCommand implements Command {
         );
       }
 
-      const fileProviderName = options?.fileProvider || this.config.plan?.fileProvider || 'gemini';
-      const fileProvider = createProvider(fileProviderName);
+      // If user provided fileModel without fileProvider, try to infer the provider
+      const fileModelProvider = options?.fileModel
+        ? inferProviderFromModel(options.fileModel)
+        : undefined;
+
+      // If user provided thinkingModel without thinkingProvider, try to infer the provider
+      const thinkingModelProvider =
+        options?.thinkingModel || options?.model
+          ? inferProviderFromModel(options?.thinkingModel || (options?.model as string))
+          : undefined;
+
+      const fileProviderName =
+        options?.fileProvider || fileModelProvider || this.config.plan?.fileProvider || 'gemini';
+      let fileProvider;
+      try {
+        fileProvider = createProvider(fileProviderName);
+      } catch (error) {
+        console.error(`Failed to initialize file provider ${fileProviderName}`, error);
+        throw new ProviderError(
+          `Failed to initialize file provider ${fileProviderName}. Please check your API keys or try a different provider.`,
+          error
+        );
+      }
+
       const thinkingProviderName =
-        options?.thinkingProvider || this.config.plan?.thinkingProvider || 'openai';
-      const thinkingProvider = createProvider(thinkingProviderName);
+        options?.thinkingProvider ||
+        thinkingModelProvider ||
+        this.config.plan?.thinkingProvider ||
+        fileProviderName ||
+        'openai';
+      let thinkingProvider;
+      try {
+        thinkingProvider = createProvider(thinkingProviderName);
+      } catch (error) {
+        console.error(`Failed to initialize thinking provider ${thinkingProviderName}`, error);
+        throw new ProviderError(
+          `Failed to initialize thinking provider ${thinkingProviderName}. Please check your API keys or try a different provider.`,
+          error
+        );
+      }
 
       const fileModel =
         options?.fileModel ||
