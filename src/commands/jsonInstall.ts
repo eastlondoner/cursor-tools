@@ -25,7 +25,9 @@ async function getUserInput(prompt: string): Promise<string> {
 }
 
 // Valid providers that cursor-tools supports
+// Note: The case here is important as it's used to normalize user input to the expected format
 const VALID_PROVIDERS = ['Openrouter', 'Perplexity', 'Openai', 'Anthropic', 'Modelbox', 'Gemini'];
+const VALID_PROVIDERS_LOWERCASE = VALID_PROVIDERS.map((p) => p.toLowerCase());
 
 // Helper to parse JSON configuration
 function parseJsonConfig(
@@ -42,7 +44,8 @@ function parseJsonConfig(
         throw new Error(`Missing provider in configuration for "${key}"`);
       }
 
-      if (!VALID_PROVIDERS.includes(providerObj.provider)) {
+      // Case-insensitive check for provider
+      if (!VALID_PROVIDERS_LOWERCASE.includes(providerObj.provider.toLowerCase())) {
         throw new Error(
           `Invalid provider "${providerObj.provider}" in configuration for "${key}". Valid providers are: ${VALID_PROVIDERS.join(', ')}`
         );
@@ -51,6 +54,10 @@ function parseJsonConfig(
       if (!providerObj.model) {
         throw new Error(`Missing model in configuration for "${key}"`);
       }
+
+      // Normalize provider case to match expected format
+      const providerIndex = VALID_PROVIDERS_LOWERCASE.indexOf(providerObj.provider.toLowerCase());
+      providerObj.provider = VALID_PROVIDERS[providerIndex];
     }
 
     return parsedConfig as Record<string, { provider: Provider; model: string }>;
@@ -68,6 +75,7 @@ function collectRequiredProviders(
   const providers = new Set<Provider>();
 
   Object.values(config).forEach(({ provider }) => {
+    // Provider should already be normalized to correct case from parseJsonConfig
     providers.add(provider);
   });
 
@@ -84,7 +92,7 @@ export class JsonInstallCommand implements Command {
     try {
       // Welcome message
       yield '\n===============================================================\n';
-      yield '           Welcome to cursor-tools JSON installer!              \n';
+      yield '           Welcome to Vibe-Tools!              \n';
       yield '===============================================================\n\n';
 
       // Create a list of all keys to collect
@@ -96,30 +104,7 @@ export class JsonInstallCommand implements Command {
         yield `- ${provider}\n`;
       }
 
-      // Include OpenRouter as recommended but not required
-      const hasOpenRouterInRequired = requiredProviders.includes('openrouter');
-      if (!hasOpenRouterInRequired) {
-        yield '\nAdditionally, we recommend OpenRouter which provides access to multiple AI models through a single API key.\n';
-        yield 'Visit https://openrouter.ai to get your API key.\n';
-      }
-
       yield '\nEnter API keys for the providers you want to use (press Enter to skip any):\n';
-
-      // Ask for OpenRouter first if not in required list already
-      if (!hasOpenRouterInRequired) {
-        const openRouterEnvKey = 'OPENROUTER_API_KEY';
-        const currentORValue = process.env[openRouterEnvKey];
-
-        if (currentORValue) {
-          yield `Using existing OpenRouter API key from environment.\n`;
-          keys[openRouterEnvKey] = currentORValue;
-        } else {
-          const orKey = await getUserInput('OpenRouter API key (recommended): ');
-          if (orKey) {
-            keys[openRouterEnvKey] = orKey;
-          }
-        }
-      }
 
       // Now ask for each required provider
       for (const provider of requiredProviders) {
