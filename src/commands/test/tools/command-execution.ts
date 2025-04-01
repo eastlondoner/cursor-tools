@@ -9,28 +9,28 @@ import { promisify } from 'util';
 const exec = promisify(childProcess.exec);
 
 /**
- * Create a tool definition for executing cursor-tools commands in the development environment
+ * Create a tool definition for executing vibe-tools commands in the development environment
  *
  * @returns A tool definition for command execution
  */
 export function createCommandExecutionTool(options: { debug: boolean }): ToolDefinition {
   return {
     name: 'execute_command',
-    description: 'Execute a cursor-tools command in the development environment',
+    description: 'Execute a vibe-tools command in the development environment',
     parameters: {
       type: 'object',
       properties: {
         command: {
           type: 'string',
-          description: 'The cursor-tools command to execute',
+          description: 'The vibe-tools command to execute',
         },
       },
       required: ['command'],
     },
     execute: async (args: { command: string }): Promise<ToolExecutionResult> => {
       try {
-        // Replace cursor-tools with pnpm dev to use development code
-        const devCommand = args.command.replace(/^cursor-tools\s/, 'pnpm dev ');
+        // Replace vibe-tools with pnpm dev to use development code
+        const devCommand = args.command.replace(/^vibe-tools\s/, 'pnpm dev ');
 
         if (options.debug) {
           console.log(`\nExecuting command: ${devCommand}`);

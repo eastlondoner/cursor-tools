@@ -6,7 +6,7 @@ This test verifies that tests are run in an isolated folder
 
 ### Scenario 1: Test commands run in an isolated folder
 **Task Description:**
-We're going to verify that cursor-tools test commands run in an isolated folder. You are inside a test so all you need to do is use ls to figure out if you're in a suitably isolated folder.
+We're going to verify that vibe-tools test commands run in an isolated folder. You are inside a test so all you need to do is use ls to figure out if you're in a suitably isolated folder.
 
 Test folders are creted new for each test and populated only with a symlink to the node_modules folder
 

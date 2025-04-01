@@ -46,7 +46,7 @@ export class MCPCommand implements Command {
         console.error(
           'Authentication error: ' +
             error.message +
-            '\nPlease check your API key in ~/.cursor-tools/.env'
+            '\nPlease check your API key in ~/.vibe-tools/.env'
         )
       );
     } else if (error instanceof MCPConnectionError) {

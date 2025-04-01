@@ -45,7 +45,7 @@ export interface CommandMap {
   [key: string]: Command;
 }
 
-// Interface for the cursor-tools.config.json config file
+// Interface for the vibe-tools.config.json config file
 export interface Config {
   reasoningEffort?: ReasoningEffort; // Global default reasoning effort setting
   perplexity?: {

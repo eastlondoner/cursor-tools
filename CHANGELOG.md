@@ -15,7 +15,7 @@ All notable changes to this project will be documented in this file.
   - Optional questions parameter for targeted insights about video content
   - Uses Gemini models which have native YouTube video understanding capabilities
   - Results can be saved to files for reference and sharing
-  - Requires `GEMINI_API_KEY` to be set in your environment or .cursor-tools.env file
+  - Requires `GEMINI_API_KEY` to be set in your environment or .vibe-tools.env file
 
 
 - **Support for Reasoning Effort Parameter**: Added `--reasoning-effort` parameter to enhance the quality of responses for complex queries:
@@ -33,14 +33,14 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- **GitHub Repository Analysis for Repo Command**: Added `--from-github` parameter to the repo command, enabling analysis of remote GitHub repositories without local cloning. This feature provides the same functionality previously available in the doc command, making it easier to get context-aware assistance for any public GitHub repository (e.g., `cursor-tools repo "explain the authentication flow" --from-github=username/repo-name`).
+- **GitHub Repository Analysis for Repo Command**: Added `--from-github` parameter to the repo command, enabling analysis of remote GitHub repositories without local cloning. This feature provides the same functionality previously available in the doc command, making it easier to get context-aware assistance for any public GitHub repository (e.g., `vibe-tools repo "explain the authentication flow" --from-github=username/repo-name`).
 
 ## [0.6.0-alpha.13]
 
 ### Added
 
 - **Support for Custom Repomix Configuration**: Added support for `repomix.config.json` files to customize which files are included/excluded during repository analysis. This configuration file can be placed in the repository root and will be automatically detected by `repo`, `plan`, and `doc` commands, allowing for more precise control over repository content analysis.
-- **Subdirectory Analysis for Repo Command**: Added `--subdir` parameter to the repo command, allowing users to analyze a specific subdirectory instead of the entire repository. This makes the repo command more efficient when working with large codebases by focusing only on relevant subdirectories (e.g., `cursor-tools repo "explain the code" --subdir=src/commands`).
+- **Subdirectory Analysis for Repo Command**: Added `--subdir` parameter to the repo command, allowing users to analyze a specific subdirectory instead of the entire repository. This makes the repo command more efficient when working with large codebases by focusing only on relevant subdirectories (e.g., `vibe-tools repo "explain the code" --subdir=src/commands`).
 - **Improved Model Name Resolution**: Enhanced model name handling across providers to better handle experimental and latest model versions:
 
   - Automatically resolves `-exp-*` suffixes to find stable model versions
@@ -71,7 +71,7 @@ All notable changes to this project will be documented in this file.
     ```
 
 - **New Test Command**: Added comprehensive test command for automated feature behavior testing:
-  - **Real Command Execution**: Tests now execute actual cursor-tools commands in a controlled environment, validating real-world behavior instead of simulated outputs.
+  - **Real Command Execution**: Tests now execute actual vibe-tools commands in a controlled environment, validating real-world behavior instead of simulated outputs.
   - Parallel test execution with dynamic worker allocation for faster test suite runtime.
   - Scenario-specific output buffering for clean parallel execution logs, ensuring readability even with concurrent tests.
   - Progress tracking showing completed/running/pending scenarios, providing real-time feedback during test runs.
@@ -89,7 +89,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- **Improved ModelBox Provider**: Enhanced the ModelBox provider with improved model name handling. If a requested model is not found, cursor-tools now provides helpful suggestions for similar models. Error messages have also been clarified to better guide users on the requirement for provider prefixes when specifying ModelBox models.
+- **Improved ModelBox Provider**: Enhanced the ModelBox provider with improved model name handling. If a requested model is not found, vibe-tools now provides helpful suggestions for similar models. Error messages have also been clarified to better guide users on the requirement for provider prefixes when specifying ModelBox models.
 
   - **Example: Improved Error Message**
     If you use an invalid model with ModelBox, you will now receive suggestions:
@@ -113,7 +113,7 @@ All notable changes to this project will be documented in this file.
   - Type-safe implementation ensures overrides match the MCPServer interface
   - Overrides take precedence over marketplace data and automatic GitHub repository checks
   - Logs when an override is applied using console.log for transparency
-  - Added support for user-configurable overrides in `cursor-tools.config.json`
+  - Added support for user-configurable overrides in `vibe-tools.config.json`
     - Users can define custom overrides in the `mcp.overrides` section
     - Config overrides take precedence over hardcoded overrides
     - Warns when a config override replaces a hardcoded override
@@ -136,8 +136,8 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- cursor-tools now only recommends global installation
-- Updated install command to check for and warn about cursor-tools dependencies in package.json files
+- vibe-tools now only recommends global installation
+- Updated install command to check for and warn about vibe-tools dependencies in package.json files
   - Checks both dependencies and devDependencies in package.json
   - Provides clear instructions for removing local installations using npm, pnpm, or yarn
   - This is in response to multiple issues caused by local installation and execution under different js runtimes
@@ -169,7 +169,7 @@ All notable changes to this project will be documented in this file.
 - Improved page reuse in browser commands when using `--connect-to`: now reuses existing tabs instead of creating new ones for better state preservation
 - Improved error handling and type safety in cursor rules management
 - Enhanced directory creation order in installation process
-- Added user choice during installation for cursor rules location (legacy `.cursorrules` or new `.cursor/rules/cursor-tools.mdc`)
+- Added user choice during installation for cursor rules location (legacy `.cursorrules` or new `.cursor/rules/vibe-tools.mdc`)
 - Added `USE_LEGACY_CURSORRULES` environment variable to control cursor rules file location
 - Improved output handling across all commands:
   - Centralized output handling in main CLI
@@ -202,14 +202,14 @@ All notable changes to this project will be documented in this file.
   - Allows querying any model from any provider directly
   - Simple and focused command for direct questions
 - Support for new Cursor IDE project rules structure
-  - New installations now use `.cursor/rules/cursor-tools.mdc` by default
+  - New installations now use `.cursor/rules/vibe-tools.mdc` by default
   - Maintain compatibility with legacy `.cursorrules` file via `USE_LEGACY_CURSORRULES=true`
   - Interactive choice during installation
   - When both exist, use path based on `USE_LEGACY_CURSORRULES` environment variable
   - Updated documentation to reflect new path structure
 - Added support for the `gpt-4o` model in browser commands (`act`, `extract`, `observe`)
   - The model can be selected using the `--model=gpt-4o` command-line option
-  - The default model can be configured in `cursor-tools.config.json`
+  - The default model can be configured in `vibe-tools.config.json`
   - If no model is specified, a default model is used based on the configured provider (OpenAI or Anthropic)
 - **Internal:** Bundled Stagehand script directly into the codebase to prevent dependency issues
 - **Build:** Added stagehand script verification to the release process
@@ -385,7 +385,7 @@ All notable changes to this project will be documented in this file.
 - Use token count estimation to switch gemini models to pro if repository is large to fit any other model
 - Updates GitHub model names to latest versions
 - Updates Perplexity model names to latest versions
-- Added version command to display the current version of cursor-tools
+- Added version command to display the current version of vibe-tools
 
 ### Fixed
 

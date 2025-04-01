@@ -40,14 +40,14 @@ export class ElementCommand implements Command {
             const selector = parts.slice(1).join(' ');
             options = { ...options, url, selector };
           } else {
-            yield 'Please provide both URL and selector. Usage: cursor-tools browser element <url> <selector> [options]';
+            yield 'Please provide both URL and selector. Usage: vibe-tools browser element <url> <selector> [options]';
             return;
           }
         }
       }
 
       if (!options?.url || !options?.selector) {
-        yield 'Please provide both URL and selector. Usage: cursor-tools browser element <url> <selector> [options]';
+        yield 'Please provide both URL and selector. Usage: vibe-tools browser element <url> <selector> [options]';
         return;
       }
 

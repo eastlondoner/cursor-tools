@@ -26,7 +26,7 @@ function hasGitChanges() {
 
 function isVersionPublished(version) {
   try {
-    execSync(`npm view cursor-tools@${version} version`, { stdio: 'ignore' });
+    execSync(`npm view vibe-tools@${version} version`, { stdio: 'ignore' });
     return true;
   } catch {
     return false;
@@ -69,7 +69,7 @@ try {
     if (tag) {
       // If version exists and tag is specified, just update the tag
       console.log(`Version ${version} already exists, updating tag...`);
-      run(`npm dist-tag add cursor-tools@${version} ${tag}`);
+      run(`npm dist-tag add vibe-tools@${version} ${tag}`);
     } else {
       throw new Error(`Version ${version} is already published. Please increment the version number or specify a tag to update.`);
     }

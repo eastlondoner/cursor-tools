@@ -1,13 +1,13 @@
 # Feature Behavior: Web Search Capability
 
 ## Description
-cursor-tools should enable users to search the web for information using AI models that support web search capabilities. The web command should work with various supported providers (Perplexity, Gemini, etc.), handle different output formats, and provide appropriate error messages when necessary.
+vibe-tools should enable users to search the web for information using AI models that support web search capabilities. The web command should work with various supported providers (Perplexity, Gemini, etc.), handle different output formats, and provide appropriate error messages when necessary.
 
 ## Test Scenarios
 
 ### Scenario 1: Basic Web Search (Happy Path)
 **Task Description:**
-Use cursor-tools to search the web for information about a recent technology topic. Do not specify the current date.
+Use vibe-tools to search the web for information about a recent technology topic. Do not specify the current date.
 
 **Expected Behavior:**
 - The AI agent should determine the appropriate command to use with a supported provider
@@ -23,7 +23,7 @@ Use cursor-tools to search the web for information about a recent technology top
 
 ### Scenario 2: Web Search with Different Providers (Happy Path)
 **Task Description:**
-Use cursor-tools to search the web for the same information using each supported provider that has web search capabilities:
+Use vibe-tools to search the web for the same information using each supported provider that has web search capabilities:
 - Perplexity (primary web search provider)
 - Gemini (supports web search)
 - ModelBox (supports web search via Gemini models)
@@ -44,7 +44,7 @@ Use cursor-tools to search the web for the same information using each supported
 ### Scenario 3: Web Search with Save-to Option (Happy Path)
 **Tags:** file-io, parameters
 **Task Description:**
-Use cursor-tools to search the web for information and save the results to a file.
+Use vibe-tools to search the web for information and save the results to a file.
 
 **Expected Behavior:**
 - The AI agent should include the save-to parameter in the command
@@ -60,7 +60,7 @@ Use cursor-tools to search the web for information and save the results to a fil
 ### Scenario 4: Web Search with Max-Tokens Parameter (Happy Path)
 **Tags:** tokens, parameters
 **Task Description:**
-Use cursor-tools to search the web for information that might require a lengthy response, but limit the response using the max-tokens parameter.
+Use vibe-tools to search the web for information that might require a lengthy response, but limit the response using the max-tokens parameter.
 
 **Note:** Try different token limits (e.g., 100, 200, 500) to demonstrate how the response length varies. The default is 8000 tokens if not specified.
 
@@ -77,7 +77,7 @@ Use cursor-tools to search the web for information that might require a lengthy 
 
 ### Scenario 5: Web Search with Invalid Provider (Error Handling)
 **Task Description:**
-Attempt to use cursor-tools to search the web using a provider that doesn't support web search or doesn't exist:
+Attempt to use vibe-tools to search the web using a provider that doesn't support web search or doesn't exist:
 
 - Anthropic (a valid provider that doesn't support web search)
 - ImaginaryProvider (a non-existent provider)
@@ -95,7 +95,7 @@ Attempt to use cursor-tools to search the web using a provider that doesn't supp
 
 ### Scenario 6: Web Search with Missing API Key (Error Handling)
 **Task Description:**
-Attempt to use cursor-tools to search the web using a provider for which no API key is configured. To do this you will have to explicitly set one of
+Attempt to use vibe-tools to search the web using a provider for which no API key is configured. To do this you will have to explicitly set one of
 - GEMINI_API_KEY=""
 - PERPLEXITY_API_KEY=""
 - MODELBOX_API_KEY=""
@@ -118,7 +118,7 @@ and explicitly set the corresponding provider.
 ### Scenario 7: Web Search for Complex Query (Happy Path)
 **Tags:** advanced
 **Task Description:**
-Use cursor-tools to search the web for information about a complex topic that requires synthesizing information from multiple sources.
+Use vibe-tools to search the web for information about a complex topic that requires synthesizing information from multiple sources.
 
 **Expected Behavior:**
 - The AI agent should construct a command with the complex query
@@ -134,7 +134,7 @@ Use cursor-tools to search the web for information about a complex topic that re
 ### Scenario 8: Web Search for Time-Sensitive Information (Happy Path)
 **Tags:** time-sensitive
 **Task Description:**
-Use cursor-tools to search the web for recent news or time-sensitive information.
+Use vibe-tools to search the web for recent news or time-sensitive information.
 
 **Expected Behavior:**
 - The AI agent should construct a command to search for recent information
@@ -150,7 +150,7 @@ Use cursor-tools to search the web for recent news or time-sensitive information
 ### Scenario 9: Web Search with Specific Domain Focus (Advanced Usage)
 **Tags:** advanced, parameters
 **Task Description:**
-Use cursor-tools to search the web for information with a focus on a specific domain or website.
+Use vibe-tools to search the web for information with a focus on a specific domain or website.
 
 **Expected Behavior:**
 - The AI agent should include domain-specific parameters in the search query
@@ -165,7 +165,7 @@ Use cursor-tools to search the web for information with a focus on a specific do
 
 ### Scenario 10: Fallback with Invalid API Key (Fallback)
 **Task Description:**
-Attempt to use cursor-tools to search the web without setting a provider when the PERPLEXITY_API_KEY is invalid. To do this you will have to explicitly set PERPLEXITY_API_KEY="invalid" when running cursor-tools.
+Attempt to use vibe-tools to search the web without setting a provider when the PERPLEXITY_API_KEY is invalid. To do this you will have to explicitly set PERPLEXITY_API_KEY="invalid" when running vibe-tools.
 
 **Expected Behavior:**
 - When the API key is invalid, the command should log a clear error message

@@ -7,7 +7,7 @@ This test verifies the output behaviour of the test command for different parame
 
 ### Scenario 1: Quietest output
 **Task Description:**
-Use cursor-tools to execute the test tests/feature-behaviors/test/test-command-parallel-example.md. Save the output to a file in the current directory and set the quiet flag when running cursor-tools.
+Use vibe-tools to execute the test tests/feature-behaviors/test/test-command-parallel-example.md. Save the output to a file in the current directory and set the quiet flag when running vibe-tools.
 
 **Expected Behavior:**
 - The AI agent should determine the appropriate command to use with the correct flags
@@ -23,7 +23,7 @@ Use cursor-tools to execute the test tests/feature-behaviors/test/test-command-p
 
 ### Scenario 2: Save-to output
 **Task Description:**
-Use cursor-tools to execute the test tests/feature-behaviors/test/test-command-parallel-example.md. Save the output to a file in the current directory.
+Use vibe-tools to execute the test tests/feature-behaviors/test/test-command-parallel-example.md. Save the output to a file in the current directory.
 
 **Expected Behavior:**
 - The AI agent should determine the appropriate command to use with the correct flags
@@ -40,7 +40,7 @@ Use cursor-tools to execute the test tests/feature-behaviors/test/test-command-p
 
 ### Scenario 3: Debug output
 **Task Description:**
-First use cursor-tools to execute the test in tests/feature-behaviors/test/test-command-parallel-example.md. Then run the same test with the debug flag set.
+First use vibe-tools to execute the test in tests/feature-behaviors/test/test-command-parallel-example.md. Then run the same test with the debug flag set.
 
 **Expected Behavior:**
 - The AI agent should determine the appropriate commands to use with the correct flags
@@ -55,7 +55,7 @@ First use cursor-tools to execute the test in tests/feature-behaviors/test/test-
 
 ### Scenario 4: Detailed Scenario Information in Reports
 **Task Description:**
-Use cursor-tools to execute the test tests/feature-behaviors/test/test-command-parallel-example.md and save the output to a file. After the test completes, examine the report file to verify it contains detailed scenario information.
+Use vibe-tools to execute the test tests/feature-behaviors/test/test-command-parallel-example.md and save the output to a file. After the test completes, examine the report file to verify it contains detailed scenario information.
 
 **Expected Behavior:**
 - The AI agent should use the test command with appropriate flags

@@ -24,7 +24,7 @@ async function getUserInput(prompt: string): Promise<string> {
   });
 }
 
-// Valid providers that cursor-tools supports
+// Valid providers that vibe-tools supports
 // Note: The case here is important as it's used to normalize user input to the expected format
 const VALID_PROVIDERS = ['Openrouter', 'Perplexity', 'Openai', 'Anthropic', 'Modelbox', 'Gemini'];
 const VALID_PROVIDERS_LOWERCASE = VALID_PROVIDERS.map((p) => p.toLowerCase());
@@ -86,8 +86,8 @@ export class JsonInstallCommand implements Command {
   private async *setupApiKeys(requiredProviders: Provider[]): CommandGenerator {
     loadEnv(); // Load existing env files if any
 
-    const homeEnvPath = join(homedir(), '.cursor-tools', '.env');
-    const localEnvPath = join(process.cwd(), '.cursor-tools.env');
+    const homeEnvPath = join(homedir(), '.vibe-tools', '.env');
+    const localEnvPath = join(process.cwd(), '.vibe-tools.env');
 
     try {
       // Welcome message
@@ -125,7 +125,7 @@ export class JsonInstallCommand implements Command {
       const hasAtLeastOneKey = Object.values(keys).some((value) => !!value);
 
       if (!hasAtLeastOneKey) {
-        yield '\nWarning: No API keys provided. You will need to set up keys manually to use cursor-tools with your configuration.\n';
+        yield '\nWarning: No API keys provided. You will need to set up keys manually to use vibe-tools with your configuration.\n';
       }
 
       // Write keys to file
@@ -183,11 +183,11 @@ export class JsonInstallCommand implements Command {
       // Try to write to home directory first, fall back to local if it fails
       try {
         writeKeysToFile(homeEnvPath, keys);
-        yield '\nAPI keys written to ~/.cursor-tools/.env\n';
+        yield '\nAPI keys written to ~/.vibe-tools/.env\n';
       } catch (error) {
         console.error('Error writing API keys to home directory:', error);
         writeKeysToFile(localEnvPath, keys);
-        yield '\nAPI keys written to .cursor-tools.env in the current directory\n';
+        yield '\nAPI keys written to .vibe-tools.env in the current directory\n';
       }
     } catch (error) {
       console.error('Error setting up API keys:', error);
@@ -244,19 +244,19 @@ export class JsonInstallCommand implements Command {
       }
     }
 
-    const homeConfigPath = join(homedir(), '.cursor-tools', 'config.json');
-    const localConfigPath = join(process.cwd(), 'cursor-tools.config.json');
+    const homeConfigPath = join(homedir(), '.vibe-tools', 'config.json');
+    const localConfigPath = join(process.cwd(), 'vibe-tools.config.json');
 
     // Create directory if it doesn't exist
-    const homeConfigDir = join(homedir(), '.cursor-tools');
+    const homeConfigDir = join(homedir(), '.vibe-tools');
     if (!existsSync(homeConfigDir)) {
       mkdirSync(homeConfigDir, { recursive: true });
     }
 
     // Ask user where to save the config
     console.log('\nWhere would you like to save the configuration?');
-    console.log('1) Global config (~/.cursor-tools/config.json)');
-    console.log('2) Local config (./cursor-tools.config.json)');
+    console.log('1) Global config (~/.vibe-tools/config.json)');
+    console.log('2) Local config (./vibe-tools.config.json)');
 
     const answer = await getUserInput('Enter choice (1 or 2): ');
     const configPath = answer === '2' ? localConfigPath : homeConfigPath;
@@ -320,19 +320,19 @@ export class JsonInstallCommand implements Command {
           return;
         }
 
-        if (!result.targetPath.endsWith('cursor-tools.mdc')) {
+        if (!result.targetPath.endsWith('vibe-tools.mdc')) {
           yield '\n🚧 Warning: Using legacy .cursorrules file. This file will be deprecated in a future release.\n' +
             'To migrate to the new format:\n' +
             '  1) Set USE_LEGACY_CURSORRULES=false in your environment\n' +
-            '  2) Run cursor-tools install . again\n' +
-            '  3) Remove the <cursor-tools Integration> section from .cursorrules\n\n';
+            '  2) Run vibe-tools install . again\n' +
+            '  3) Remove the <vibe-tools Integration> section from .cursorrules\n\n';
         } else {
           if (result.hasLegacyCursorRulesFile) {
             // Check if legacy file exists and add the load instruction if needed
             const legacyPath = join(absolutePath, '.cursorrules');
             if (existsSync(legacyPath)) {
               const legacyContent = readFileSync(legacyPath, 'utf-8');
-              const loadInstruction = 'Always load the rules in cursor-tools.mdc';
+              const loadInstruction = 'Always load the rules in vibe-tools.mdc';
 
               if (!legacyContent.includes(loadInstruction)) {
                 writeFileSync(legacyPath, `${legacyContent.trim()}\n${loadInstruction}\n`);
@@ -345,12 +345,12 @@ export class JsonInstallCommand implements Command {
 
         if (result.needsUpdate) {
           if (!result.targetPath.endsWith('.cursorrules')) {
-            // replace entire file with new cursor-tools section
+            // replace entire file with new vibe-tools section
             writeFileSync(result.targetPath, CURSOR_RULES_TEMPLATE.trim());
           } else {
-            // Replace existing cursor-tools section or append if not found
-            const startTag = '<cursor-tools Integration>';
-            const endTag = '</cursor-tools Integration>';
+            // Replace existing vibe-tools section or append if not found
+            const startTag = '<vibe-tools Integration>';
+            const endTag = '</vibe-tools Integration>';
             const existingContent = existsSync(result.targetPath)
               ? readFileSync(result.targetPath, 'utf-8')
               : '';

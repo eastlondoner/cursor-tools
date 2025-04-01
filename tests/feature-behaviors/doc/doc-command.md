@@ -1,13 +1,13 @@
 # Feature Behavior: Documentation Generation Capability
 
 ## Description
-cursor-tools should enable users to generate comprehensive documentation for repositories. The doc command should analyze the repository structure, code patterns, and functionality to create detailed documentation that can be saved to a file or displayed in the console.
+vibe-tools should enable users to generate comprehensive documentation for repositories. The doc command should analyze the repository structure, code patterns, and functionality to create detailed documentation that can be saved to a file or displayed in the console.
 
 ## Test Scenarios
 
 ### Scenario 1: Basic Documentation Generation (Happy Path)
 **Task Description:**
-Use cursor-tools to generate documentation for the current repository.
+Use vibe-tools to generate documentation for the current repository.
 
 **Expected Behavior:**
 - The AI agent should determine the appropriate command to use
@@ -25,7 +25,7 @@ Use cursor-tools to generate documentation for the current repository.
 ### Scenario 2: Documentation Generation with Output File (Happy Path)
 **Tags:** file-io, parameters
 **Task Description:**
-Use cursor-tools to generate documentation for the current repository and save it to a specified output file.
+Use vibe-tools to generate documentation for the current repository and save it to a specified output file.
 
 **Expected Behavior:**
 - The AI agent should include the output parameter in the command
@@ -41,7 +41,7 @@ Use cursor-tools to generate documentation for the current repository and save i
 ### Scenario 3: Documentation Generation for Remote Repository (Happy Path)
 **Tags:** advanced
 **Task Description:**
-Use cursor-tools to generate documentation for a remote GitHub repository.
+Use vibe-tools to generate documentation for a remote GitHub repository.
 
 **Expected Behavior:**
 - The AI agent should include the repository URL in the command
@@ -58,7 +58,7 @@ Use cursor-tools to generate documentation for a remote GitHub repository.
 ### Scenario 4: Documentation Generation with Hint (Happy Path)
 **Tags:** parameters
 **Task Description:**
-Use cursor-tools to generate documentation with a hint to focus on specific parts of the repository.
+Use vibe-tools to generate documentation with a hint to focus on specific parts of the repository.
 
 **Expected Behavior:**
 - The AI agent should include the hint parameter in the command
@@ -73,7 +73,7 @@ Use cursor-tools to generate documentation with a hint to focus on specific part
 
 ### Scenario 5: Documentation Generation with Invalid Repository URL (Error Handling)
 **Task Description:**
-Attempt to use cursor-tools to generate documentation for a repository with an invalid URL.
+Attempt to use vibe-tools to generate documentation for a repository with an invalid URL.
 
 **Expected Behavior:**
 - The command should fail with a clear error message
@@ -88,7 +88,7 @@ Attempt to use cursor-tools to generate documentation for a repository with an i
 
 ### Scenario 6: Documentation Generation with Missing API Key (Error Handling)
 **Task Description:**
-Attempt to use cursor-tools to generate documentation when required API keys are missing.
+Attempt to use vibe-tools to generate documentation when required API keys are missing.
 To simulate missing API keys, set CURSOR_TOOLS_ENV_UNSET=GEMINI_API_KEY when running the command and specify the gemini provider explicitly.
 
 **Expected Behavior:**
@@ -105,7 +105,7 @@ To simulate missing API keys, set CURSOR_TOOLS_ENV_UNSET=GEMINI_API_KEY when run
 ### Scenario 7: Documentation Generation for Empty Repository (Edge Case)
 **Tags:** edge-case
 **Task Description:**
-Use cursor-tools to generate documentation for an empty or nearly empty repository.
+Use vibe-tools to generate documentation for an empty or nearly empty repository.
 
 **Expected Behavior:**
 - The command should handle the edge case gracefully
@@ -121,7 +121,7 @@ Use cursor-tools to generate documentation for an empty or nearly empty reposito
 ### Scenario 8: Documentation Generation with Format Parameter (Happy Path)
 **Tags:** parameters
 **Task Description:**
-Use cursor-tools to generate documentation with a specified output format.
+Use vibe-tools to generate documentation with a specified output format.
 
 **Expected Behavior:**
 - The AI agent should include the format parameter in the command
@@ -137,7 +137,7 @@ Use cursor-tools to generate documentation with a specified output format.
 ### Scenario 9: Documentation Generation for Large Repository (Performance)
 **Tags:** performance
 **Task Description:**
-Use cursor-tools to generate documentation for a large repository with many files and directories.
+Use vibe-tools to generate documentation for a large repository with many files and directories.
 
 **Expected Behavior:**
 - The command should handle the large repository without crashing
@@ -153,7 +153,7 @@ Use cursor-tools to generate documentation for a large repository with many file
 ### Scenario 10: Documentation Generation with Multiple Parameters (Advanced Usage)
 **Tags:** advanced, parameters
 **Task Description:**
-Use cursor-tools to generate documentation with multiple parameters (output file, format, hint, etc.).
+Use vibe-tools to generate documentation with multiple parameters (output file, format, hint, etc.).
 
 **Expected Behavior:**
 - The AI agent should include multiple parameters in the command
@@ -169,7 +169,7 @@ Use cursor-tools to generate documentation with multiple parameters (output file
 ### Scenario 11: Documentation Generation with Custom Repomix Configuration (Happy Path)
 **Tags:** repomix-config, configuration
 **Task Description:**
-Use cursor-tools to generate documentation with a custom repomix.config.json file that modifies which files are included/excluded in the documentation.
+Use vibe-tools to generate documentation with a custom repomix.config.json file that modifies which files are included/excluded in the documentation.
 
 First, create a repomix.config.json file using the content from {{path:doc-repomix-config.json}} in the repository root. Then, generate documentation and verify that the configuration is respected.
 

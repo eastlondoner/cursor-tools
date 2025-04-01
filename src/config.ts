@@ -103,13 +103,13 @@ import { once } from './utils/once';
 export function loadConfig(): Config {
   // Try loading from current directory first
   try {
-    const localConfigPath = join(process.cwd(), 'cursor-tools.config.json');
+    const localConfigPath = join(process.cwd(), 'vibe-tools.config.json');
     const localConfig = JSON.parse(readFileSync(localConfigPath, 'utf-8'));
     return { ...defaultConfig, ...localConfig };
   } catch {
     // If local config doesn't exist, try home directory
     try {
-      const homeConfigPath = join(homedir(), '.cursor-tools', 'config.json');
+      const homeConfigPath = join(homedir(), '.vibe-tools', 'config.json');
       const homeConfig = JSON.parse(readFileSync(homeConfigPath, 'utf-8'));
       return { ...defaultConfig, ...homeConfig };
     } catch {
@@ -137,7 +137,7 @@ export function applyEnvUnset(): void {
 
 function _loadEnv(): void {
   // Try loading from current directory first
-  const localEnvPath = join(process.cwd(), '.cursor-tools.env');
+  const localEnvPath = join(process.cwd(), '.vibe-tools.env');
   if (existsSync(localEnvPath)) {
     console.log('Local .env file found, loading env from', localEnvPath);
     dotenv.config({ path: localEnvPath });
@@ -145,7 +145,7 @@ function _loadEnv(): void {
   }
 
   // If local env doesn't exist, try home directory
-  const homeEnvPath = join(homedir(), '.cursor-tools', '.env');
+  const homeEnvPath = join(homedir(), '.vibe-tools', '.env');
   if (existsSync(homeEnvPath)) {
     console.log('Home .env file found, loading env from', homeEnvPath);
     dotenv.config({ path: homeEnvPath });

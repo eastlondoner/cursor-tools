@@ -1,8 +1,9 @@
 {
-  "name": "cursor-tools",
+  "name": "vibe-tools",
   "description": "CLI tools for AI agents",
   "keywords": [
     "cursor",
+    "vibe",
     "tools",
     "ai",
     "assistant"
@@ -11,7 +12,7 @@
   "type": "module",
   "main": "./dist/index.mjs",
   "bin": {
-    "cursor-tools": "dist/index.mjs"
+    "vibe-tools": "dist/index.mjs"
   },
   "scripts": {
     "compile": "tsc -build",

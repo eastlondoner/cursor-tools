@@ -1,13 +1,13 @@
 # Feature Behavior: GitHub Integration Capability
 
 ## Description
-cursor-tools should enable users to interact with GitHub repositories, including retrieving information about pull requests and issues. The github command and its subcommands (pr, issue) should provide detailed information about GitHub resources and handle authentication and error cases appropriately.
+vibe-tools should enable users to interact with GitHub repositories, including retrieving information about pull requests and issues. The github command and its subcommands (pr, issue) should provide detailed information about GitHub resources and handle authentication and error cases appropriately.
 
 ## Test Scenarios
 
 ### Scenario 1: GitHub PR List (Happy Path)
 **Task Description:**
-Use cursor-tools to retrieve a list of recent pull requests from a GitHub repository.
+Use vibe-tools to retrieve a list of recent pull requests from a GitHub repository.
 
 **Expected Behavior:**
 - The AI agent should determine the appropriate command to use
@@ -24,7 +24,7 @@ Use cursor-tools to retrieve a list of recent pull requests from a GitHub reposi
 
 ### Scenario 2: GitHub PR Details (Happy Path)
 **Task Description:**
-Use cursor-tools to retrieve detailed information about a specific pull request by its number.
+Use vibe-tools to retrieve detailed information about a specific pull request by its number.
 
 **Expected Behavior:**
 - The AI agent should include the PR number in the command
@@ -41,7 +41,7 @@ Use cursor-tools to retrieve detailed information about a specific pull request 
 
 ### Scenario 3: GitHub Issue List (Happy Path)
 **Task Description:**
-Use cursor-tools to retrieve a list of recent issues from a GitHub repository.
+Use vibe-tools to retrieve a list of recent issues from a GitHub repository.
 
 **Expected Behavior:**
 - The AI agent should determine the appropriate command to use
@@ -58,7 +58,7 @@ Use cursor-tools to retrieve a list of recent issues from a GitHub repository.
 
 ### Scenario 4: GitHub Issue Details (Happy Path)
 **Task Description:**
-Use cursor-tools to retrieve detailed information about a specific issue by its number.
+Use vibe-tools to retrieve detailed information about a specific issue by its number.
 
 **Expected Behavior:**
 - The AI agent should include the issue number in the command
@@ -76,7 +76,7 @@ Use cursor-tools to retrieve detailed information about a specific issue by its 
 ### Scenario 5: GitHub Authentication Method Verification (Happy Path)
 **Tags:** authentication
 **Task Description:**
-Use cursor-tools to verify that different authentication methods (environment variable, GitHub CLI, git credentials) work correctly.
+Use vibe-tools to verify that different authentication methods (environment variable, GitHub CLI, git credentials) work correctly.
 
 **Expected Behavior:**
 - The AI agent should determine the appropriate command to use
@@ -109,7 +109,7 @@ Simulate a scenario where the GitHub API rate limit is exceeded.
 
 ### Scenario 7: GitHub Authentication Error (Error Handling)
 **Task Description:**
-Attempt to use cursor-tools to access GitHub resources when authentication fails.
+Attempt to use vibe-tools to access GitHub resources when authentication fails.
 
 **Expected Behavior:**
 - The command should fail with a clear error message about authentication
@@ -125,7 +125,7 @@ Attempt to use cursor-tools to access GitHub resources when authentication fails
 ### Scenario 8: GitHub Private Repository Access (Edge Case)
 **Tags:** edge-case, authentication
 **Task Description:**
-Use cursor-tools to access resources from a private GitHub repository.
+Use vibe-tools to access resources from a private GitHub repository.
 
 **Expected Behavior:**
 - The command should authenticate properly to access the private repository
@@ -141,7 +141,7 @@ Use cursor-tools to access resources from a private GitHub repository.
 
 ### Scenario 9: GitHub Non-Existent PR or Issue (Error Handling)
 **Task Description:**
-Attempt to use cursor-tools to retrieve information about a non-existent pull request or issue.
+Attempt to use vibe-tools to retrieve information about a non-existent pull request or issue.
 
 **Expected Behavior:**
 - The command should fail with a clear error message
@@ -156,7 +156,7 @@ Attempt to use cursor-tools to retrieve information about a non-existent pull re
 
 ### Scenario 10: GitHub Repository Not Found (Error Handling)
 **Task Description:**
-Attempt to use cursor-tools to access resources from a non-existent GitHub repository.
+Attempt to use vibe-tools to access resources from a non-existent GitHub repository.
 
 **Expected Behavior:**
 - The command should fail with a clear error message

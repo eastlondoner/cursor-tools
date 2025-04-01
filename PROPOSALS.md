@@ -51,15 +51,15 @@ This approach focuses on creating isolated environments at the scenario level by
    }) {
      return {
        name: 'execute_command',
-       description: 'Execute a cursor-tools command',
+       description: 'Execute a vibe-tools command',
        parameters: {
          command: {
            type: 'string',
-           description: 'The cursor-tools command to execute',
+           description: 'The vibe-tools command to execute',
          },
        },
        execute: async ({ command }) => {
-         // Determine absolute path to cursor-tools entry point
+         // Determine absolute path to vibe-tools entry point
          const cursorToolsPath = path.resolve(__dirname, '../../../src/index.ts');
          
          // Build command using Node with tsx for TypeScript support
@@ -135,7 +135,7 @@ export class TestEnvironmentManager {
     // Create a unique directory name with timestamp and random suffix for collision avoidance
     const timestamp = Date.now();
     const randomSuffix = crypto.randomBytes(4).toString('hex');
-    const dirName = `cursor-tools-test-${scenarioId}-${timestamp}-${randomSuffix}`;
+    const dirName = `vibe-tools-test-${scenarioId}-${timestamp}-${randomSuffix}`;
     const tempDir = path.join(os.tmpdir(), dirName);
     
     // Ensure the directory exists
@@ -381,18 +381,18 @@ export function createCommandExecutionTool(options: {
 
   return {
     name: 'execute_command',
-    description: 'Execute a cursor-tools command',
+    description: 'Execute a vibe-tools command',
     parameters: {
       properties: {
         command: {
           type: 'string',
-          description: 'The cursor-tools command to execute',
+          description: 'The vibe-tools command to execute',
         },
       },
       required: ['command'],
     },
     execute: async ({ command }: { command: string }) => {
-      // Determine absolute path to cursor-tools entry point
+      // Determine absolute path to vibe-tools entry point
       const cursorToolsPath = path.resolve(__dirname, '../../../src/index.ts');
       
       // Build command using Node with tsx for TypeScript support
@@ -473,7 +473,7 @@ Test the implementation with various scenarios:
 
 ## Proposal 2: Process-Level Isolation with Child Processes
 
-This approach focuses on complete process isolation by spawning child processes for each cursor-tools command, each with its own working directory and environment.
+This approach focuses on complete process isolation by spawning child processes for each vibe-tools command, each with its own working directory and environment.
 
 ### Implementation Steps:
 
@@ -500,11 +500,11 @@ This approach focuses on complete process isolation by spawning child processes 
        // Create custom tool for isolated execution
        const isolatedExecutionTool = {
          name: 'execute_command',
-         description: 'Execute a cursor-tools command in an isolated environment',
+         description: 'Execute a vibe-tools command in an isolated environment',
          parameters: {
            command: {
              type: 'string',
-             description: 'The cursor-tools command to execute',
+             description: 'The vibe-tools command to execute',
            },
          },
          execute: async ({ command }) => {
@@ -551,7 +551,7 @@ This approach focuses on complete process isolation by spawning child processes 
    ```typescript
    export class IsolatedProcessManager {
      static async createScenarioDirectory(scenarioId: string): Promise<string> {
-       const tempDir = path.join(os.tmpdir(), `cursor-tools-test-${scenarioId}-${Date.now()}`);
+       const tempDir = path.join(os.tmpdir(), `vibe-tools-test-${scenarioId}-${Date.now()}`);
        await fs.promises.mkdir(tempDir, { recursive: true });
        return tempDir;
      }

@@ -81,7 +81,7 @@ export class OpenCommand implements Command {
       }
 
       if (!options?.url) {
-        yield 'Please provide a URL to open. Usage: cursor-tools browser open <url> [options]';
+        yield 'Please provide a URL to open. Usage: vibe-tools browser open <url> [options]';
         return;
       }
 

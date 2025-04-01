@@ -1,13 +1,13 @@
 # Feature Behavior: Model Context Protocol Capability
 
 ## Description
-cursor-tools should enable users to interact with Model Context Protocol (MCP) servers, search for available servers, and execute tools from these servers. The mcp command and its subcommands (search, run) should handle various server configurations, tool arguments, and error cases appropriately.
+vibe-tools should enable users to interact with Model Context Protocol (MCP) servers, search for available servers, and execute tools from these servers. The mcp command and its subcommands (search, run) should handle various server configurations, tool arguments, and error cases appropriately.
 
 ## Test Scenarios
 
 ### Scenario 1: MCP Search for SQLite Server (Happy Path)
 **Task Description:**
-Use cursor-tools to search for available MCP servers that can handle SQLite database operations.
+Use vibe-tools to search for available MCP servers that can handle SQLite database operations.
 
 **Expected Behavior:**
 - The AI agent should use the mcp search command with a query for SQLite capabilities
@@ -28,7 +28,7 @@ Use cursor-tools to search for available MCP servers that can handle SQLite data
 ### Scenario 2: MCP Search for Unsupported Database (Edge Case)
 **Tags:** edge-case
 **Task Description:**
-Use cursor-tools to search for something that will return no MCP servers (e.g., 'CassandraDB on Chromebook').
+Use vibe-tools to search for something that will return no MCP servers (e.g., 'CassandraDB on Chromebook').
 
 **Expected Behavior:**
 - The command should handle the edge case gracefully
@@ -43,7 +43,7 @@ Use cursor-tools to search for something that will return no MCP servers (e.g., 
 
 ### Scenario 3: MCP Run SQLite Query (Happy Path)
 **Task Description:**
-Use cursor-tools to execute the SQLite MCP server's `read_query` tool to count the number of users in the test database at {{path:test.db}}. When calling cursor-tools mcp run for this that "ONLY mcp-server-sqlite should be used"
+Use vibe-tools to execute the SQLite MCP server's `read_query` tool to count the number of users in the test database at {{path:test.db}}. When calling vibe-tools mcp run for this that "ONLY mcp-server-sqlite should be used"
 
 **Expected Behavior:**
 - The AI agent should use the MCP run command with the SQLite server's read_query tool
@@ -63,7 +63,7 @@ Use cursor-tools to execute the SQLite MCP server's `read_query` tool to count t
 ### Scenario 4: MCP Run SQLite Query with Specific Filter (Happy Path)
 **Tags:** query
 **Task Description:**
-Use cursor-tools to execute the SQLite MCP server's `read_query` tool to find a specific user by name in the test database at {{path:test.db}}. The test database contains users named Alice, Bob, and Charlie. When calling cursor-tools mcp run for this that "ONLY mcp-server-sqlite should be used"
+Use vibe-tools to execute the SQLite MCP server's `read_query` tool to find a specific user by name in the test database at {{path:test.db}}. The test database contains users named Alice, Bob, and Charlie. When calling vibe-tools mcp run for this that "ONLY mcp-server-sqlite should be used"
 
 **Expected Behavior:**
 - The AI agent should use the MCP run command with the SQLite server's read_query tool
@@ -81,7 +81,7 @@ Use cursor-tools to execute the SQLite MCP server's `read_query` tool to find a 
 
 ### Scenario 5: MCP Run with Invalid SQL Query (Error Handling)
 **Task Description:**
-Attempt to use cursor-tools to execute the SQLite MCP server's `read_query` tool with an invalid SQL query on the test database at {{path:test.db}}.
+Attempt to use vibe-tools to execute the SQLite MCP server's `read_query` tool with an invalid SQL query on the test database at {{path:test.db}}.
 
 **Expected Behavior:**
 - The command should fail with a clear SQL error message
@@ -96,7 +96,7 @@ Attempt to use cursor-tools to execute the SQLite MCP server's `read_query` tool
 
 ### Scenario 6: MCP Server Configuration (Error Handling)
 **Task Description:**
-Attempt to use cursor-tools to execute the `read_query` tool with an incorrect SQLite MCP server configuration (wrong path in config). When calling cursor-tools mcp run for specify this that "ONLY mcp-server-sqlite should be used"
+Attempt to use vibe-tools to execute the `read_query` tool with an incorrect SQLite MCP server configuration (wrong path in config). When calling vibe-tools mcp run for specify this that "ONLY mcp-server-sqlite should be used"
 
 **Expected Behavior:**
 - The command should fail with a clear error message
@@ -112,11 +112,11 @@ Attempt to use cursor-tools to execute the `read_query` tool with an incorrect S
 ### Scenario 7: MCP Run with Complex SQL Query (Happy Path)
 **Tags:** advanced, parameters
 **Task Description:**
-Use cursor-tools to execute the SQLite MCP server's `read_query` tool with a complex SQL query on the test database at {{path:test.db}}. The query should:
+Use vibe-tools to execute the SQLite MCP server's `read_query` tool with a complex SQL query on the test database at {{path:test.db}}. The query should:
 1. Count the number of users with each email domain
 2. Only include domains with more than 1 user
 3. Order by count descending
-When calling cursor-tools mcp run for this specify that "ONLY mcp-server-sqlite should be used"
+When calling vibe-tools mcp run for this specify that "ONLY mcp-server-sqlite should be used"
 
 **Expected Behavior:**
 - The AI agent should use the MCP run command with the following SQL query:
@@ -142,8 +142,8 @@ When calling cursor-tools mcp run for this specify that "ONLY mcp-server-sqlite 
 ### Scenario 8: MCP Run with Query Output to File (Advanced Usage)
 **Tags:** advanced, file-io
 **Task Description:**
-Use cursor-tools to execute the SQLite MCP server's `read_query` tool and save the results to a file. Query all user data from the test database at {{path:test.db}} and save it as JSON.
-When calling cursor-tools mcp run for this specify that "ONLY mcp-server-sqlite should be used"
+Use vibe-tools to execute the SQLite MCP server's `read_query` tool and save the results to a file. Query all user data from the test database at {{path:test.db}} and save it as JSON.
+When calling vibe-tools mcp run for this specify that "ONLY mcp-server-sqlite should be used"
 
 **Expected Behavior:**
 - The AI agent should use the MCP run command with save-to/saveTo argument
@@ -162,7 +162,7 @@ When calling cursor-tools mcp run for this specify that "ONLY mcp-server-sqlite 
 ### Scenario 9: MCP List and Describe Tables (Happy Path)
 **Tags:** schema
 **Task Description:**
-Use cursor-tools to execute the SQLite MCP server's `list_tables` tool first, then use `describe_table` to get schema information for the users table in the test database at {{path:test.db}}. You must specify in the command to cursor-tools that it must "ONLY use mcp-server-sqlite"
+Use vibe-tools to execute the SQLite MCP server's `list_tables` tool first, then use `describe_table` to get schema information for the users table in the test database at {{path:test.db}}. You must specify in the command to vibe-tools that it must "ONLY use mcp-server-sqlite"
 
 **Expected Behavior:**
 1. For list_tables:

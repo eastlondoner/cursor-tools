@@ -12,7 +12,7 @@ interface InstallOptions extends CommandOptions {
   json?: string;
 }
 
-// Helper function to check for local cursor-tools dependencies
+// Helper function to check for local vibe-tools dependencies
 async function checkLocalDependencies(targetPath: string): Promise<string | null> {
   const packageJsonPath = join(targetPath, 'package.json');
   if (!existsSync(packageJsonPath)) {
@@ -24,8 +24,8 @@ async function checkLocalDependencies(targetPath: string): Promise<string | null
     const dependencies = packageJson.dependencies || {};
     const devDependencies = packageJson.devDependencies || {};
 
-    if (dependencies['cursor-tools'] || devDependencies['cursor-tools']) {
-      return `Warning: Found local cursor-tools dependency in package.json. Since cursor-tools is now designed for global installation only, please remove it from your package.json dependencies and run 'npm uninstall cursor-tools', 'pnpm uninstall cursor-tools', or 'yarn remove cursor-tools' to clean up any local installation.\n`;
+    if (dependencies['vibe-tools'] || devDependencies['vibe-tools']) {
+      return `Warning: Found local vibe-tools dependency in package.json. Since vibe-tools is now designed for global installation only, please remove it from your package.json dependencies and run 'npm uninstall vibe-tools', 'pnpm uninstall vibe-tools', or 'yarn remove vibe-tools' to clean up any local installation.\n`;
     }
   } catch (error) {
     console.error('Error reading package.json:', error);
@@ -72,8 +72,8 @@ export class InstallCommand implements Command {
   private async *setupApiKeys(): CommandGenerator {
     loadEnv(); // Load existing env files if any
 
-    const homeEnvPath = join(homedir(), '.cursor-tools', '.env');
-    const localEnvPath = join(process.cwd(), '.cursor-tools.env');
+    const homeEnvPath = join(homedir(), '.vibe-tools', '.env');
+    const localEnvPath = join(process.cwd(), '.vibe-tools.env');
 
     const apiKeysConfigFileExists = existsSync(homeEnvPath) || existsSync(localEnvPath);
 
@@ -273,12 +273,12 @@ export class InstallCommand implements Command {
 
       try {
         writeKeysToFile(homeEnvPath, keys);
-        yield 'API keys written to ~/.cursor-tools/.env\n';
+        yield 'API keys written to ~/.vibe-tools/.env\n';
       } catch (error) {
         console.error('Error writing API keys to home directory:', error);
         // Fall back to local file if home directory write fails
         writeKeysToFile(localEnvPath, keys);
-        yield 'API keys written to .cursor-tools.env in the current directory\n';
+        yield 'API keys written to .vibe-tools.env in the current directory\n';
       }
     } catch (error) {
       console.error('Error setting up API keys:', error);
@@ -341,19 +341,19 @@ export class InstallCommand implements Command {
       let existingContent = '';
       let needsUpdate = result.needsUpdate;
 
-      if (!result.targetPath.endsWith('cursor-tools.mdc')) {
+      if (!result.targetPath.endsWith('vibe-tools.mdc')) {
         yield '\n🚧 Warning: Using legacy .cursorrules file. This file will be deprecated in a future release.\n' +
           'To migrate to the new format:\n' +
           '  1) Set USE_LEGACY_CURSORRULES=false in your environment\n' +
-          '  2) Run cursor-tools install . again\n' +
-          '  3) Remove the <cursor-tools Integration> section from .cursorrules\n\n';
+          '  2) Run vibe-tools install . again\n' +
+          '  3) Remove the <vibe-tools Integration> section from .cursorrules\n\n';
       } else {
         if (result.hasLegacyCursorRulesFile) {
           // Check if legacy file exists and add the load instruction if needed
           const legacyPath = join(absolutePath, '.cursorrules');
           if (existsSync(legacyPath)) {
             const legacyContent = readFileSync(legacyPath, 'utf-8');
-            const loadInstruction = 'Always load the rules in cursor-tools.mdc';
+            const loadInstruction = 'Always load the rules in vibe-tools.mdc';
 
             if (!legacyContent.includes(loadInstruction)) {
               writeFileSync(legacyPath, `${legacyContent.trim()}\n${loadInstruction}\n`);
@@ -366,7 +366,7 @@ export class InstallCommand implements Command {
 
       if (existsSync(result.targetPath)) {
         existingContent = readFileSync(result.targetPath, 'utf-8');
-        const versionMatch = existingContent.match(/<!-- cursor-tools-version: ([\w.-]+) -->/);
+        const versionMatch = existingContent.match(/<!-- vibe-tools-version: ([\w.-]+) -->/);
         const currentVersion = versionMatch ? versionMatch[1] : '0';
 
         if (needsUpdate) {
@@ -386,12 +386,12 @@ export class InstallCommand implements Command {
 
       if (needsUpdate) {
         if (!result.targetPath.endsWith('.cursorrules')) {
-          // replace entire file with new cursor-tools section
+          // replace entire file with new vibe-tools section
           writeFileSync(result.targetPath, CURSOR_RULES_TEMPLATE.trim());
         } else {
-          // Replace existing cursor-tools section or append if not found
-          const startTag = '<cursor-tools Integration>';
-          const endTag = '</cursor-tools Integration>';
+          // Replace existing vibe-tools section or append if not found
+          const startTag = '<vibe-tools Integration>';
+          const endTag = '</vibe-tools Integration>';
           const startIndex = existingContent.indexOf(startTag);
           const endIndex = existingContent.indexOf(endTag);
 

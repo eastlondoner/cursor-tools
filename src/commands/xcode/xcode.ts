@@ -1,5 +1,5 @@
 /**
- * Main orchestrator for Xcode-related commands in cursor-tools.
+ * Main orchestrator for Xcode-related commands in vibe-tools.
  * Implements the Command interface and manages subcommands for different Xcode operations.
  *
  * Currently supported subcommands:
@@ -49,16 +49,16 @@ export class XcodeCommand implements Command {
 
     // If no subcommand provided, show help
     if (!subcommand) {
-      yield 'Usage: cursor-tools xcode <subcommand> [args]\n';
+      yield 'Usage: vibe-tools xcode <subcommand> [args]\n';
       yield 'Available subcommands:';
       yield '  build         Build Xcode project and report errors';
       yield '  lint          Analyze code and offer to fix warnings';
       yield '  run <device>  Build and run on simulator (iphone/ipad)\n';
       yield 'Examples:';
-      yield '  cursor-tools xcode build';
-      yield '  cursor-tools xcode lint';
-      yield '  cursor-tools xcode run iphone';
-      yield '  cursor-tools xcode run ipad';
+      yield '  vibe-tools xcode build';
+      yield '  vibe-tools xcode lint';
+      yield '  vibe-tools xcode run iphone';
+      yield '  vibe-tools xcode run ipad';
       return;
     }
 

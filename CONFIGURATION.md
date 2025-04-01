@@ -1,17 +1,17 @@
-# cursor-tools Configuration Guide
+# vibe-tools Configuration Guide
 
-This document provides detailed configuration information for cursor-tools.
+This document provides detailed configuration information for vibe-tools.
 
 ## Configuration Overview
 
-cursor-tools can be configured through two main mechanisms:
+vibe-tools can be configured through two main mechanisms:
 
 1. Environment variables (API keys and core settings)
 2. JSON configuration file (provider settings, model preferences, and command options)
 
 ## Environment Variables
 
-Create `.cursor-tools.env` in your project root or `~/.cursor-tools/.env` in your home directory:
+Create `.vibe-tools.env` in your project root or `~/.vibe-tools/.env` in your home directory:
 
 ```env
 # Required API Keys
@@ -28,7 +28,7 @@ GITHUB_TOKEN="your-github-token"                # For enhanced GitHub access
 USE_LEGACY_CURSORRULES="true"                   # Use legacy .cursorrules file (default: false)
 ```
 
-## Configuration File (cursor-tools.config.json)
+## Configuration File (vibe-tools.config.json)
 
 Create this file in your project root to customize behavior. Here's a comprehensive example with all available options:
 
@@ -144,9 +144,9 @@ The GitHub commands support several authentication methods:
    GITHUB_TOKEN=your_token_here
    ```
 
-2. **GitHub CLI**: If you have the GitHub CLI (`gh`) installed and logged in, cursor-tools will automatically use it to generate tokens with the necessary scopes.
+2. **GitHub CLI**: If you have the GitHub CLI (`gh`) installed and logged in, vibe-tools will automatically use it to generate tokens with the necessary scopes.
 
-3. **Git Credentials**: If you have authenticated git with GitHub (via HTTPS), cursor-tools will automatically:
+3. **Git Credentials**: If you have authenticated git with GitHub (via HTTPS), vibe-tools will automatically:
    - Use your stored GitHub token if available (credentials starting with `ghp_` or `gho_`)
    - Fall back to using Basic Auth with your git credentials
 
@@ -176,7 +176,7 @@ Authentication Status:
   - Public repositories: 5,000 requests per hour
   - Private repositories: Full access (if token has required scopes)
 
-cursor-tools will automatically try these authentication methods in order:
+vibe-tools will automatically try these authentication methods in order:
 
 1. `GITHUB_TOKEN` environment variable
 2. GitHub CLI token (if `gh` is installed and logged in)
@@ -186,7 +186,7 @@ If no authentication is available, it will fall back to unauthenticated access w
 
 ## Repomix Configuration
 
-When generating documentation, cursor-tools uses Repomix to analyze your repository. By default, it excludes certain files and directories that are typically not relevant for documentation:
+When generating documentation, vibe-tools uses Repomix to analyze your repository. By default, it excludes certain files and directories that are typically not relevant for documentation:
 
 - Node modules and package directories (`node_modules/`, `packages/`, etc.)
 - Build output directories (`dist/`, `build/`, etc.)
@@ -218,13 +218,13 @@ The `browser` commands support different AI models for processing. You can selec
 
 ```bash
 # Use gpt-4o
-cursor-tools browser act "Click Login" --url "https://example.com" --model=gpt-4o
+vibe-tools browser act "Click Login" --url "https://example.com" --model=gpt-4o
 
 # Use Claude 3.7 Sonnet
-cursor-tools browser act "Click Login" --url "https://example.com" --model=claude-3-7-sonnet-latest
+vibe-tools browser act "Click Login" --url "https://example.com" --model=claude-3-7-sonnet-latest
 ```
 
-You can set a default provider in your `cursor-tools.config.json` file under the `stagehand` section:
+You can set a default provider in your `vibe-tools.config.json` file under the `stagehand` section:
 
 ```json
 {
@@ -234,7 +234,7 @@ You can set a default provider in your `cursor-tools.config.json` file under the
 }
 ```
 
-You can also set a default model in your `cursor-tools.config.json` file under the `stagehand` section:
+You can also set a default model in your `vibe-tools.config.json` file under the `stagehand` section:
 
 ```json
 {
@@ -250,21 +250,21 @@ If no model is specified (either on the command line or in the config), a defaul
 - **OpenAI:** `o3-mini`
 - **Anthropic:** `claude-3-7-sonnet-latest`
 
-Available models depend on your configured provider (OpenAI or Anthropic) in `cursor-tools.config.json` and your API key.
+Available models depend on your configured provider (OpenAI or Anthropic) in `vibe-tools.config.json` and your API key.
 
 ## Cursor Configuration
 
-`cursor-tools` automatically configures Cursor by updating your project rules during installation. This provides:
+`vibe-tools` automatically configures Cursor by updating your project rules during installation. This provides:
 
 - Command suggestions
 - Usage examples
 - Context-aware assistance
 
-For new installations, we use the recommended `.cursor/rules/cursor-tools.mdc` path. For existing installations, we maintain compatibility with the legacy `.cursorrules` file. If both files exist, we prefer the new path and show a warning.
+For new installations, we use the recommended `.cursor/rules/vibe-tools.mdc` path. For existing installations, we maintain compatibility with the legacy `.cursorrules` file. If both files exist, we prefer the new path and show a warning.
 
 ### Cursor Agent Configuration
 
-To get the benefits of cursor-tools you should use Cursor agent in "yolo mode". Ideal settings:
+To get the benefits of vibe-tools you should use Cursor agent in "yolo mode". Ideal settings:
 
 ![image](https://github.com/user-attachments/assets/783e26cf-c339-4cae-9629-857da0359cef)
 
@@ -311,7 +311,7 @@ The OpenAI o3-mini model is chosen as the default thinking provider for its spee
 
 ## MCP Configuration
 
-The `cursor-tools mcp run` command supports using OpenRouter as a provider. You can configure this using the following:
+The `vibe-tools mcp run` command supports using OpenRouter as a provider. You can configure this using the following:
 
 - **`--provider` (Command-line option):** Specify the provider to use. Valid values are `anthropic` (default) and `openrouter`.
 - **`--model` (Command-line option):** Specify the OpenRouter model to use (e.g., `openai/o3-mini`). This option is ignored if the provider is Anthropic.
@@ -322,5 +322,5 @@ The `cursor-tools mcp run` command supports using OpenRouter as a provider. You 
 - If `--provider` is not specified, `anthropic` is used by default.
 - If `--model` is not specified and the provider is `openrouter` a provider default model is used.
 
-**Example `cursor-tools.config.json`:**
-The `cursor-tools.config.json` is not currently used to configure MCP.
+**Example `vibe-tools.config.json`:**
+The `vibe-tools.config.json` is not currently used to configure MCP.

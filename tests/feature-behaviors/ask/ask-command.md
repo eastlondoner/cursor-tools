@@ -2,14 +2,14 @@
 
 ## Description
 
-cursor-tools should enable users to directly query any AI model from any provider. The ask command should handle various provider and model combinations, providing appropriate error messages when necessary.
+vibe-tools should enable users to directly query any AI model from any provider. The ask command should handle various provider and model combinations, providing appropriate error messages when necessary.
 
 ## Test Scenarios
 
 ### Scenario 1: Basic Direct Query (Happy Path)
 
 **Task Description:**
-Use cursor-tools to ask a simple factual question using a specific provider and model.
+Use vibe-tools to ask a simple factual question using a specific provider and model.
 
 Use this query: [[asset:simple-query]]
 
@@ -29,7 +29,7 @@ Use this query: [[asset:simple-query]]
 ### Scenario 2: Query with Alternative Provider and Model (Happy Path)
 
 **Task Description:**
-Use cursor-tools to ask a factual question using each provider:
+Use vibe-tools to ask a factual question using each provider:
 
 - Gemini
 - Anthropic
@@ -53,7 +53,7 @@ Use cursor-tools to ask a factual question using each provider:
 ### Scenario 3: Query without Provider Parameter (Error Handling)
 
 **Task Description:**
-Attempt to use cursor-tools to ask a question without specifying a provider.
+Attempt to use vibe-tools to ask a question without specifying a provider.
 
 **Expected Behavior:**
 
@@ -71,7 +71,7 @@ Attempt to use cursor-tools to ask a question without specifying a provider.
 ### Scenario 4: Query with Invalid Model (Error Handling)
 
 **Task Description:**
-Attempt to use cursor-tools to ask a question with a valid provider but an invalid model name.
+Attempt to use vibe-tools to ask a question with a valid provider but an invalid model name.
 
 **Expected Behavior:**
 
@@ -89,7 +89,7 @@ Attempt to use cursor-tools to ask a question with a valid provider but an inval
 ### Scenario 5: Query with Missing API Key (Error Handling)
 
 **Task Description:**
-Attempt to use cursor-tools to ask a question using a provider for which no API key is configured.
+Attempt to use vibe-tools to ask a question using a provider for which no API key is configured.
 
 **Expected Behavior:**
 
@@ -108,7 +108,7 @@ Attempt to use cursor-tools to ask a question using a provider for which no API 
 
 **Tags:** tokens, parameters
 **Task Description:**
-Use cursor-tools to ask a question that requires a longer response, specifying a maximum token limit.
+Use vibe-tools to ask a question that requires a longer response, specifying a maximum token limit.
 
 **Expected Behavior:**
 
@@ -127,7 +127,7 @@ Use cursor-tools to ask a question that requires a longer response, specifying a
 
 **Tags:** debug, parameters
 **Task Description:**
-Use cursor-tools to ask a simple question with the debug option enabled.
+Use vibe-tools to ask a simple question with the debug option enabled.
 
 **Expected Behavior:**
 
@@ -146,7 +146,7 @@ Use cursor-tools to ask a simple question with the debug option enabled.
 
 **Tags:** file-io, parameters
 **Task Description:**
-Use cursor-tools to ask a question and save the output to a file.
+Use vibe-tools to ask a question and save the output to a file.
 
 **Expected Behavior:**
 
@@ -165,7 +165,7 @@ Use cursor-tools to ask a question and save the output to a file.
 
 **Tags:** edge-case
 **Task Description:**
-Use cursor-tools to ask a very long question (over 500 characters).
+Use vibe-tools to ask a very long question (over 500 characters).
 
 Use the query from this file: {{path:scenario9-long-query.txt}}
 
@@ -186,7 +186,7 @@ Use the query from this file: {{path:scenario9-long-query.txt}}
 
 **Tags:** error-handling, model-errors
 **Task Description:**
-Attempt to use cursor-tools to ask a question with an OpenAI provider but using a non-existent model name "o3-HUGE".
+Attempt to use vibe-tools to ask a question with an OpenAI provider but using a non-existent model name "o3-HUGE".
 
 Use this query: [[asset:simple-query]]
 

@@ -1,13 +1,13 @@
 # Feature Behavior: Implementation Planning Capability
 
 ## Description
-cursor-tools should enable users to generate focused implementation plans for software development tasks. The plan command should leverage multiple AI models to identify relevant files, extract content, and generate detailed implementation plans. It should work with various provider combinations and handle different output formats.
+vibe-tools should enable users to generate focused implementation plans for software development tasks. The plan command should leverage multiple AI models to identify relevant files, extract content, and generate detailed implementation plans. It should work with various provider combinations and handle different output formats.
 
 ## Test Scenarios
 
 ### Scenario 1: Basic Plan Generation (Happy Path)
 **Task Description:**
-Use cursor-tools to generate an implementation plan for a simple feature addition to a codebase.
+Use vibe-tools to generate an implementation plan for a simple feature addition to a codebase.
 
 **Expected Behavior:**
 - The AI agent should determine the appropriate command to use
@@ -27,7 +27,7 @@ Use cursor-tools to generate an implementation plan for a simple feature additio
 
 ### Scenario 2: Plan Generation with Specific Providers (Happy Path)
 **Task Description:**
-Use cursor-tools to generate an implementation plan using specific combinations of fileProvider and thinkingProvider.
+Use vibe-tools to generate an implementation plan using specific combinations of fileProvider and thinkingProvider.
 
 **Expected Behavior:**
 - The AI agent should include the fileProvider and thinkingProvider parameters in the command
@@ -47,7 +47,7 @@ Use cursor-tools to generate an implementation plan using specific combinations 
 ### Scenario 3: Plan Generation for a Complex Task (Happy Path)
 **Tags:** advanced
 **Task Description:**
-Use cursor-tools to generate an implementation plan for a complex feature that requires changes across multiple parts of the codebase.
+Use vibe-tools to generate an implementation plan for a complex feature that requires changes across multiple parts of the codebase.
 
 **Expected Behavior:**
 - The AI agent should construct a command with a detailed query describing the complex task
@@ -66,7 +66,7 @@ Use cursor-tools to generate an implementation plan for a complex feature that r
 ### Scenario 4: Plan Generation with Debug Option (Happy Path)
 **Tags:** debug, parameters
 **Task Description:**
-Use cursor-tools to generate an implementation plan with the debug option enabled.
+Use vibe-tools to generate an implementation plan with the debug option enabled.
 
 **Expected Behavior:**
 - The AI agent should include the debug flag in the command
@@ -82,7 +82,7 @@ Use cursor-tools to generate an implementation plan with the debug option enable
 
 ### Scenario 5: Plan Generation with Invalid File Provider (Error Handling)
 **Task Description:**
-Attempt to use cursor-tools to generate an implementation plan with an invalid fileProvider.
+Attempt to use vibe-tools to generate an implementation plan with an invalid fileProvider.
 
 **Expected Behavior:**
 - The command should fail with a clear error message
@@ -97,7 +97,7 @@ Attempt to use cursor-tools to generate an implementation plan with an invalid f
 
 ### Scenario 6: Plan Generation with Invalid Thinking Provider (Error Handling)
 **Task Description:**
-Attempt to use cursor-tools to generate an implementation plan with an invalid thinkingProvider.
+Attempt to use vibe-tools to generate an implementation plan with an invalid thinkingProvider.
 
 **Expected Behavior:**
 - The command should fail with a clear error message
@@ -112,7 +112,7 @@ Attempt to use cursor-tools to generate an implementation plan with an invalid t
 
 ### Scenario 7: Plan Generation with Invalid File Model (Error Handling)
 **Task Description:**
-Attempt to use cursor-tools to generate an implementation plan with a valid fileProvider (gemini | modelbox | openrouter) but an invalid fileModel (e.g. invalidModel).
+Attempt to use vibe-tools to generate an implementation plan with a valid fileProvider (gemini | modelbox | openrouter) but an invalid fileModel (e.g. invalidModel).
 
 **Expected Behavior:**
 - The command should fail with a clear error message
@@ -127,7 +127,7 @@ Attempt to use cursor-tools to generate an implementation plan with a valid file
 
 ### Scenario 8: Plan Generation with Invalid Thinking Model (Error Handling)
 **Task Description:**
-Attempt to use cursor-tools to generate an implementation plan with a valid thinkingProvider but an invalid thinkingModel.
+Attempt to use vibe-tools to generate an implementation plan with a valid thinkingProvider but an invalid thinkingModel.
 
 **Expected Behavior:**
 - The command should fail with a clear error message
@@ -143,7 +143,7 @@ Attempt to use cursor-tools to generate an implementation plan with a valid thin
 ### Scenario 9: Plan Generation in Empty Repository (Edge Case)
 **Tags:** edge-case
 **Task Description:**
-Use cursor-tools to generate an implementation plan in an empty or nearly empty repository.
+Use vibe-tools to generate an implementation plan in an empty or nearly empty repository.
 
 **Expected Behavior:**
 - The command should handle the edge case gracefully
@@ -158,10 +158,10 @@ Use cursor-tools to generate an implementation plan in an empty or nearly empty 
 
 ### Scenario 10: Plan Generation with Missing API Keys (Error Handling)
 **Task Description:**
-Attempt to use cursor-tools to generate an implementation plan when API keys for the specified provider is missing. Test both a missing key for the fileProvider and a missing key for the thinkingProvider. To remove an API key use:
-- CURSOR_TOOLS_ENV_UNSET=GEMINI_API_KEY cursor-tools <command> <args...>
+Attempt to use vibe-tools to generate an implementation plan when API keys for the specified provider is missing. Test both a missing key for the fileProvider and a missing key for the thinkingProvider. To remove an API key use:
+- CURSOR_TOOLS_ENV_UNSET=GEMINI_API_KEY vibe-tools <command> <args...>
 or
-- CURSOR_TOOLS_ENV_UNSET=OPENAI_API_KEY cursor-tools <command> <args...>
+- CURSOR_TOOLS_ENV_UNSET=OPENAI_API_KEY vibe-tools <command> <args...>
 
 **Expected Behavior:**
 - The command should fail with a clear error message
@@ -176,10 +176,10 @@ or
 
 ### Scenario 11: Plan Generation with Invalid API Key (fallback)
 **Task Description:**
-Attempt to use cursor-tools to generate an implementation plan without specifying a provider when there are invalid API keys for the default provider. Test each ofL
-- GEMINI_API_KEY=invalid_api_key cursor-tools <command> <args...>
+Attempt to use vibe-tools to generate an implementation plan without specifying a provider when there are invalid API keys for the default provider. Test each ofL
+- GEMINI_API_KEY=invalid_api_key vibe-tools <command> <args...>
 and
-- OPENAI_API_KEY=invalid_api_key cursor-tools <command> <args...>
+- OPENAI_API_KEY=invalid_api_key vibe-tools <command> <args...>
 
 **Expected Behavior:**
 - The logs should include a clear error message indicating the API key that is invalid
@@ -196,7 +196,7 @@ and
 ### Scenario 12: Plan Generation with Custom Repomix Configuration (Happy Path)
 **Tags:** repomix-config, configuration
 **Task Description:**
-Use cursor-tools to generate an implementation plan with a custom repomix.config.json file that modifies which files are included/excluded during the planning process.
+Use vibe-tools to generate an implementation plan with a custom repomix.config.json file that modifies which files are included/excluded during the planning process.
 
 First, create a repomix.config.json file using the content from {{path:plan-repomix-config.json}} in the repository root. Then, generate an implementation plan and observe if the configuration is respected.
 

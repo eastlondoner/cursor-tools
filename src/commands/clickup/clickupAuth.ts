@@ -12,7 +12,7 @@ export function getClickUpHeaders(): Record<string, string> {
   const token = getClickUpToken();
   if (!token) {
     throw new Error(
-      'CLICKUP_API_TOKEN environment variable is not set. Please set it in your .cursor-tools.env file.'
+      'CLICKUP_API_TOKEN environment variable is not set. Please set it in your .vibe-tools.env file.'
     );
   }
 

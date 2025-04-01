@@ -2,14 +2,14 @@
 
 ## Description
 
-cursor-tools should enable users to analyze repository context and answer questions about the codebase. The repo command should leverage AI models to understand the repository structure, code patterns, and functionality, providing context-aware answers to user queries.
+vibe-tools should enable users to analyze repository context and answer questions about the codebase. The repo command should leverage AI models to understand the repository structure, code patterns, and functionality, providing context-aware answers to user queries.
 
 ## Test Scenarios
 
 ### Scenario 1: Basic Repository Analysis (Happy Path)
 
 **Task Description:**
-Use cursor-tools to ask a simple question about the current repository's structure or functionality.
+Use vibe-tools to ask a simple question about the current repository's structure or functionality.
 
 **Expected Behavior:**
 
@@ -30,7 +30,7 @@ Use cursor-tools to ask a simple question about the current repository's structu
 ### Scenario 2: Repository Analysis with Different Providers and Models (Happy Path)
 
 **Task Description:**
-Use cursor-tools to ask the same question about the repository using different providers and models. Test both the `--provider` parameter and the `--model` parameter in separate commands.
+Use vibe-tools to ask the same question about the repository using different providers and models. Test both the `--provider` parameter and the `--model` parameter in separate commands.
 
 **Expected Behavior:**
 
@@ -53,7 +53,7 @@ Use cursor-tools to ask the same question about the repository using different p
 
 **Tags:** advanced
 **Task Description:**
-Use cursor-tools to ask a complex question about the repository that requires understanding multiple parts of the codebase.
+Use vibe-tools to ask a complex question about the repository that requires understanding multiple parts of the codebase.
 
 **Expected Behavior:**
 
@@ -75,7 +75,7 @@ Use cursor-tools to ask a complex question about the repository that requires un
 
 **Tags:** file-io, parameters
 **Task Description:**
-Use cursor-tools to analyze the repository and save the results to a file.
+Use vibe-tools to analyze the repository and save the results to a file.
 
 **Expected Behavior:**
 
@@ -95,7 +95,7 @@ Use cursor-tools to analyze the repository and save the results to a file.
 ### Scenario 5: Repository Analysis with Invalid Provider and Model (Error Handling)
 
 **Task Description:**
-Attempt to use cursor-tools to analyze the repository using both an invalid provider and an invalid model in separate commands.
+Attempt to use vibe-tools to analyze the repository using both an invalid provider and an invalid model in separate commands.
 
 **Expected Behavior:**
 
@@ -114,7 +114,7 @@ Attempt to use cursor-tools to analyze the repository using both an invalid prov
 ### Scenario 6: Repository Analysis with Missing API Key (Error Handling)
 
 **Task Description:**
-Attempt to use cursor-tools to analyze the repository using the gemini provider when no API key is configured. To simulate this, set CURSOR_TOOLS_ENV_UNSET=GEMINI_API_KEY when running the command and specify the gemini provider explicitly.
+Attempt to use vibe-tools to analyze the repository using the gemini provider when no API key is configured. To simulate this, set CURSOR_TOOLS_ENV_UNSET=GEMINI_API_KEY when running the command and specify the gemini provider explicitly.
 
 **Expected Behavior:**
 
@@ -133,7 +133,7 @@ Attempt to use cursor-tools to analyze the repository using the gemini provider 
 
 **Tags:** tokens, parameters
 **Task Description:**
-Use cursor-tools to analyze the repository with a specified token limit for the response.
+Use vibe-tools to analyze the repository with a specified token limit for the response.
 
 **Expected Behavior:**
 
@@ -151,7 +151,7 @@ Use cursor-tools to analyze the repository with a specified token limit for the 
 ### Scenario 8: Repository Analysis for Code Understanding (Happy Path)
 
 **Task Description:**
-Use cursor-tools to ask about how a specific feature or function works in the repository.
+Use vibe-tools to ask about how a specific feature or function works in the repository.
 
 **Expected Behavior:**
 
@@ -170,7 +170,7 @@ Use cursor-tools to ask about how a specific feature or function works in the re
 ### Scenario 9: Repository Analysis for Architecture Overview (Happy Path)
 
 **Task Description:**
-Use cursor-tools to ask for an overview of the repository's architecture and design patterns.
+Use vibe-tools to ask for an overview of the repository's architecture and design patterns.
 
 **Expected Behavior:**
 
@@ -191,7 +191,7 @@ Use cursor-tools to ask for an overview of the repository's architecture and des
 ### Scenario 10: Invalid Key (Fallback to alternate provider)
 
 **Task Description:**
-Attempt to use cursor-tools to analyze the repository without setting explicit provider and model when an invalid GEMINI_API_KEY is present. To simulate this, set GEMINI_API_KEY=invalid and do not specify a provider.
+Attempt to use vibe-tools to analyze the repository without setting explicit provider and model when an invalid GEMINI_API_KEY is present. To simulate this, set GEMINI_API_KEY=invalid and do not specify a provider.
 
 **Expected Behavior:**
 
@@ -210,7 +210,7 @@ Attempt to use cursor-tools to analyze the repository without setting explicit p
 ### Scenario 11: Repomixignore file support
 
 **Task Description:**
-We're going to verify that cursor-tools repo respects the .repomixignore file. First check that the .repomixignore file is either empty or not present. Use cursor-tools to analyze the repository, note how many tokens are used.
+We're going to verify that vibe-tools repo respects the .repomixignore file. First check that the .repomixignore file is either empty or not present. Use vibe-tools to analyze the repository, note how many tokens are used.
 
 Then create a .repomixignore file using the content from {{path:repomixignore-with-src.txt}} and repeat the same query. Note how many tokens are used on the second query - it should be much less since we're excluding the src directory.
 
@@ -230,7 +230,7 @@ Then create a .repomixignore file using the content from {{path:repomixignore-wi
 
 **Tags:** subdir, parameters
 **Task Description:**
-Use cursor-tools to analyze a specific subdirectory of the repository instead of the entire repository by using the `--subdir` parameter.
+Use vibe-tools to analyze a specific subdirectory of the repository instead of the entire repository by using the `--subdir` parameter.
 
 **Expected Behavior:**
 
@@ -253,7 +253,7 @@ Use cursor-tools to analyze a specific subdirectory of the repository instead of
 
 **Tags:** subdir, error-handling
 **Task Description:**
-Attempt to use cursor-tools to analyze a non-existent subdirectory using the `--subdir` parameter.
+Attempt to use vibe-tools to analyze a non-existent subdirectory using the `--subdir` parameter.
 
 **Expected Behavior:**
 
@@ -272,7 +272,7 @@ Attempt to use cursor-tools to analyze a non-existent subdirectory using the `--
 
 **Tags:** repomix-config, configuration
 **Task Description:**
-Use cursor-tools to analyze the repository with a custom repomix.config.json file that modifies which files are included/excluded.
+Use vibe-tools to analyze the repository with a custom repomix.config.json file that modifies which files are included/excluded.
 
 First, create a repomix.config.json file using the content from {{path:basic-repomix-config.json}} in the repository root. Then, run a query about the repository structure and observe if the configuration is respected.
 
@@ -296,7 +296,7 @@ First, create a repomix.config.json file using the content from {{path:basic-rep
 ### Scenario 15: Analyze GitHub Repository Structure (Remote Analysis)
 
 **Task Description:**
-Use cursor-tools to analyze the kaito-http/kaito GitHub repository and ask "How kaito UWS gets the remote address for a request".
+Use vibe-tools to analyze the kaito-http/kaito GitHub repository and ask "How kaito UWS gets the remote address for a request".
 
 **Expected Behavior:**
 
@@ -319,7 +319,7 @@ Use cursor-tools to analyze the kaito-http/kaito GitHub repository and ask "How 
 ### Scenario 16: Large Repository Error Handling (Error Handling)
 
 **Task Description:**
-Use cursor-tools to analyze the facebook/react GitHub repository, which is a very large codebase likely to exceed size limits.
+Use vibe-tools to analyze the facebook/react GitHub repository, which is a very large codebase likely to exceed size limits.
 
 **Expected Behavior:**
 

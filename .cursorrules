@@ -1,4 +1,4 @@
-This is the cursor-tools repo. Here we build a cli tool that AI agents can use to execute commands and work with other AI agents.
+This is the vibe-tools repo. Here we build a cli tool that AI agents can use to execute commands and work with other AI agents.
 
 This repo uses pnpm as the package manager and script runner.
 
@@ -9,7 +9,7 @@ We add "skills" as commands that can be used to execute tasks.
 
 Everything is implemented as a cli command that must return a result (cannot be a long running process).
 
-The released commands are documented below. You can use the released commands as tools when we are building cursor-tools, in fact you should use them as often and enthusastically as possible (how cool is that!)
+The released commands are documented below. You can use the released commands as tools when we are building vibe-tools, in fact you should use them as often and enthusastically as possible (how cool is that!)
 
 Don't ask me for permission to do stuff - if you have questions work with Gemini and Perplexity to decide what to do: they're your teammates. You're a team of superhuman expert AIs, believe in yourselves! Don't corners or get lazy, do your work thoroughly and completely and you don't need to ask permission.
 
@@ -52,4 +52,4 @@ open -a "Google Chrome" --args --remote-debugging-port=9222 --no-first-run --no-
 ```
 note: this command will exit as soon as chrome is open so you can just execute it, it doesn't need to be run in a background task.
 </testing browser commands>
-Always load the rules in cursor-tools.mdc
+Always load the rules in vibe-tools.mdc

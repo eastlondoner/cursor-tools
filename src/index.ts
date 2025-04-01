@@ -200,7 +200,7 @@ async function main() {
     try {
       const packageJsonPath = join(__dirname, '../package.json');
       const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
-      console.log(`cursor-tools version ${packageJson.version}`);
+      console.log(`vibe-tools version ${packageJson.version}`);
       process.exit(0);
     } catch {
       console.error('Error: Could not read package version');
@@ -358,7 +358,7 @@ async function main() {
 
   if (!command) {
     console.error(
-      'Usage: cursor-tools [--model=<model>] [--max-tokens=<number>] [--from-github=<github_url>] [--output=<filepath>] [--save-to=<filepath>] [--hint=<hint>] <command> "<query>"\n' +
+      'Usage: vibe-tools [--model=<model>] [--max-tokens=<number>] [--from-github=<github_url>] [--output=<filepath>] [--save-to=<filepath>] [--hint=<hint>] <command> "<query>"\n' +
         '       Note: Options can be specified in kebab-case (--max-tokens) or camelCase (--maxTokens)\n' +
         '       Both --key=value and --key value formats are supported'
     );

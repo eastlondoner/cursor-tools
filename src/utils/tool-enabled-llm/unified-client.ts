@@ -181,8 +181,8 @@ export class UnifiedLLMClient {
       }
 
       const headers = {
-        'HTTP-Referer': 'http://cursor-tools.com',
-        'X-Title': 'cursor-tools',
+        'HTTP-Referer': 'http://vibe-tools.com',
+        'X-Title': 'vibe-tools',
       };
 
       this.openrouterClient = new OpenAI({

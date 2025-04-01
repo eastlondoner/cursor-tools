@@ -1,10 +1,10 @@
-# Feature Behavior Testing Plan for cursor-tools
+# Feature Behavior Testing Plan for vibe-tools
 
-This document outlines our approach to regression testing for cursor-tools using AI agents. We create feature behavior files that describe desired behaviors, and AI agents determine how to test these behaviors using cursor-tools. The agents generate detailed reports and simple PASS/FAIL results for automated validation.
+This document outlines our approach to regression testing for vibe-tools using AI agents. We create feature behavior files that describe desired behaviors, and AI agents determine how to test these behaviors using vibe-tools. The agents generate detailed reports and simple PASS/FAIL results for automated validation.
 
 ## Goals
 
-1. **Comprehensive Feature Testing**: Test all major features and commands of cursor-tools in an automated fashion
+1. **Comprehensive Feature Testing**: Test all major features and commands of vibe-tools in an automated fashion
 2. **Regression Detection**: Quickly identify when changes break existing functionality
 3. **Parallel Execution**: Run tests concurrently to reduce overall testing time
 4. **Documentation**: Generate detailed reports explaining test outcomes and behavior
@@ -12,7 +12,7 @@ This document outlines our approach to regression testing for cursor-tools using
 6. **Automation-Friendly**: Enable CI/CD integration with simple PASS/FAIL outputs
 7. **Maintainability**: Make it easy to add new tests and update existing ones
 8. **Cross-Version Testing**: Compare behavior across different versions/branches
-9. **AI Agent Flexibility**: Test whether AI agents can correctly interpret and use cursor-tools based on natural language descriptions
+9. **AI Agent Flexibility**: Test whether AI agents can correctly interpret and use vibe-tools based on natural language descriptions
 
 ## Test Assets Management
 
@@ -168,12 +168,12 @@ The following test files are planned for implementation:
 
 ### 9. `install/install-command.md`
 
-**Description**: Tests for the `install` command, focusing on its ability to set up cursor-tools in a workspace.
+**Description**: Tests for the `install` command, focusing on its ability to set up vibe-tools in a workspace.
 
 **Key Scenarios**:
 - **Basic Installation (Happy Path)**: Test the basic installation process in a clean workspace.
 - **Installation with Legacy Mode (Happy Path)**: Test installation with legacy mode enabled (using `.cursorrules`).
-- **Installation with New Mode (Happy Path)**: Test installation with new mode enabled (using `.cursor/rules/cursor-tools.mdc`).
+- **Installation with New Mode (Happy Path)**: Test installation with new mode enabled (using `.cursor/rules/vibe-tools.mdc`).
 - **Upgrade Scenario (Happy Path)**: Test upgrading an existing installation to a newer version.
 - **Error Handling for File System Permissions (Error Handling)**: Test error handling when file system permissions prevent installation.
 

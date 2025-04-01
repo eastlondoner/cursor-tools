@@ -1,10 +1,10 @@
-# Testing in cursor-tools
+# Testing in vibe-tools
 
-This document describes the testing approach for cursor-tools and provides guidance on writing and running tests.
+This document describes the testing approach for vibe-tools and provides guidance on writing and running tests.
 
 ## Test Command
 
-The `test` command in cursor-tools allows testing scenarios defined in feature behavior files. These tests can verify that cursor-tools commands work correctly and behave as expected.
+The `test` command in vibe-tools allows testing scenarios defined in feature behavior files. These tests can verify that vibe-tools commands work correctly and behave as expected.
 
 ### Running Tests
 
@@ -40,7 +40,7 @@ pnpm dev test tests/feature-behaviors/test/test-command-parallel-example.md --pa
 
 ## Feature Behavior Files
 
-Feature behavior files define test scenarios for cursor-tools commands. These files are written in Markdown and follow a specific format.
+Feature behavior files define test scenarios for vibe-tools commands. These files are written in Markdown and follow a specific format.
 
 ### Example Feature Behavior File
 
@@ -54,7 +54,7 @@ This test verifies that the web command can query online information correctly.
 
 ### Scenario 1: Basic Web Query
 **Task Description:**
-Use cursor-tools to search for information about climate change.
+Use vibe-tools to search for information about climate change.
 
 **Expected Behavior:**
 - The AI agent should use the web command
@@ -62,7 +62,7 @@ Use cursor-tools to search for information about climate change.
 - The command should complete successfully
 
 **Success Criteria:**
-- AI agent correctly uses the cursor-tools web command
+- AI agent correctly uses the vibe-tools web command
 - Response contains relevant information about climate change
 - Command completes without errors
 ```
@@ -89,7 +89,7 @@ Each test scenario runs in its own temporary directory with the following setup:
 2. A symlink to the main project's `node_modules` directory is created in the temp directory
 3. The `package.json` file is copied to the temp directory
 4. Any assets referenced in the test scenario are copied to the temp directory
-5. Commands are executed using `pnpm --dir="<project-root>" exec cursor-tools`
+5. Commands are executed using `pnpm --dir="<project-root>" exec vibe-tools`
 6. The temporary directory is cleaned up after the test completes
 
 This approach ensures that each test has access to the necessary dependencies without having to install them separately, while still providing isolation between tests.
@@ -105,10 +105,10 @@ Assets are automatically copied to the temporary directory and references are up
 
 ### Command Execution
 
-Commands are executed using a tool-enabled LLM client, which provides the AI agent with tools to execute cursor-tools commands. The client:
+Commands are executed using a tool-enabled LLM client, which provides the AI agent with tools to execute vibe-tools commands. The client:
 
 1. Receives a task description
-2. Determines which cursor-tools command to use
+2. Determines which vibe-tools command to use
 3. Executes the command in the isolated environment
 4. Reports the results
 
@@ -143,7 +143,7 @@ To debug a failing test:
 
 ## Continuous Testing
 
-The test command can be integrated into CI/CD pipelines to ensure cursor-tools commands work correctly as changes are made. For example:
+The test command can be integrated into CI/CD pipelines to ensure vibe-tools commands work correctly as changes are made. For example:
 
 ```yaml
 # GitHub Actions workflow

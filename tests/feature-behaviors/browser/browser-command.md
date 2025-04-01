@@ -1,13 +1,13 @@
 # Feature Behavior: Browser Automation Capability
 
 ## Description
-cursor-tools should enable users to interact with web pages through browser automation capabilities, including opening pages, performing actions, observing elements, and extracting content.
+vibe-tools should enable users to interact with web pages through browser automation capabilities, including opening pages, performing actions, observing elements, and extracting content.
 
 ## Test Scenarios
 
 ### Scenario 1: Basic Page Opening (Happy Path)
 **Task Description:**
-Use cursor-tools to open a test page running on localhost:3000/test.html and verify its basic content.
+Use vibe-tools to open a test page running on localhost:3000/test.html and verify its basic content.
 
 **Expected Behavior:**
 - The AI agent should figure out the appropriate command to open a web page
@@ -22,7 +22,7 @@ Use cursor-tools to open a test page running on localhost:3000/test.html and ver
 
 ### Scenario 2: Capturing HTML Content (Happy Path)
 **Task Description:**
-Use cursor-tools to open a test page running on localhost:3000/test.html and capture its HTML content.
+Use vibe-tools to open a test page running on localhost:3000/test.html and capture its HTML content.
 
 **Expected Behavior:**
 - The AI agent should figure out how to capture HTML content from a page
@@ -37,7 +37,7 @@ Use cursor-tools to open a test page running on localhost:3000/test.html and cap
 
 ### Scenario 3: Capturing Console Logs (Happy Path)
 **Task Description:**
-Use cursor-tools to open a test page (console-log-test.html) that outputs console logs and capture those logs.
+Use vibe-tools to open a test page (console-log-test.html) that outputs console logs and capture those logs.
 
 **Expected Behavior:**
 - The AI agent should figure out how to capture console logs from a page
@@ -51,7 +51,7 @@ Use cursor-tools to open a test page (console-log-test.html) that outputs consol
 
 ### Scenario 4: Performing Actions on a Page (Happy Path)
 **Task Description:**
-Use cursor-tools to interact with a page containing a button (button.html) and click that button.
+Use vibe-tools to interact with a page containing a button (button.html) and click that button.
 
 **Expected Behavior:**
 - The AI agent should figure out how to perform actions on a page
@@ -65,7 +65,7 @@ Use cursor-tools to interact with a page containing a button (button.html) and c
 
 ### Scenario 5: Extracting Content from a Page (Happy Path)
 **Task Description:**
-Use cursor-tools to extract text content from paragraphs on a test page.
+Use vibe-tools to extract text content from paragraphs on a test page.
 
 **Expected Behavior:**
 - The AI agent should figure out how to extract content from a page
@@ -79,7 +79,7 @@ Use cursor-tools to extract text content from paragraphs on a test page.
 
 ### Scenario 6: Observing Interactive Elements (Happy Path)
 **Task Description:**
-Use cursor-tools to identify and describe interactive elements on a test page (interactive-test.html).
+Use vibe-tools to identify and describe interactive elements on a test page (interactive-test.html).
 
 **Expected Behavior:**
 - The AI agent should figure out how to observe and identify interactive elements
@@ -94,7 +94,7 @@ Use cursor-tools to identify and describe interactive elements on a test page (i
 
 ### Scenario 7: Maintaining State Between Commands (Edge Case)
 **Task Description:**
-Use cursor-tools to connect to an existing browser session, perform multiple operations while preserving state.
+Use vibe-tools to connect to an existing browser session, perform multiple operations while preserving state.
 
 **Expected Behavior:**
 - The AI agent should figure out how to connect to an existing browser session
@@ -108,7 +108,7 @@ Use cursor-tools to connect to an existing browser session, perform multiple ope
 
 ### Scenario 8: Handling Missing Dependencies (Error Handling)
 **Task Description:**
-Attempt to use cursor-tools browser functionality when Playwright is not installed.
+Attempt to use vibe-tools browser functionality when Playwright is not installed.
 
 **Expected Behavior:**
 - When Playwright is not installed, the command should fail with a clear error message
@@ -123,7 +123,7 @@ Attempt to use cursor-tools browser functionality when Playwright is not install
 
 ### Scenario 9: Handling Invalid URLs (Error Handling)
 **Task Description:**
-Attempt to use cursor-tools to open a non-existent or invalid URL.
+Attempt to use vibe-tools to open a non-existent or invalid URL.
 
 **Expected Behavior:**
 - When an invalid URL is provided, the command should fail with a clear error message
@@ -138,7 +138,7 @@ Attempt to use cursor-tools to open a non-existent or invalid URL.
 
 ### Scenario 10: Handling Complex Multi-step Instructions (Edge Case)
 **Task Description:**
-Use cursor-tools to perform a sequence of actions on a page (click a button, enter text in a field, submit a form).
+Use vibe-tools to perform a sequence of actions on a page (click a button, enter text in a field, submit a form).
 
 **Expected Behavior:**
 - The AI agent should figure out how to perform a sequence of actions

@@ -1,4 +1,4 @@
-// Base error class for all cursor-tools errors
+// Base error class for all vibe-tools errors
 export class CursorToolsError extends Error {
   constructor(
     message: string,
@@ -37,9 +37,9 @@ export class ProviderError extends CursorToolsError {
 export class ApiKeyMissingError extends ProviderError {
   constructor(provider: string) {
     super(
-      `API key for ${provider} is not set. Please set the ${provider.toUpperCase()}_API_KEY environment variable in your .cursor-tools.env file located in your home directory (~/.cursor-tools/.env).
+      `API key for ${provider} is not set. Please set the ${provider.toUpperCase()}_API_KEY environment variable in your .vibe-tools.env file located in your home directory (~/.vibe-tools/.env).
 
-For more information on setting up API keys, visit: https://github.com/cursor-ai/cursor-tools#api-keys`,
+For more information on setting up API keys, visit: https://github.com/cursor-ai/vibe-tools#api-keys`,
       { provider }
     );
     this.name = 'ApiKeyMissingError';

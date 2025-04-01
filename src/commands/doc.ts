@@ -158,7 +158,7 @@ export class DocCommand implements Command {
 
       // If we get here, no providers worked
       throw new ProviderError(
-        'No suitable AI provider available for doc command. Please ensure at least one of the following API keys are set in your ~/.cursor-tools/.env file: GEMINI_API_KEY, OPENAI_API_KEY, OPENROUTER_API_KEY, PERPLEXITY_API_KEY, MODELBOX_API_KEY.'
+        'No suitable AI provider available for doc command. Please ensure at least one of the following API keys are set in your ~/.vibe-tools/.env file: GEMINI_API_KEY, OPENAI_API_KEY, OPENROUTER_API_KEY, PERPLEXITY_API_KEY, MODELBOX_API_KEY.'
       );
     } catch (error) {
       // Format and yield error message
@@ -168,8 +168,8 @@ export class DocCommand implements Command {
         yield `\n❌ Error: ${errorMessage}\n`;
 
         if (error instanceof ApiKeyMissingError) {
-          yield `\nPlease set up the required API keys in your ~/.cursor-tools/.env file.\n`;
-          yield `For more information, visit: https://github.com/cursor-ai/cursor-tools#api-keys\n`;
+          yield `\nPlease set up the required API keys in your ~/.vibe-tools/.env file.\n`;
+          yield `For more information, visit: https://github.com/cursor-ai/vibe-tools#api-keys\n`;
         }
       } else if (error instanceof Error) {
         console.error('Error in doc command:', error.message);
@@ -216,7 +216,7 @@ export class DocCommand implements Command {
       // No providers available, throw error with list of required API keys
       throw new ProviderError(
         `No available providers for doc command`,
-        `Run cursor-tools install and provide an API key for one of these providers: ${docProviders.join(', ')}`
+        `Run vibe-tools install and provide an API key for one of these providers: ${docProviders.join(', ')}`
       );
     }
   }

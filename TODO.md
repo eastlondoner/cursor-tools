@@ -1,4 +1,4 @@
-# cursor-tools Documentation Command Issues and Next Steps
+# vibe-tools Documentation Command Issues and Next Steps
 
 ## Current Issues
 

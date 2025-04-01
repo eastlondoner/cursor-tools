@@ -35,7 +35,7 @@ Update the system prompt to inform the test executor about the filesystem MCP to
 4. Examples of how to use the tool for common operations
 
 ```typescript
-const systemPrompt = `You are a testing agent for cursor-tools commands. Your task is to execute the test scenario provided using the tools available to determine if cursor-tools is working correctly and report the results.
+const systemPrompt = `You are a testing agent for vibe-tools commands. Your task is to execute the test scenario provided using the tools available to determine if vibe-tools is working correctly and report the results.
 
 <filesystem_mcp_tool>
 A filesystem MCP tool (filesystem_mcp) is available for file operations. This tool is configured via '@modelcontextprotocol/server-filesystem' and can ONLY access the temporary test directory (${tempDir}).
@@ -60,7 +60,7 @@ ${CURSOR_RULES_TEMPLATE}
 Execute the test scenario provided and report the results. If you run into problems executing the scenario, make 3 attempts to execute the scenario. If you still run into problems after 3 attempts, report the results as FAIL.
 
 <hints>
-The available command line tools are cursor-tools, ${tools.map((t) => t.name).join(', ')}. Other command line tools are not permitted.
+The available command line tools are vibe-tools, ${tools.map((t) => t.name).join(', ')}. Other command line tools are not permitted.
 Reply with your workings and your findings. Only use tools to perform the test; do not use tools to communicate your results.
 </hints>
 

@@ -214,7 +214,7 @@ export async function executeScenario(
         const prompt = generateScenarioPrompt(modifiedScenario);
 
         // Process the query with tools
-        const systemPrompt = `You are a testing agent for cursor-tools commands. Your task is to execute the test scenario provided using the tools available to determine if cursor-tools is working correctly and report the results.
+        const systemPrompt = `You are a testing agent for vibe-tools commands. Your task is to execute the test scenario provided using the tools available to determine if vibe-tools is working correctly and report the results.
 
 <filesystem_mcp_tool>
 A filesystem MCP tool (filesystem_mcp) is available for file operations. This tool is configured via '@modelcontextprotocol/server-filesystem' and can ONLY access the temporary test directory (${tempDir}).
@@ -240,7 +240,7 @@ Execute the test scenario provided and report the results. If you run into probl
 
 <hints>
 You have access to a filesystem tool that can read and write files, list directores etc. in the temporary test directory.
-The available command line tools are cursor-tools and ${tools.map((tool) => tool.name).join(', ')}. Other command line tools are not permitted.
+The available command line tools are vibe-tools and ${tools.map((tool) => tool.name).join(', ')}. Other command line tools are not permitted.
 Reply to the chat with your workings and your findings. Only use tools to perform the test, do not use tools to communicate your results.
 </hints>
 

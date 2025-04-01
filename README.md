@@ -11,7 +11,7 @@
 - [How to Use](#how-do-i-use-it)
   - [Example: Using Perplexity](#asking-perplexity-to-carry-out-web-research)
   - [Example: Using Gemini](#asking-gemini-for-a-plan)
-- [What is cursor-tools](#what-is-cursor-tools)
+- [What is vibe-tools](#what-is-vibe-tools)
 - [Installation](#installation)
 - [Requirements](#requirements)
 - [Tips](#tips)
@@ -43,13 +43,13 @@
   - [Xcode Tools](#xcode-tools)
   - [Documentation Generation](#documentation-generation-uses-gemini-20)
 - [Configuration](#configuration)
-  - [cursor-tools.config.json](#cursor-toolsconfigjson)
+  - [vibe-tools.config.json](#vibe-toolsconfigjson)
   - [GitHub Authentication](#github-authentication)
   - [Repomix Configuration](#repomix-configuration)
   - [Model Selection](#model-selection)
   - [Cursor Configuration](#cursor-configuration)
     - [Cursor Agent Configuration](#cursor-agent-configuration)
-- [cursor-tools cli](#cursor-tools-cli)
+- [vibe-tools cli](#vibe-tools-cli)
   - [Command Options](#command-options)
   - [Execution Methods](#execution-methods)
 - [Troubleshooting](#troubleshooting)
@@ -81,7 +81,7 @@
 - Generate local agent-accessible documentation for external dependencies
 - Analyze YouTube videos to extract insights, summaries, and implementation plans
 
-`cursor-tools` is optimized for Cursor Composer Agent but it can be used by any coding agent that can execute commands
+`vibe-tools` is optimized for Cursor Composer Agent but it can be used by any coding agent that can execute commands
 
 ### How do I use it?
 
@@ -140,41 +140,41 @@ Here are two examples:
   </div>
 </div>
 
-## What is cursor-tools
+## What is vibe-tools
 
-`cursor-tools` provides a CLI that your **AI agent can use** to expand its capabilities. `cursor-tools` is designed to be installed globally, providing system-wide access to its powerful features. When you run `cursor-tools install` we automatically add a prompt section to your Cursor project rules. During installation, you can choose between:
+`vibe-tools` provides a CLI that your **AI agent can use** to expand its capabilities. `vibe-tools` is designed to be installed globally, providing system-wide access to its powerful features. When you run `vibe-tools install` we automatically add a prompt section to your Cursor project rules. During installation, you can choose between:
 
-- The new `.cursor/rules/cursor-tools.mdc` file (recommended)
+- The new `.cursor/rules/vibe-tools.mdc` file (recommended)
 - The legacy `.cursorrules` file (for backward compatibility)
 
 You can also control this using the `USE_LEGACY_CURSORRULES` environment variable:
 
 - `USE_LEGACY_CURSORRULES=true` - Use legacy `.cursorrules` file
-- `USE_LEGACY_CURSORRULES=false` - Use new `.cursor/rules/cursor-tools.mdc` file
+- `USE_LEGACY_CURSORRULES=false` - Use new `.cursor/rules/vibe-tools.mdc` file
 - If not set, defaults to legacy mode for backward compatibility
 
-`cursor-tools` requires a Perplexity API key and a Google AI API key.
+`vibe-tools` requires a Perplexity API key and a Google AI API key.
 
-`cursor-tools` is a node package that should be installed globally.
+`vibe-tools` is a node package that should be installed globally.
 
 ## Installation
 
-Install cursor-tools globally:
+Install vibe-tools globally:
 
 ```bash
-npm install -g cursor-tools
+npm install -g vibe-tools
 ```
 
 Then run the interactive setup:
 
 ```bash
-cursor-tools install .
+vibe-tools install .
 ```
 
 This command will:
 
 1. Guide you through API key configuration
-2. Update your Cursor project rules for Cursor integration (using `.cursor/rules/cursor-tools.mdc` or existing `.cursorrules`)
+2. Update your Cursor project rules for Cursor integration (using `.cursor/rules/vibe-tools.mdc` or existing `.cursorrules`)
 
 ## Requirements
 
@@ -185,22 +185,22 @@ This command will:
   - Playwright (`npm install --global playwright`)
   - OpenAI API key or Anthropic API key (for `act`, `extract`, and `observe` commands)
 
-`cursor-tools` uses Gemini-2.0 because it is the only good LLM with a context window that goes up to 2 million tokens - enough to handle and entire codebase in one shot. Gemini 2.0 experimental models that we use by default are currently free to use on Google and you need a Google Cloud project to create an API key.
+`vibe-tools` uses Gemini-2.0 because it is the only good LLM with a context window that goes up to 2 million tokens - enough to handle and entire codebase in one shot. Gemini 2.0 experimental models that we use by default are currently free to use on Google and you need a Google Cloud project to create an API key.
 
-`cursor-tools` uses Perplexity because Perplexity has the best web search api and indexes and it does not hallucinate. Perplexity Pro users can get an API key with their pro account and recieve $5/month of free credits (at time of writing). Support for Google search grounding is coming soon but so far testing has shown it still frequently hallucinates things like APIs and libraries that don't exist.
+`vibe-tools` uses Perplexity because Perplexity has the best web search api and indexes and it does not hallucinate. Perplexity Pro users can get an API key with their pro account and recieve $5/month of free credits (at time of writing). Support for Google search grounding is coming soon but so far testing has shown it still frequently hallucinates things like APIs and libraries that don't exist.
 
 ## Tips:
 
 - Ask Cursor Agent to have Gemini review its work
 - Ask Cursor Agent to generate documentation for external dependencies and write it to a local-docs/ folder
 
-If you do something cool with `cursor-tools` please let me know on twitter or make a PR to add to this section!
+If you do something cool with `vibe-tools` please let me know on twitter or make a PR to add to this section!
 
 ## Additional Examples
 
 ### GitHub Skills
 
-To see cursor-tools GitHub and Perplexity skills: Check out [this example issue that was solved using Cursor agent and cursor-tools](https://github.com/eastlondoner/cursor-tools/issues/1)
+To see vibe-tools GitHub and Perplexity skills: Check out [this example issue that was solved using Cursor agent and vibe-tools](https://github.com/eastlondoner/cursor-tools/issues/1)
 
 ### Gemini code review
 
@@ -209,73 +209,73 @@ See cursor get approximately 5x more work done per-prompt with Gemini code revie
 
 ## Detailed Cursor Usage
 
-Use Cursor Composer in agent mode with command execution (not sure what this means, see section below on Cursor Agent configuration). If you have installed the cursor-tools prompt to your .cursorrules (or equivalent) just ask your AI coding agent/assistant to use "cursor-tools" to do things.
+Use Cursor Composer in agent mode with command execution (not sure what this means, see section below on Cursor Agent configuration). If you have installed the vibe-tools prompt to your .cursorrules (or equivalent) just ask your AI coding agent/assistant to use "vibe-tools" to do things.
 
 ### Tool Recommendations
 
-- `cursor-tools ask` allows direct querying of any model from any provider. It's best for simple questions where you want to use a specific model or compare responses from different models.
-- `cursor-tools web` uses an AI teammate with web search capability to answer questions. `web` is best for finding up-to-date information from the web that is not specific to the repository such as how to use a library to search for known issues and error messages or to get suggestions on how to do something. Web is a teammate who knows tons of stuff and is always up to date.
-- `cursor-tools repo` uses an AI teammate with large context window capability to answer questions. `repo` sends the entire repo as context so it is ideal for questions about how things work or where to find something, it is also great for code review, debugging and planning. is a teammate who knows the entire codebase inside out and understands how everything works together.
-- `cursor-tools plan` uses an AI teammate with reasoning capability to plan complex tasks. Plan uses a two step process. First it does a whole repo search with a large context window model to find relevant files. Then it sends only those files as context to a thinking model to generate a plan it is great for planning complex tasks and for debugging and refactoring. Plan is a teammate who is really smart on a well defined problem, although doesn't consider the bigger picture.
-- `cursor-tools doc` uses an AI teammate with large context window capability to generate documentation for local or github hosted repositories by sending the entire repo as context. `doc` can be given precise documentation tasks or can be asked to generate complete docs from scratch it is great for generating docs updates or for generating local documentation for a libary or API that you use! Doc is a teammate who is great at summarising and explaining code, in this repo or in any other repo!
-- `cursor-tools browser` uses an AI teammate with browser control (aka operator) capability to operate web browsers. `browser` can operate in a hidden (headless) mode to invisibly test and debug web apps or it can be used to connect to an existing browser session to interactively share your browser with Cursor agent it is great for testing and debugging web apps and for carrying out any task that can be done in a browser such as reading information from a bug ticket or even filling out a form. Browser is a teammate who can help you test and debug web apps, and can share control of your browser to perform small browser-based tasks.
-- `cursor-tools youtube` uses an AI teammate with video analysis capability to understand YouTube content. `youtube` can generate summaries, extract transcripts, create implementation plans from tutorials, and answer specific questions about video content. It's great for extracting value from technical talks, tutorials, and presentations without spending time watching the entire video. YouTube is a teammate who can watch and analyze videos for you, distilling the key information.
+- `vibe-tools ask` allows direct querying of any model from any provider. It's best for simple questions where you want to use a specific model or compare responses from different models.
+- `vibe-tools web` uses an AI teammate with web search capability to answer questions. `web` is best for finding up-to-date information from the web that is not specific to the repository such as how to use a library to search for known issues and error messages or to get suggestions on how to do something. Web is a teammate who knows tons of stuff and is always up to date.
+- `vibe-tools repo` uses an AI teammate with large context window capability to answer questions. `repo` sends the entire repo as context so it is ideal for questions about how things work or where to find something, it is also great for code review, debugging and planning. is a teammate who knows the entire codebase inside out and understands how everything works together.
+- `vibe-tools plan` uses an AI teammate with reasoning capability to plan complex tasks. Plan uses a two step process. First it does a whole repo search with a large context window model to find relevant files. Then it sends only those files as context to a thinking model to generate a plan it is great for planning complex tasks and for debugging and refactoring. Plan is a teammate who is really smart on a well defined problem, although doesn't consider the bigger picture.
+- `vibe-tools doc` uses an AI teammate with large context window capability to generate documentation for local or github hosted repositories by sending the entire repo as context. `doc` can be given precise documentation tasks or can be asked to generate complete docs from scratch it is great for generating docs updates or for generating local documentation for a libary or API that you use! Doc is a teammate who is great at summarising and explaining code, in this repo or in any other repo!
+- `vibe-tools browser` uses an AI teammate with browser control (aka operator) capability to operate web browsers. `browser` can operate in a hidden (headless) mode to invisibly test and debug web apps or it can be used to connect to an existing browser session to interactively share your browser with Cursor agent it is great for testing and debugging web apps and for carrying out any task that can be done in a browser such as reading information from a bug ticket or even filling out a form. Browser is a teammate who can help you test and debug web apps, and can share control of your browser to perform small browser-based tasks.
+- `vibe-tools youtube` uses an AI teammate with video analysis capability to understand YouTube content. `youtube` can generate summaries, extract transcripts, create implementation plans from tutorials, and answer specific questions about video content. It's great for extracting value from technical talks, tutorials, and presentations without spending time watching the entire video. YouTube is a teammate who can watch and analyze videos for you, distilling the key information.
 
 Note: For repo, doc and plan commands the repository content that is sent as context can be reduced by filtering out files in a .repomixignore file.
 
 ### Command Nicknames
 
-When using cursor-tools with Cursor Composer, you can use these nicknames:
+When using vibe-tools with Cursor Composer, you can use these nicknames:
 
-- "Gemini" is a nickname for `cursor-tools repo`
-- "Perplexity" is a nickname for `cursor-tools web`
-- "Stagehand" is a nickname for `cursor-tools browser`
+- "Gemini" is a nickname for `vibe-tools repo`
+- "Perplexity" is a nickname for `vibe-tools web`
+- "Stagehand" is a nickname for `vibe-tools browser`
 
 ### Use web search
 
-"Please implement country specific stripe payment pages for the USA, UK, France and Germany. Use cursor-tools web to check the available stripe payment methods in each country."
+"Please implement country specific stripe payment pages for the USA, UK, France and Germany. Use vibe-tools web to check the available stripe payment methods in each country."
 
-Note: in most cases you can say "ask Perplexity" instead of "use cursor-tools web" and it will work the same.
+Note: in most cases you can say "ask Perplexity" instead of "use vibe-tools web" and it will work the same.
 
 ### Use repo search
 
-"Let's refactor our User class to allow multiple email aliases per user. Use cursor-tools repo to ask for a plan including a list of all files that need to be changed."
+"Let's refactor our User class to allow multiple email aliases per user. Use vibe-tools repo to ask for a plan including a list of all files that need to be changed."
 
-"Use cursor-tools repo to analyze how authentication is implemented in the Next.js repository. Use --from-github=vercel/next.js."
+"Use vibe-tools repo to analyze how authentication is implemented in the Next.js repository. Use --from-github=vercel/next.js."
 
-Note: in most cases you can say "ask Gemini" instead of "use cursor-tools repo" and it will work the same.
+Note: in most cases you can say "ask Gemini" instead of "use vibe-tools repo" and it will work the same.
 
 ### Use doc generation
 
-"Use cursor-tools to generate documentation for the Github repo https://github.com/kait-http/kaito" and write it to docs/kaito.md"
+"Use vibe-tools to generate documentation for the Github repo https://github.com/kait-http/kaito" and write it to docs/kaito.md"
 
-Note: in most cases you can say "generate documentation" instead of "use cursor-tools doc" and it will work the same.
+Note: in most cases you can say "generate documentation" instead of "use vibe-tools doc" and it will work the same.
 
 ### Use github integration
 
-"Use cursor-tools github to fetch issue 123 and suggest a solution to the user's problem"
+"Use vibe-tools github to fetch issue 123 and suggest a solution to the user's problem"
 
-"Use cursor-tools github to fetch PR 321 and see if you can fix Andy's latest comment"
+"Use vibe-tools github to fetch PR 321 and see if you can fix Andy's latest comment"
 
-Note: in most cases you can say "fetch issue 123" or "fetch PR 321" instead of "use cursor-tools github" and it will work the same.
+Note: in most cases you can say "fetch issue 123" or "fetch PR 321" instead of "use vibe-tools github" and it will work the same.
 
 ### Use browser automation
 
-"Use cursor-tools to open the users page and check the error in the console logs, fix it"
+"Use vibe-tools to open the users page and check the error in the console logs, fix it"
 
-"Use cursor-tools to test the form field validation logic. Take screenshots of each state"
+"Use vibe-tools to test the form field validation logic. Take screenshots of each state"
 
-"Use cursor-tools to open https://example.com/foo the and check the error in the network logs, what could be causing it?"
+"Use vibe-tools to open https://example.com/foo the and check the error in the network logs, what could be causing it?"
 
-Note: in most cases you can say "Use Stagehand" instead of "use cursor-tools" and it will work the same.
+Note: in most cases you can say "Use Stagehand" instead of "use vibe-tools" and it will work the same.
 
 ### Use direct model queries
 
-"Use cursor-tools ask to compare how different models answer this question: 'What are the key differences between REST and GraphQL?'"
+"Use vibe-tools ask to compare how different models answer this question: 'What are the key differences between REST and GraphQL?'"
 
 "Ask OpenAI's o3-mini model to explain the concept of dependency injection."
 
-"Use cursor-tools ask to analyze this complex algorithm with high reasoning effort: 'Explain the time and space complexity of the Boyer-Moore string search algorithm' --provider openai --model o3-mini --reasoning-effort high"
+"Use vibe-tools ask to analyze this complex algorithm with high reasoning effort: 'Explain the time and space complexity of the Boyer-Moore string search algorithm' --provider openai --model o3-mini --reasoning-effort high"
 
 Note: The ask command requires both --provider and --model parameters to be specified. This command is generally less useful than other commands like `repo` or `plan` because it does not include any context from your codebase or repository.
 
@@ -288,10 +288,10 @@ Note: The ask command requires both --provider and --model parameters to be spec
 
 ## Authentication and API Keys
 
-`cursor-tools` requires API keys for Perplexity AI, Google Gemini, and optionally for OpenAI, Anthropic and OpenRouter. These can be configured in two ways:
+`vibe-tools` requires API keys for Perplexity AI, Google Gemini, and optionally for OpenAI, Anthropic and OpenRouter. These can be configured in two ways:
 
-1. **Interactive Setup**: Run `cursor-tools install` and follow the prompts
-2. **Manual Setup**: Create `~/.cursor-tools/.env` in your home directory or `.cursor-tools.env` in your project root:
+1. **Interactive Setup**: Run `vibe-tools install` and follow the prompts
+2. **Manual Setup**: Create `~/.vibe-tools/.env` in your home directory or `.vibe-tools.env` in your project root:
    ```env
    PERPLEXITY_API_KEY="your-perplexity-api-key"
    GEMINI_API_KEY="your-gemini-api-key"
@@ -304,7 +304,7 @@ Note: The ask command requires both --provider and --model parameters to be spec
 
 ### Google Gemini API Authentication
 
-`cursor-tools` supports multiple authentication methods for accessing the Google Gemini API, providing flexibility for different environments and security requirements. You can choose from the following methods:
+`vibe-tools` supports multiple authentication methods for accessing the Google Gemini API, providing flexibility for different environments and security requirements. You can choose from the following methods:
 
 1. **API Key (Default)**
 
@@ -326,7 +326,7 @@ Note: The ask command requires both --provider and --model parameters to be spec
    - This method enables access to the latest Gemini models available through Vertex AI, such as `gemini-2.0-flash`.
 
 3. **Application Default Credentials (ADC) (Recommended for Google Cloud Environments)**
-   - ADC is ideal when running `cursor-tools` within Google Cloud environments (e.g., Compute Engine, Kubernetes Engine) or for local development using `gcloud`.
+   - ADC is ideal when running `vibe-tools` within Google Cloud environments (e.g., Compute Engine, Kubernetes Engine) or for local development using `gcloud`.
    - Set the `GEMINI_API_KEY` environment variable to `adc`.
    - **Example:**
      ```env
@@ -344,7 +344,7 @@ Note: The ask command requires both --provider and --model parameters to be spec
 Use Perplexity AI to get up-to-date information directly within Cursor:
 
 ```bash
-cursor-tools web "What's new in TypeScript 5.7?"
+vibe-tools web "What's new in TypeScript 5.7?"
 ```
 
 ### Gemini 2.0: Repository Context & Planning
@@ -353,10 +353,10 @@ Leverage Google Gemini 2.0 models with 1M+ token context windows for codebase-aw
 
 ```bash
 # Get context-aware assistance
-cursor-tools repo "Explain the authentication flow in this project, which files are involved?"
+vibe-tools repo "Explain the authentication flow in this project, which files are involved?"
 
 # Generate implementation plans
-cursor-tools plan "Add user authentication to the login page"
+vibe-tools plan "Add user authentication to the login page"
 ```
 
 The plan command uses multiple AI models to:
@@ -377,7 +377,7 @@ The plan command uses multiple AI models to:
 
 Repository context is created using Repomix. See repomix configuration section below for details on how to change repomix behaviour.
 
-Above 1M tokens cursor-tools will always send requests to Gemini 2.0 Pro as it is the only model that supports 1M+ tokens.
+Above 1M tokens vibe-tools will always send requests to Gemini 2.0 Pro as it is the only model that supports 1M+ tokens.
 
 The Gemini 2.0 Pro context limit is 2M tokens, you can add filters to .repomixignore if your repomix context is above this limit.
 
@@ -399,49 +399,49 @@ pnpm add playwright
 
 ```bash
 # Open and capture HTML content, console logs and network activity (enabled by default)
-cursor-tools browser open "https://example.com" --html
+vibe-tools browser open "https://example.com" --html
 
 # Take a screenshot
-cursor-tools browser open "https://example.com" --screenshot=page.png
+vibe-tools browser open "https://example.com" --screenshot=page.png
 
 # Debug in an interactive browser session
-cursor-tools browser open "https://example.com" --connect-to=9222
+vibe-tools browser open "https://example.com" --connect-to=9222
 ```
 
 2. `act` - Execute actions using natural language - Agent tells the browser-use agent what to do:
 
 ```bash
 # Single action
-cursor-tools browser act "Login as 'user@example.com'" --url "https://example.com/login"
+vibe-tools browser act "Login as 'user@example.com'" --url "https://example.com/login"
 
 # Multi-step workflow using pipe separator
-cursor-tools browser act "Click Login | Type 'user@example.com' into email | Click Submit" --url "https://example.com"
+vibe-tools browser act "Click Login | Type 'user@example.com' into email | Click Submit" --url "https://example.com"
 
 # Record interaction video
-cursor-tools browser act "Fill out registration form" --url "https://example.com/signup" --video="./recordings"
+vibe-tools browser act "Fill out registration form" --url "https://example.com/signup" --video="./recordings"
 ```
 
 3. `observe` - Analyze interactive elements:
 
 ```bash
 # Get overview of interactive elements
-cursor-tools browser observe "What can I interact with?" --url "https://example.com"
+vibe-tools browser observe "What can I interact with?" --url "https://example.com"
 
 # Find specific elements
-cursor-tools browser observe "Find the login form" --url "https://example.com"
+vibe-tools browser observe "Find the login form" --url "https://example.com"
 ```
 
 4. `extract` - Extract data using natural language:
 
 ```bash
 # Extract specific content
-cursor-tools browser extract "Get all product prices" --url "https://example.com/products"
+vibe-tools browser extract "Get all product prices" --url "https://example.com/products"
 
 # Save extracted content
-cursor-tools browser extract "Get article text" --url "https://example.com/blog" --html > article.html
+vibe-tools browser extract "Get article text" --url "https://example.com/blog" --html > article.html
 
 # Extract with network monitoring
-cursor-tools browser extract "Get API responses" --url "https://example.com/api-test" --network
+vibe-tools browser extract "Get API responses" --url "https://example.com/api-test" --network
 ```
 
 #### Browser Command Options
@@ -484,7 +484,7 @@ Example:
 
 ```bash
 # Record a video of filling out a form
-cursor-tools browser act "Fill out registration form with name John Doe" --url "http://localhost:3000/signup" --video="./recordings"
+vibe-tools browser act "Fill out registration form with name John Doe" --url "http://localhost:3000/signup" --video="./recordings"
 ```
 
 #### Console and Network Logging
@@ -501,13 +501,13 @@ The `act` command supports chaining multiple actions using the pipe (|) separato
 
 ```bash
 # Login sequence with console/network logging (enabled by default)
-cursor-tools browser act "Click Login | Type 'user@example.com' into email | Click Submit" --url "http://localhost:3000/login"
+vibe-tools browser act "Click Login | Type 'user@example.com' into email | Click Submit" --url "http://localhost:3000/login"
 
 # Form filling with multiple fields
-cursor-tools browser act "Select 'Mr' from title | Type 'John' into first name | Type 'Doe' into last name | Click Next" --url "http://localhost:3000/register"
+vibe-tools browser act "Select 'Mr' from title | Type 'John' into first name | Type 'Doe' into last name | Click Next" --url "http://localhost:3000/register"
 
 # Record complex interaction
-cursor-tools browser act "Fill form | Submit | Verify success" --url "http://localhost:3000/signup" --video="./recordings"
+vibe-tools browser act "Fill form | Submit | Verify success" --url "http://localhost:3000/signup" --video="./recordings"
 ```
 
 #### Troubleshooting Browser Commands
@@ -551,19 +551,19 @@ Use Gemini-powered YouTube video analysis to extract insights, summaries, and im
 
 ```bash
 # Generate a video summary
-cursor-tools youtube "https://www.youtube.com/watch?v=VIDEO_ID" --type=summary
+vibe-tools youtube "https://www.youtube.com/watch?v=VIDEO_ID" --type=summary
 
 # Get a detailed transcript
-cursor-tools youtube "https://www.youtube.com/watch?v=VIDEO_ID" --type=transcript
+vibe-tools youtube "https://www.youtube.com/watch?v=VIDEO_ID" --type=transcript
 
 # Create an implementation plan based on tutorial content
-cursor-tools youtube "https://www.youtube.com/watch?v=VIDEO_ID" --type=plan
+vibe-tools youtube "https://www.youtube.com/watch?v=VIDEO_ID" --type=plan
 
 # Ask specific questions about the video
-cursor-tools youtube "https://www.youtube.com/watch?v=VIDEO_ID" "How does the authentication flow work?"
+vibe-tools youtube "https://www.youtube.com/watch?v=VIDEO_ID" "How does the authentication flow work?"
 
 # Save summary to a file
-cursor-tools youtube "https://www.youtube.com/watch?v=VIDEO_ID" --type=summary --save-to=video-summary.md
+vibe-tools youtube "https://www.youtube.com/watch?v=VIDEO_ID" --type=summary --save-to=video-summary.md
 ```
 
 The YouTube command leverages Gemini models' native ability to understand video content, enabling you to:
@@ -577,7 +577,7 @@ The YouTube command leverages Gemini models' native ability to understand video 
 **YouTube Command Options:**
 - `--type=<summary|transcript|plan|custom>`: Type of analysis to perform (default: summary)
 
-**Note:** The YouTube command requires a `GEMINI_API_KEY` to be set in your environment or .cursor-tools.env file as the Gemini API is currently the only interface that reliably supports YouTube video analysis.
+**Note:** The YouTube command requires a `GEMINI_API_KEY` to be set in your environment or .vibe-tools.env file as the Gemini API is currently the only interface that reliably supports YouTube video analysis.
 
 ## Skills
 
@@ -587,12 +587,12 @@ Access GitHub issues and pull requests directly from the command line with rich 
 
 ```bash
 # List recent PRs or issues
-cursor-tools github pr
-cursor-tools github issue
+vibe-tools github pr
+vibe-tools github issue
 
 # View specific PR or issue with full discussion
-cursor-tools github pr 123
-cursor-tools github issue 456
+vibe-tools github pr 123
+vibe-tools github issue 456
 ```
 
 The GitHub commands provide:
@@ -629,32 +629,32 @@ Automate iOS app building, testing, and running in the simulator:
 
 ```bash
 # Available subcommands
-cursor-tools xcode build  # Build Xcode project and report errors
-cursor-tools xcode run    # Build and run app in simulator
-cursor-tools xcode lint   # Analyze code and offer to fix warnings
+vibe-tools xcode build  # Build Xcode project and report errors
+vibe-tools xcode run    # Build and run app in simulator
+vibe-tools xcode lint   # Analyze code and offer to fix warnings
 ```
 
 **Build Command Options:**
 
 ```bash
 # Specify custom build path (derived data)
-cursor-tools xcode build buildPath=/custom/build/path
+vibe-tools xcode build buildPath=/custom/build/path
 
 # Specify target device
-cursor-tools xcode build destination="platform=iOS Simulator,name=iPhone 15"
+vibe-tools xcode build destination="platform=iOS Simulator,name=iPhone 15"
 ```
 
 **Run Command Options:**
 
 ```bash
 # Run on iPhone simulator (default)
-cursor-tools xcode run iphone
+vibe-tools xcode run iphone
 
 # Run on iPad simulator
-cursor-tools xcode run ipad
+vibe-tools xcode run ipad
 
 # Run on specific device with custom build path
-cursor-tools xcode run device="iPhone 16 Pro" buildPath=/custom/build/path
+vibe-tools xcode run device="iPhone 16 Pro" buildPath=/custom/build/path
 ```
 
 The Xcode commands provide:
@@ -672,27 +672,27 @@ Generate comprehensive documentation for your repository or any GitHub repositor
 
 ```bash
 # Document local repository and save to file
-cursor-tools doc --save-to=docs.md
+vibe-tools doc --save-to=docs.md
 
 # Document remote GitHub repository (both formats supported)
-cursor-tools doc --from-github=username/repo-name@branch
-cursor-tools doc --from-github=https://github.com/username/repo-name@branch
+vibe-tools doc --from-github=username/repo-name@branch
+vibe-tools doc --from-github=https://github.com/username/repo-name@branch
 
 # Save documentation to file (with and without a hint)
 # This is really useful to generate local documentation for libraries and dependencies
-cursor-tools doc --from-github=eastlondoner/cursor-tools --save-to=docs/CURSOR-TOOLS.md
-cursor-tools doc --from-github=eastlondoner/cursor-tools --save-to=docs/CURSOR-TOOLS.md --hint="only information about the doc command"
+vibe-tools doc --from-github=eastlondoner/cursor-tools --save-to=docs/MY_DOCS.md
+vibe-tools doc --from-github=eastlondoner/cursor-tools --save-to=docs/MY_DOCS.md --hint="only information about the doc command"
 ```
 
 ## Configuration
 
-### cursor-tools.config.json
+### vibe-tools.config.json
 
-Customize `cursor-tools` behavior by creating a `cursor-tools.config.json` file. This file can be created either globally in `~/.cursor-tools/cursor-tools.config.json` or locally in your project root.
+Customize `vibe-tools` behavior by creating a `vibe-tools.config.json` file. This file can be created either globally in `~/.vibe-tools/vibe-tools.config.json` or locally in your project root.
 
-The cursor-tools.config file configures the local default behaviour for each command and provider.
+The vibe-tools.config file configures the local default behaviour for each command and provider.
 
-Here is an example of a typical cursor-tools.config.json file, showing some of the most common configuration options:
+Here is an example of a typical vibe-tools.config.json file, showing some of the most common configuration options:
 
 ```json
 {
@@ -745,9 +745,9 @@ The GitHub commands support several authentication methods:
    GITHUB_TOKEN=your_token_here
    ```
 
-2. **GitHub CLI**: If you have the GitHub CLI (`gh`) installed and are logged in, cursor-tools will automatically use it to generate tokens with the necessary scopes.
+2. **GitHub CLI**: If you have the GitHub CLI (`gh`) installed and are logged in, vibe-tools will automatically use it to generate tokens with the necessary scopes.
 
-3. **Git Credentials**: If you have authenticated git with GitHub (via HTTPS), cursor-tools will automatically:
+3. **Git Credentials**: If you have authenticated git with GitHub (via HTTPS), vibe-tools will automatically:
    - Use your stored GitHub token if available (credentials starting with `ghp_` or `gho_`)
    - Fall back to using Basic Auth with your git credentials
 
@@ -777,7 +777,7 @@ Authentication Status:
   - Public repositories: 5,000 requests per hour
   - Private repositories: Full access (if token has required scopes)
 
-cursor-tools will automatically try these authentication methods in order:
+vibe-tools will automatically try these authentication methods in order:
 
 1. `GITHUB_TOKEN` environment variable
 2. GitHub CLI token (if `gh` is installed and logged in)
@@ -787,7 +787,7 @@ If no authentication is available, it will fall back to unauthenticated access w
 
 ### Repomix Configuration
 
-When generating documentation, cursor-tools uses Repomix to analyze your repository. By default, it excludes certain files and directories that are typically not relevant for documentation:
+When generating documentation, vibe-tools uses Repomix to analyze your repository. By default, it excludes certain files and directories that are typically not relevant for documentation:
 
 - Node modules and package directories (`node_modules/`, `packages/`, etc.)
 - Build output directories (`dist/`, `build/`, etc.)
@@ -835,13 +835,13 @@ The `browser` commands support different AI models for processing. You can selec
 
 ```bash
 # Use gpt-4o
-cursor-tools browser act "Click Login" --url "https://example.com" --model=gpt-4o
+vibe-tools browser act "Click Login" --url "https://example.com" --model=gpt-4o
 
 # Use Claude 3.7 Sonnet
-cursor-tools browser act "Click Login" --url "https://example.com" --model=claude-3-7-sonnet-latest
+vibe-tools browser act "Click Login" --url "https://example.com" --model=claude-3-7-sonnet-latest
 ```
 
-You can set a default provider in your `cursor-tools.config.json` file under the `stagehand` section:
+You can set a default provider in your `vibe-tools.config.json` file under the `stagehand` section:
 
 ```json
 {
@@ -853,7 +853,7 @@ You can set a default provider in your `cursor-tools.config.json` file under the
 }
 ```
 
-You can also set a default model in your `cursor-tools.config.json` file under the `stagehand` section:
+You can also set a default model in your `vibe-tools.config.json` file under the `stagehand` section:
 
 ```json
 {
@@ -869,25 +869,25 @@ If no model is specified (either on the command line or in the config), a defaul
 - **OpenAI:** `o3-mini`
 - **Anthropic:** `claude-3-7-sonnet-latest`
 
-Available models depend on your configured provider (OpenAI or Anthropic) in `cursor-tools.config.json` and your API key.
+Available models depend on your configured provider (OpenAI or Anthropic) in `vibe-tools.config.json` and your API key.
 
 ### Cursor Configuration
 
-`cursor-tools` automatically configures Cursor by updating your project rules during installation. This provides:
+`vibe-tools` automatically configures Cursor by updating your project rules during installation. This provides:
 
 - Command suggestions
 - Usage examples
 - Context-aware assistance
 
-For new installations, we use the recommended `.cursor/rules/cursor-tools.mdc` path. For existing installations, we maintain compatibility with the legacy `.cursorrules` file. If both files exist, we prefer the new path and show a warning.
+For new installations, we use the recommended `.cursor/rules/vibe-tools.mdc` path. For existing installations, we maintain compatibility with the legacy `.cursorrules` file. If both files exist, we prefer the new path and show a warning.
 
 #### Cursor Agent Configuration:
 
-To get the benefits of cursor-tools you should use Cursor agent in "yolo mode". Ideal settings:
+To get the benefits of vibe-tools you should use Cursor agent in "yolo mode". Ideal settings:
 
 ![image](https://github.com/user-attachments/assets/783e26cf-c339-4cae-9629-857da0359cef)
 
-## cursor-tools cli
+## vibe-tools cli
 
 In general you do not need to use the cli directly, your AI coding agent will call the CLI but it is useful to know it exists and this is how it works.
 
@@ -959,28 +959,28 @@ Browser command specific options:
 Execute commands using:
 
 ```bash
-cursor-tools <command> [options]
+vibe-tools <command> [options]
 ```
 
 For example:
 
 ```bash
-cursor-tools web "What's new in TypeScript 5.7?"
+vibe-tools web "What's new in TypeScript 5.7?"
 ```
 
 ## Troubleshooting
 
 1. **Command Not Found**
 
-   - Ensure `cursor-tools` is installed globally using `npm install -g cursor-tools`
+   - Ensure `vibe-tools` is installed globally using `npm install -g vibe-tools`
    - Check your system's PATH environment variable to ensure it includes npm's global bin directory
    - On Unix-like systems, the global bin directory is typically `/usr/local/bin` or `~/.npm-global/bin`
    - On Windows, it's typically `%AppData%\npm`
 
 2. **API Key Errors**
 
-   - Verify `.cursor-tools.env` exists and contains valid API keys
-   - Run `cursor-tools install` to reconfigure API keys
+   - Verify `.vibe-tools.env` exists and contains valid API keys
+   - Run `vibe-tools install` to reconfigure API keys
    - Check that your API keys have the necessary permissions
    - For GitHub operations, ensure your token has the required scopes (repo, read:user)
    - For Google Vertex AI authentication:
@@ -1001,7 +1001,7 @@ cursor-tools web "What's new in TypeScript 5.7?"
 4. **GitHub API Rate Limits**
 
    - GitHub API has rate limits for unauthenticated requests. For higher limits you must be authenticated.
-   - If you have the gh cli installed and logged in cursor-tools will use that to obtain a short lived auth token. Otherwise you can add a GitHub token to your environment:
+   - If you have the gh cli installed and logged in vibe-tools will use that to obtain a short lived auth token. Otherwise you can add a GitHub token to your environment:
      ```env
      GITHUB_TOKEN=your_token_here
      ```
@@ -1015,7 +1015,7 @@ cursor-tools web "What's new in TypeScript 5.7?"
    - For very large repositories, consider documenting specific directories or files
 
 6. **Cursor Integration**
-   - If .cursorrules is outdated, run `cursor-tools install .` to update
+   - If .cursorrules is outdated, run `vibe-tools install .` to update
    - Ensure Cursor is configured to allow command execution
    - Check that your Cursor version supports AI commands
 
@@ -1025,96 +1025,96 @@ cursor-tools web "What's new in TypeScript 5.7?"
 
 ```bash
 # Get information about new technologies
-cursor-tools web "What are the key features of Bun.js?"
+vibe-tools web "What are the key features of Bun.js?"
 
 # Check API documentation
-cursor-tools web "How to implement OAuth2 in Express.js?"
+vibe-tools web "How to implement OAuth2 in Express.js?"
 
 # Compare technologies
-cursor-tools web "Compare Vite vs Webpack for modern web development"
+vibe-tools web "Compare Vite vs Webpack for modern web development"
 ```
 
 #### Repository Context Examples
 
 ```bash
 # Architecture understanding
-cursor-tools repo "Explain the overall architecture of this project"
+vibe-tools repo "Explain the overall architecture of this project"
 
 # Find usage examples
-cursor-tools repo "Show me examples of error handling in this codebase"
+vibe-tools repo "Show me examples of error handling in this codebase"
 
 # Debugging help
-cursor-tools repo "Why might the authentication be failing in the login flow?"
+vibe-tools repo "Why might the authentication be failing in the login flow?"
 
 # Analyze specific subdirectory
-cursor-tools repo "Explain the code structure" --subdir=src/components
+vibe-tools repo "Explain the code structure" --subdir=src/components
 
 # Analyze remote GitHub repository
-cursor-tools repo "Explain the architecture" --from-github=username/repo-name
+vibe-tools repo "Explain the architecture" --from-github=username/repo-name
 
 # Deep analysis with enhanced reasoning
-cursor-tools repo "Analyze the security implications of our authentication implementation" --reasoning-effort high
+vibe-tools repo "Analyze the security implications of our authentication implementation" --reasoning-effort high
 ```
 
 #### Direct Model Query Examples
 
 ```bash
 # Basic question
-cursor-tools ask "What is the capital of France?" --provider openai --model o3-mini
+vibe-tools ask "What is the capital of France?" --provider openai --model o3-mini
 
 # Complex algorithm explanation with high reasoning effort
-cursor-tools ask "Explain the quicksort algorithm and analyze its time complexity in different scenarios" --provider openai --model o3-mini --reasoning-effort high
+vibe-tools ask "Explain the quicksort algorithm and analyze its time complexity in different scenarios" --provider openai --model o3-mini --reasoning-effort high
 
 # Comparative analysis with Claude model and enhanced reasoning
-cursor-tools ask "Compare and contrast microservices vs monolithic architecture" --provider anthropic --model claude-3-7-sonnet --reasoning-effort medium
+vibe-tools ask "Compare and contrast microservices vs monolithic architecture" --provider anthropic --model claude-3-7-sonnet --reasoning-effort medium
 ```
 
 #### Documentation Examples
 
 ```bash
 # Document specific aspects and save to file without stdout output
-cursor-tools doc --save-to=docs/api.md --quiet --hint="Focus on the API endpoints and their usage"
+vibe-tools doc --save-to=docs/api.md --quiet --hint="Focus on the API endpoints and their usage"
 
 # Document with hint to customize the docs output
-cursor-tools doc --save-to=docs/architecture.md --quiet --hint="Focus on system architecture"
+vibe-tools doc --save-to=docs/architecture.md --quiet --hint="Focus on system architecture"
 
 # Document dependencies
-cursor-tools doc --from-github=expressjs/express --save-to=docs/EXPRESS.md --quiet
+vibe-tools doc --from-github=expressjs/express --save-to=docs/EXPRESS.md --quiet
 ```
 
 #### GitHub Integration Examples
 
 ```bash
 # List PRs with specific labels
-cursor-tools github pr --from-github facebook/react
+vibe-tools github pr --from-github facebook/react
 
 # Check recent issues in a specific repository
-cursor-tools github issue --from-github vercel/next.js
+vibe-tools github issue --from-github vercel/next.js
 
 # View PR with code review comments
-cursor-tools github pr 123 --from-github microsoft/typescript
+vibe-tools github pr 123 --from-github microsoft/typescript
 
 # Track issue discussions
-cursor-tools github issue 456 --from-github golang/go
+vibe-tools github issue 456 --from-github golang/go
 ```
 
 #### Xcode Command Examples
 
 ```bash
 # Build an iOS app with default settings
-cursor-tools xcode build
+vibe-tools xcode build
 
 # Build with custom derived data path
-cursor-tools xcode build buildPath=~/custom/derived/data
+vibe-tools xcode build buildPath=~/custom/derived/data
 
 # Run in iPhone simulator
-cursor-tools xcode run iphone
+vibe-tools xcode run iphone
 
 # Run on specific iPad model
-cursor-tools xcode run device="iPad Pro (12.9-inch) (6th generation)"
+vibe-tools xcode run device="iPad Pro (12.9-inch) (6th generation)"
 
 # Analyze code quality
-cursor-tools xcode lint
+vibe-tools xcode lint
 ```
 
 #### Browser Command Examples
@@ -1123,63 +1123,63 @@ cursor-tools xcode lint
 
 ```bash
 # Open a URL and get HTML
-cursor-tools browser open "https://example.com" --html
+vibe-tools browser open "https://example.com" --html
 
 # Open and capture console logs and network activity
-cursor-tools browser open "https://example.com" --console --network
+vibe-tools browser open "https://example.com" --console --network
 
 # Take a screenshot
-cursor-tools browser open "https://example.com" --screenshot=page.png
+vibe-tools browser open "https://example.com" --screenshot=page.png
 
 # Run in non-headless mode for debugging
-cursor-tools browser open "https://example.com" --no-headless
+vibe-tools browser open "https://example.com" --no-headless
 ```
 
 ##### `act`, `extract`, `observe` subcommands examples:
 
 ```bash
 # AI-powered action
-cursor-tools browser act "Click on 'Sign Up'" --url "https://example.com"
+vibe-tools browser act "Click on 'Sign Up'" --url "https://example.com"
 
 # AI-powered extraction
-cursor-tools browser extract "Get the main content" --url "https://example.com/blog"
+vibe-tools browser extract "Get the main content" --url "https://example.com/blog"
 
 # AI-powered observation
-cursor-tools browser observe "What can I do on this page?" --url "https://example.com"
+vibe-tools browser observe "What can I do on this page?" --url "https://example.com"
 ```
 
 #### YouTube Command Examples
 
 ```bash
 # Generate a comprehensive summary of a technical talk
-cursor-tools youtube "https://www.youtube.com/watch?v=dQw4w9WgXcQ" --type=summary
+vibe-tools youtube "https://www.youtube.com/watch?v=dQw4w9WgXcQ" --type=summary
 
 # Get a complete transcript with speaker annotations
-cursor-tools youtube "https://www.youtube.com/watch?v=dQw4w9WgXcQ" --type=transcript --save-to=transcript.md
+vibe-tools youtube "https://www.youtube.com/watch?v=dQw4w9WgXcQ" --type=transcript --save-to=transcript.md
 
 # Create an implementation plan from a coding tutorial
-cursor-tools youtube "https://www.youtube.com/watch?v=dQw4w9WgXcQ" --type=plan
+vibe-tools youtube "https://www.youtube.com/watch?v=dQw4w9WgXcQ" --type=plan
 
 # Generate a critical review of a tutorial's accuracy and quality
-cursor-tools youtube "https://www.youtube.com/watch?v=dQw4w9WgXcQ" --type=review
+vibe-tools youtube "https://www.youtube.com/watch?v=dQw4w9WgXcQ" --type=review
 
 # Ask specific questions about video content
-cursor-tools youtube "https://www.youtube.com/watch?v=dQw4w9WgXcQ" "What libraries does the tutorial use for authentication?"
+vibe-tools youtube "https://www.youtube.com/watch?v=dQw4w9WgXcQ" "What libraries does the tutorial use for authentication?"
 
 # Use a specific model for analysis
-cursor-tools youtube "https://www.youtube.com/watch?v=dQw4w9WgXcQ" --model=gemini-2.5-pro-exp
+vibe-tools youtube "https://www.youtube.com/watch?v=dQw4w9WgXcQ" --model=gemini-2.5-pro-exp
 
 # Use custom analysis type for specialized insights
-cursor-tools youtube "https://www.youtube.com/watch?v=dQw4w9WgXcQ" --type=custom "Extract all code examples and explain them in detail"
+vibe-tools youtube "https://www.youtube.com/watch?v=dQw4w9WgXcQ" --type=custom "Extract all code examples and explain them in detail"
 ```
 
 ## Node Package Manager (npm)
 
-cursor-tools is available on npm [here](https://www.npmjs.com/package/cursor-tools)
+vibe-tools is available on npm [here](https://www.npmjs.com/package/vibe-tools)
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request. If you used cursor-tools to make your contribution please include screenshots or videos of cursor-tools in action.
+Contributions are welcome! Please feel free to submit a Pull Request. If you used vibe-tools to make your contribution please include screenshots or videos of vibe-tools in action.
 
 ## Sponsors
 

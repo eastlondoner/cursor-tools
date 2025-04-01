@@ -75,7 +75,7 @@ export async function getGithubRepoContext(
       throw new ProviderError(
         `Repository ${repoIdentifier} is too large (${Math.round(sizeInMB)}MB) to process remotely.
 The current size limit is ${maxRepoSizeMB}MB. You can:
-1. Increase the limit by setting repo.maxRepoSizeMB in cursor-tools.config.json
+1. Increase the limit by setting repo.maxRepoSizeMB in vibe-tools.config.json
 2. Clone the repository locally and run without --from-github
 3. The local processing will be more efficient and can handle larger codebases`
       );

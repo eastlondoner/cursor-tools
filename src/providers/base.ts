@@ -719,7 +719,7 @@ export class GoogleVertexAIProvider extends BaseProvider {
             if (response.status === 429) {
               console.warn(
                 'Received 429 error from Google API. This can occur due to token limits on free accounts. ' +
-                  'For more information, see: https://github.com/eastlondoner/cursor-tools/issues/35'
+                  'For more information, see: https://github.com/eastlondoner/vibe-tools/issues/35'
               );
             }
             throw new NetworkError(`Google Vertex AI API error (${response.status}): ${errorText}`);
@@ -1138,7 +1138,7 @@ export class GoogleGenerativeLanguageProvider extends BaseProvider {
               }
               console.warn(
                 'Received 429 error from Google API. This can occur due to token limits on free accounts. ' +
-                  'For more information, see: https://github.com/eastlondoner/cursor-tools/issues/35'
+                  'For more information, see: https://github.com/eastlondoner/vibe-tools/issues/35'
               );
             }
             throw new NetworkError(
@@ -1561,8 +1561,8 @@ export class OpenRouterProvider extends OpenAIBase {
       throw new ApiKeyMissingError('OpenRouter');
     }
     const headers = {
-      'HTTP-Referer': 'http://cursor-tools.com',
-      'X-Title': 'cursor-tools',
+      'HTTP-Referer': 'http://vibe-tools.com',
+      'X-Title': 'vibe-tools',
     };
     super(apiKey, 'https://openrouter.ai/api/v1', {
       defaultHeaders: headers,

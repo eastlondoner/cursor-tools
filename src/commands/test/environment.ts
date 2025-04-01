@@ -20,7 +20,7 @@ export class TestEnvironmentManager {
     const randomSuffix = crypto.randomBytes(4).toString('hex');
     // Replace any whitespace and special characters with hyphens to ensure no whitespace in directory names
     const sanitizedScenarioId = scenarioId.replace(/[\s\W]+/g, '-');
-    const dirName = `cursor-tools-test-${sanitizedScenarioId}-${timestamp}-${randomSuffix}`;
+    const dirName = `vibe-tools-test-${sanitizedScenarioId}-${timestamp}-${randomSuffix}`;
     const tempDir = path.join(os.tmpdir(), dirName);
 
     // Ensure the directory exists
@@ -59,12 +59,12 @@ export class TestEnvironmentManager {
       // it might just result in test failures that will be properly reported
     }
 
-    // Create .cursor/rules directory and copy cursor-tools.mdc file to prevent warnings
+    // Create .cursor/rules directory and copy vibe-tools.mdc file to prevent warnings
     try {
       // Check if the cursor rules file exists in the project root
-      const cursorRulesSourcePath = path.join(projectRoot, '.cursor', 'rules', 'cursor-tools.mdc');
+      const cursorRulesSourcePath = path.join(projectRoot, '.cursor', 'rules', 'vibe-tools.mdc');
       const cursorRulesDestDir = path.join(tempDir, '.cursor', 'rules');
-      const cursorRulesDestPath = path.join(cursorRulesDestDir, 'cursor-tools.mdc');
+      const cursorRulesDestPath = path.join(cursorRulesDestDir, 'vibe-tools.mdc');
 
       if (fs.existsSync(cursorRulesSourcePath)) {
         // Create the .cursor/rules directory in the temp directory

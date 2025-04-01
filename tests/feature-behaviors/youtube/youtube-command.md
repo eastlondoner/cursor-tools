@@ -1,13 +1,13 @@
 # Feature Behavior: YouTube Video Analysis Capability
 
 ## Description
-cursor-tools should enable users to analyze YouTube videos using Gemini's video understanding capabilities. The youtube command should support various analysis types like summary, transcript, plan generation, and custom queries. It should handle different output formats and provide helpful error messages for various error scenarios.
+vibe-tools should enable users to analyze YouTube videos using Gemini's video understanding capabilities. The youtube command should support various analysis types like summary, transcript, plan generation, and custom queries. It should handle different output formats and provide helpful error messages for various error scenarios.
 
 ## Test Scenarios
 
 ### Scenario 1: Basic Video Summary (Happy Path)
 **Task Description:**
-Use cursor-tools to generate a summary of the YouTube video https://youtu.be/eh89VE3Mk5g?si=omgHsY9F-j0cMJdt.
+Use vibe-tools to generate a summary of the YouTube video https://youtu.be/eh89VE3Mk5g?si=omgHsY9F-j0cMJdt.
 
 **Expected Behavior:**
 - The AI agent should determine the appropriate command to use
@@ -23,7 +23,7 @@ Use cursor-tools to generate a summary of the YouTube video https://youtu.be/eh8
 
 ### Scenario 2: Generate Implementation Plan from Video (Happy Path)
 **Task Description:**
-Use cursor-tools to generate an implementation plan for publishing a npm package from the YouTube video https://youtu.be/eh89VE3Mk5g?si=omgHsY9F-j0cMJdt.
+Use vibe-tools to generate an implementation plan for publishing a npm package from the YouTube video https://youtu.be/eh89VE3Mk5g?si=omgHsY9F-j0cMJdt.
 
 **Expected Behavior:**
 - The AI agent should use the youtube command with type=plan option
@@ -39,7 +39,7 @@ Use cursor-tools to generate an implementation plan for publishing a npm package
 
 ### Scenario 3: Request Video Transcript (Happy Path)
 **Task Description:**
-Use cursor-tools to generate a transcript of a YouTube video https://www.youtube.com/watch?v=43c-Sm5GMbc
+Use vibe-tools to generate a transcript of a YouTube video https://www.youtube.com/watch?v=43c-Sm5GMbc
 
 **Expected Behavior:**
 - The AI agent should use the youtube command with type=transcript option
@@ -54,7 +54,7 @@ Use cursor-tools to generate a transcript of a YouTube video https://www.youtube
 
 ### Scenario 4: Custom Analysis Query (Happy Path)
 **Task Description:**
-Use cursor-tools to ask a how Chris recommends to configure camera settings to reduce camera jitter when when moving your character small distances in his video https://www.youtube.com/watch?v=43c-Sm5GMbc
+Use vibe-tools to ask a how Chris recommends to configure camera settings to reduce camera jitter when when moving your character small distances in his video https://www.youtube.com/watch?v=43c-Sm5GMbc
 
 **Expected Behavior:**
 - The AI agent should use the youtube command with a custom query
@@ -69,7 +69,7 @@ Use cursor-tools to ask a how Chris recommends to configure camera settings to r
 
 ### Scenario 5: Different Output Formats (Happy Path)
 **Task Description:**
-Use cursor-tools to analyze a YouTube video with different output formats (markdown, json, text).
+Use vibe-tools to analyze a YouTube video with different output formats (markdown, json, text).
 
 **Expected Behavior:**
 - The AI agent should use the youtube command with different format options
@@ -83,7 +83,7 @@ Use cursor-tools to analyze a YouTube video with different output formats (markd
 
 ### Scenario 6: Error Handling - Invalid YouTube URL (Error Handling)
 **Task Description:**
-Attempt to use cursor-tools to analyze an invalid YouTube URL.
+Attempt to use vibe-tools to analyze an invalid YouTube URL.
 
 **Expected Behavior:**
 - The command should fail with a clear error message
@@ -100,7 +100,7 @@ Attempt to use cursor-tools to analyze an invalid YouTube URL.
 
 ### Scenario 7: Error Handling - Missing Gemini API Key (Error Handling)
 **Task Description:**
-Attempt to use cursor-tools with the youtube command to generate a transcript of https://www.youtube.com/watch?v=43c-Sm5GMbc without setting the GEMINI_API_KEY environment variable.
+Attempt to use vibe-tools with the youtube command to generate a transcript of https://www.youtube.com/watch?v=43c-Sm5GMbc without setting the GEMINI_API_KEY environment variable.
 
 **Expected Behavior:**
 - The command should fail with a clear error message
@@ -115,7 +115,7 @@ Attempt to use cursor-tools with the youtube command to generate a transcript of
 
 ### Scenario 8: Error Handling - Video Too Long (Error Handling)
 **Task Description:**
-Attempt to use cursor-tools to analyze a very long YouTube video (1+ hour).
+Attempt to use vibe-tools to analyze a very long YouTube video (1+ hour).
 
 **Expected Behavior:**
 - The command should fail with a clear error message about video length limitations
@@ -131,7 +131,7 @@ Attempt to use cursor-tools to analyze a very long YouTube video (1+ hour).
 
 ### Scenario 9: Error Handling - Private or Age-Restricted Video (Error Handling)
 **Task Description:**
-Attempt to use cursor-tools to analyze this YouTube video: https://youtu.be/v_Kntns6Znc?si=JgyumCMp0KCdkBqa which is age restricted.
+Attempt to use vibe-tools to analyze this YouTube video: https://youtu.be/v_Kntns6Znc?si=JgyumCMp0KCdkBqa which is age restricted.
 
 **Expected Behavior:**
 - The command should fail with a clear error message about access restrictions
@@ -147,7 +147,7 @@ Attempt to use cursor-tools to analyze this YouTube video: https://youtu.be/v_Kn
 
 ### Scenario 10: Configuration - Using Config Options (Configuration)
 **Task Description:**
-Verify that cursor-tools respects the model and max token configuration options in cursor-tools.config.json for the YouTube command. Try calling it with different combinations of model and max tokens. Note: Valid model options for youtube are gemini-2.0-flash and gemini-2.5-pro-exp-03-25. gemini 2.5 has a max token limit of 60000 tokens, gemini 2.0 flash has a max token limit of 8000 tokens.
+Verify that vibe-tools respects the model and max token configuration options in vibe-tools.config.json for the YouTube command. Try calling it with different combinations of model and max tokens. Note: Valid model options for youtube are gemini-2.0-flash and gemini-2.5-pro-exp-03-25. gemini 2.5 has a max token limit of 60000 tokens, gemini 2.0 flash has a max token limit of 8000 tokens.
 
 **Expected Behavior:**
 - The command should use the model defined in the configuration if no command line --model param is set

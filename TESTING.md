@@ -2,11 +2,11 @@
 
 ## Overview
 
-This document outlines our approach to regression testing for cursor-tools using AI agents. We'll create feature behavior files that describe desired behaviors, and AI agents will determine how to test these behaviors using cursor-tools. The agents will generate detailed reports and simple PASS/FAIL results for automated validation.
+This document outlines our approach to regression testing for vibe-tools using AI agents. We'll create feature behavior files that describe desired behaviors, and AI agents will determine how to test these behaviors using vibe-tools. The agents will generate detailed reports and simple PASS/FAIL results for automated validation.
 
 ## Goals
 
-1. **Comprehensive Feature Testing**: Test all major features and commands of cursor-tools in an automated fashion
+1. **Comprehensive Feature Testing**: Test all major features and commands of vibe-tools in an automated fashion
 2. **Regression Detection**: Quickly identify when changes break existing functionality
 3. **Parallel Execution**: Run tests concurrently to reduce overall testing time
 4. **Documentation**: Generate detailed reports explaining test outcomes and behavior
@@ -14,7 +14,7 @@ This document outlines our approach to regression testing for cursor-tools using
 6. **Automation-Friendly**: Enable CI/CD integration with simple PASS/FAIL outputs
 7. **Maintainability**: Make it easy to add new tests and update existing ones
 8. **Cross-Version Testing**: Compare behavior across different versions/branches
-9. **AI Agent Flexibility**: Test whether AI agents can correctly interpret and use cursor-tools based on natural language descriptions
+9. **AI Agent Flexibility**: Test whether AI agents can correctly interpret and use vibe-tools based on natural language descriptions
 
 ## Feature Behavior Files
 
@@ -36,8 +36,8 @@ Brief description of the feature and its functionality.
 
 ### Scenario 1: [Brief Scenario Description] (Happy Path)
 **Task Description:**
-Describe the task the AI agent should accomplish using cursor-tools, without specifying the exact command.
-For example: "Search the web for information about TypeScript using cursor-tools."
+Describe the task the AI agent should accomplish using vibe-tools, without specifying the exact command.
+For example: "Search the web for information about TypeScript using vibe-tools."
 
 **Expected Behavior:**
 - The AI agent should determine the appropriate command(s) to use
@@ -45,7 +45,7 @@ For example: "Search the web for information about TypeScript using cursor-tools
 - The command should complete successfully without errors
 
 **Success Criteria:**
-- AI agent correctly identifies and uses the appropriate cursor-tools command(s)
+- AI agent correctly identifies and uses the appropriate vibe-tools command(s)
 - Response contains relevant information about the requested topic
 - No unexpected error messages are displayed
 - Command completes within a reasonable time
@@ -93,7 +93,7 @@ Use double square brackets with the `asset:` prefix to indicate that the asset c
 Example:
 ```markdown
 **Task Description:**
-Use cursor-tools to ask a question about capitals.
+Use vibe-tools to ask a question about capitals.
 
 The agent should use this query: [[asset:simple-query]]
 ```
@@ -105,7 +105,7 @@ Use double curly braces with the `path:` prefix to indicate that only the absolu
 Example:
 ```markdown
 **Task Description:**
-Use cursor-tools to ask a very long question.
+Use vibe-tools to ask a very long question.
 
 The agent should use the query stored in this file: {{path:scenario9-long-query.txt}}
 ```
@@ -132,7 +132,7 @@ For the "Extremely Long Query" scenario in the ask-command tests:
 2. Reference this asset in the scenario using path reference:
    ```markdown
    **Task Description:**
-   Use cursor-tools to ask a very long question (over 500 characters).
+   Use vibe-tools to ask a very long question (over 500 characters).
    
    Use the query from this file: {{path:scenario9-long-query.txt}}
    ```
@@ -140,7 +140,7 @@ For the "Extremely Long Query" scenario in the ask-command tests:
 3. The test runner will resolve this to an absolute path
 4. The AI agent can then use this path in its command, e.g.:
    ```bash
-   cursor-tools ask --provider openai --model gpt-4 --file=/absolute/path/to/scenario9-long-query.txt
+   vibe-tools ask --provider openai --model gpt-4 --file=/absolute/path/to/scenario9-long-query.txt
    ```
 
 This approach ensures:
@@ -156,17 +156,17 @@ Each feature behavior file should include scenarios from these categories:
 1. **Positive Tests (Happy Path)**: Verify expected behavior under normal conditions
 2. **Negative Tests (Error Handling)**: Verify correct error handling and informative error messages
 3. **Boundary/Edge Cases**: Test limits, specific & unusual inputs, and edge conditions
-4. **Instruction Understanding Tests**: Test whether AI agent can correctly interpret and use cursor-tools based on instructions
+4. **Instruction Understanding Tests**: Test whether AI agent can correctly interpret and use vibe-tools based on instructions
 
 ## Implementation: CLI-Based Testing Framework
 
-This approach creates a dedicated testing command within cursor-tools that executes AI agent-based tests.
+This approach creates a dedicated testing command within vibe-tools that executes AI agent-based tests.
 
 ### Implementation Details:
 
 1. **Test Runner Command**:
    ```
-   cursor-tools test <feature-behavior-file.md> [options]
+   vibe-tools test <feature-behavior-file.md> [options]
    ```
 
 2. **Options**:
@@ -185,7 +185,7 @@ This approach creates a dedicated testing command within cursor-tools that execu
 3. **Test Execution**:
    - Parse feature behavior file into structured test scenarios
    - Initialize AI agent with appropriate context and cursorrules
-   - Instruct the AI agent to accomplish the described tasks using cursor-tools
+   - Instruct the AI agent to accomplish the described tasks using vibe-tools
    - Allow the AI agent to determine which commands to use based on the task description
    - Generate detailed report and PASS/FAIL result
    - Store reports in specified output directory with branch name in filename
@@ -220,7 +220,7 @@ This approach creates a dedicated testing command within cursor-tools that execu
    - Include execution time summary showing total time and time per scenario
    - Provide error summaries for quick identification of issues
    - Use distinct visual markers (✅, ❌) for PASS/FAIL status
-   - Include the exact cursor-tools commands generated by the AI agent
+   - Include the exact vibe-tools commands generated by the AI agent
    - Generate separate PASS/FAIL result files in a structured format (JSON)
    - Implement semantic comparison for AI-generated outputs:
      - Use Gemini for semantic understanding of outputs
@@ -246,11 +246,11 @@ This approach creates a dedicated testing command within cursor-tools that execu
    - **Tagging System**: Allow adding tags to scenarios for more granular test selection and execution
 
 ### Advantages:
-- Self-contained within cursor-tools codebase
-- Direct access to cursor-tools functionality
+- Self-contained within vibe-tools codebase
+- Direct access to vibe-tools functionality
 - No external dependencies for test execution
 - Easy integration with CI/CD pipelines
-- Tests both cursor-tools functionality and AI agent understanding
+- Tests both vibe-tools functionality and AI agent understanding
 - Faster implementation path for initial testing capabilities
 
 ## Implementation Plan
@@ -308,7 +308,7 @@ This approach creates a dedicated testing command within cursor-tools that execu
 ## Current Progress
 
 ### Completed Items (Phase 1)
-- ✅ **Test Runner Command Structure**: Implemented the `cursor-tools test` command with all specified options
+- ✅ **Test Runner Command Structure**: Implemented the `vibe-tools test` command with all specified options
 - ✅ **Feature Behavior File Parser**: Created a robust parser that extracts scenarios, task descriptions, expected behaviors, and success criteria
 - ✅ **Test Execution Flow**: Implemented the core logic for executing test scenarios using AI agents
 - ✅ **Report Generation**: Created a detailed Markdown report structure with all the required information
@@ -334,7 +334,7 @@ This approach creates a dedicated testing command within cursor-tools that execu
   - Type definitions in `src/commands/test/types.ts`
 
 ### In Progress (Phase 2)
-- 🔄 **Feature Behavior Files**: Creating test scenarios for core cursor-tools commands
+- 🔄 **Feature Behavior Files**: Creating test scenarios for core vibe-tools commands
 - 🔄 **Test Asset Management**: Implementing support for test assets and references
 - 🔄 **Environment Management**: Working on test environment isolation
 
@@ -365,8 +365,8 @@ This approach creates a dedicated testing command within cursor-tools that execu
 To ensure reliable and consistent test results, AI agents should follow these guidelines:
 
 1. **Flexible Command Selection**:
-   - Determine the appropriate cursor-tools commands based on task descriptions
-   - Use the cursor-tools documentation to understand available commands and options
+   - Determine the appropriate vibe-tools commands based on task descriptions
+   - Use the vibe-tools documentation to understand available commands and options
    - Select the most appropriate command(s) for the given task
    - Understand when to use command aliases or nicknames (e.g., "Perplexity" for web search)
 

@@ -20,7 +20,7 @@ export class AskCommand implements Command {
     // If no providers are available, throw an error
     if (availableProviders.length === 0) {
       throw new ProviderError(
-        "No AI providers are currently available. Please run 'cursor-tools install' to set up your API keys."
+        "No AI providers are currently available. Please run 'vibe-tools install' to set up your API keys."
       );
     }
 

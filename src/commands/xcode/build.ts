@@ -220,7 +220,7 @@ export class BuildCommand implements Command {
             yield `${warning.message}\n`;
           }
         }
-        yield '\nUse "cursor-tools xcode lint" to analyze and fix warnings.\n';
+        yield '\nUse "vibe-tools xcode lint" to analyze and fix warnings.\n';
       }
 
       // Report notes - these are informational

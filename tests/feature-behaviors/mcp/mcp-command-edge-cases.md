@@ -1,14 +1,14 @@
 # Feature Behavior: Model Context Protocol Edge Cases
 
 ## Description
-Tests edge cases and error handling scenarios for cursor-tools MCP command interactions, focusing on server configuration, database access issues, and tool-specific edge cases.
+Tests edge cases and error handling scenarios for vibe-tools MCP command interactions, focusing on server configuration, database access issues, and tool-specific edge cases.
 
 ## Test Scenarios
 
 ### Scenario 1: MCP Run with SQLite Server Override (Happy Path)
 **Tags:** parameters
 **Task Description:**
-Use cursor-tools to execute the SQLite MCP server's `read_query` tool with a server override parameter to query the test database at {{path:test.db}}. Run a SELECT query to get all users from the users table.
+Use vibe-tools to execute the SQLite MCP server's `read_query` tool with a server override parameter to query the test database at {{path:test.db}}. Run a SELECT query to get all users from the users table.
 
 **Expected Behavior:**
 - The AI agent should include the server override parameter pointing to the SQLite MCP server
@@ -25,7 +25,7 @@ Use cursor-tools to execute the SQLite MCP server's `read_query` tool with a ser
 
 ### Scenario 2: MCP Run with Invalid Table Schema (Error Handling)
 **Task Description:**
-Attempt to use cursor-tools to execute the SQLite MCP server's `create_table` tool with an invalid table schema (missing required fields). When running this command include instructions not to retry the table creation if it fails.
+Attempt to use vibe-tools to execute the SQLite MCP server's `create_table` tool with an invalid table schema (missing required fields). When running this command include instructions not to retry the table creation if it fails.
 
 **Expected Behavior:**
 - The command should fail with a clear error message
@@ -41,7 +41,7 @@ Attempt to use cursor-tools to execute the SQLite MCP server's `create_table` to
 ### Scenario 3: MCP Run with Simple Pagination (Edge Case)
 **Tags:** performance
 **Task Description:**
-Use cursor-tools to execute the SQLite MCP server's `read_query` tool to test basic pagination by:
+Use vibe-tools to execute the SQLite MCP server's `read_query` tool to test basic pagination by:
 1. Getting the total count of users
 2. Retrieving the first page (LIMIT 2)
 3. Retrieving the second page (LIMIT 2 OFFSET 2)
