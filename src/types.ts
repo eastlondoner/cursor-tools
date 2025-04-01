@@ -16,7 +16,7 @@ export interface CommandOptions {
   provider?: Provider;
   debug: boolean;
   url?: string;
-  json?: boolean; // Output results as JSON
+  json?: boolean | string; // Output results as JSON or provide JSON configuration
 
   // OpenAI and OpenRouter reasoning options
   reasoningEffort?: ReasoningEffort; // Support for OpenAI o1 and o3-mini reasoning effort

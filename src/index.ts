@@ -29,6 +29,7 @@ type CLIStringOption =
   // Output options
   | 'output'
   | 'saveTo'
+  | 'json'
   // Context options
   | 'hint'
   | 'fromGithub'
@@ -66,7 +67,6 @@ type CLIBooleanOption =
   | 'debug'
   // Output options
   | 'quiet'
-  | 'json'
   // Browser options
   | 'console'
   | 'html'
@@ -87,7 +87,7 @@ interface CLIOptions {
   output?: string;
   saveTo?: string;
   quiet?: boolean;
-  json?: boolean;
+  json?: boolean | string;
 
   // Context options
   hint?: string;
@@ -182,7 +182,6 @@ const OPTION_KEYS: Record<string, CLIOptionKey> = {
 const BOOLEAN_OPTIONS = new Set<CLIBooleanOption>([
   'debug',
   'quiet',
-  'json',
   'console',
   'html',
   'network',
@@ -311,6 +310,18 @@ async function main() {
             .join(', ')
         );
         process.exit(1);
+      }
+
+      // Special handling for --json option for install command
+      if (
+        optionKey === 'json' &&
+        command === 'install' &&
+        value !== 'true' &&
+        value !== 'false' &&
+        value !== undefined
+      ) {
+        options[optionKey] = value;
+        continue;
       }
 
       if (value === undefined && !BOOLEAN_OPTIONS.has(optionKey as CLIBooleanOption)) {

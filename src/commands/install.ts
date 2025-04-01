@@ -4,10 +4,12 @@ import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { loadEnv } from '../config';
 import { CURSOR_RULES_TEMPLATE, CURSOR_RULES_VERSION, checkCursorRules } from '../cursorrules';
+import { JsonInstallCommand } from './jsonInstall';
 
 interface InstallOptions extends CommandOptions {
   packageManager?: 'npm' | 'yarn' | 'pnpm';
   global?: boolean;
+  json?: string;
 }
 
 // Helper function to check for local cursor-tools dependencies
@@ -285,6 +287,15 @@ export class InstallCommand implements Command {
   }
 
   async *execute(targetPath: string, options?: InstallOptions): CommandGenerator {
+    // If JSON option is provided, use the JSON installer
+    if (options?.json) {
+      const jsonInstaller = new JsonInstallCommand();
+      for await (const message of jsonInstaller.execute(targetPath, options)) {
+        yield message;
+      }
+      return;
+    }
+
     const absolutePath = join(process.cwd(), targetPath);
 
     // Check for local dependencies first
