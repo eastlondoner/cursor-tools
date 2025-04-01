@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { loadEnv } from '../config';
-import { CURSOR_RULES_TEMPLATE, CURSOR_RULES_VERSION, checkCursorRules } from '../cursorrules';
+import { CURSOR_RULES_TEMPLATE, checkCursorRules } from '../cursorrules';
 
 interface JsonInstallOptions extends CommandOptions {
   json?: string | boolean;
@@ -24,12 +24,36 @@ async function getUserInput(prompt: string): Promise<string> {
   });
 }
 
+// Valid providers that cursor-tools supports
+const VALID_PROVIDERS = ['Openrouter', 'Perplexity', 'Openai', 'Anthropic', 'Modelbox', 'Gemini'];
+
 // Helper to parse JSON configuration
 function parseJsonConfig(
   jsonString: string
 ): Record<string, { provider: Provider; model: string }> {
   try {
-    return JSON.parse(jsonString);
+    const parsedConfig = JSON.parse(jsonString);
+
+    // Validate that each provider is valid
+    for (const [key, value] of Object.entries(parsedConfig)) {
+      const providerObj = value as { provider: string; model: string };
+
+      if (!providerObj.provider) {
+        throw new Error(`Missing provider in configuration for "${key}"`);
+      }
+
+      if (!VALID_PROVIDERS.includes(providerObj.provider)) {
+        throw new Error(
+          `Invalid provider "${providerObj.provider}" in configuration for "${key}". Valid providers are: ${VALID_PROVIDERS.join(', ')}`
+        );
+      }
+
+      if (!providerObj.model) {
+        throw new Error(`Missing model in configuration for "${key}"`);
+      }
+    }
+
+    return parsedConfig as Record<string, { provider: Provider; model: string }>;
   } catch (error) {
     throw new Error(
       `Invalid JSON configuration: ${error instanceof Error ? error.message : 'Unknown error'}`
