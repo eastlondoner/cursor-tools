@@ -9,7 +9,6 @@ import { JsonInstallCommand } from './jsonInstall';
 interface InstallOptions extends CommandOptions {
   packageManager?: 'npm' | 'yarn' | 'pnpm';
   global?: boolean;
-  json?: string;
 }
 
 // Helper function to check for local vibe-tools dependencies
