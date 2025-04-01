@@ -62,30 +62,61 @@ export class JsonInstallCommand implements Command {
       yield '\n===============================================================\n';
       yield '           Welcome to cursor-tools JSON installer!              \n';
       yield '===============================================================\n\n';
-      yield 'OpenRouter is recommended as it provides access to all AI models through a single API key.\n';
-      yield 'Visit https://openrouter.ai to get your API key.\n\n';
 
-      // Always ask for OpenRouter key first
-      const openRouterKey = await getUserInput('Enter your OpenRouter API key: ');
-      const keys: Record<string, string> = {
-        OPENROUTER_API_KEY: openRouterKey,
-      };
+      // Create a list of all keys to collect
+      const keys: Record<string, string> = {};
 
-      // If user didn't provide an OpenRouter key, prompt for specific provider keys
-      if (!openRouterKey) {
-        yield "\nSince you'll need to provide keys for each required provider.\n\n";
+      // Show all available providers that need to be configured
+      yield 'Based on your configuration, we need keys for the following providers:\n';
+      for (const provider of requiredProviders) {
+        yield `- ${provider}\n`;
+      }
 
-        for (const provider of requiredProviders) {
-          const envKey = `${provider.toUpperCase()}_API_KEY`;
-          const currentValue = process.env[envKey];
+      // Include OpenRouter as recommended but not required
+      const hasOpenRouterInRequired = requiredProviders.includes('openrouter');
+      if (!hasOpenRouterInRequired) {
+        yield '\nAdditionally, we recommend OpenRouter which provides access to multiple AI models through a single API key.\n';
+        yield 'Visit https://openrouter.ai to get your API key.\n';
+      }
 
-          if (!currentValue) {
-            const key = await getUserInput(`Enter your ${provider} API key: `);
-            keys[envKey] = key;
-          } else {
-            yield `Using existing ${provider} API key from environment.\n`;
+      yield '\nEnter API keys for the providers you want to use (press Enter to skip any):\n';
+
+      // Ask for OpenRouter first if not in required list already
+      if (!hasOpenRouterInRequired) {
+        const openRouterEnvKey = 'OPENROUTER_API_KEY';
+        const currentORValue = process.env[openRouterEnvKey];
+
+        if (currentORValue) {
+          yield `Using existing OpenRouter API key from environment.\n`;
+          keys[openRouterEnvKey] = currentORValue;
+        } else {
+          const orKey = await getUserInput('OpenRouter API key (recommended): ');
+          if (orKey) {
+            keys[openRouterEnvKey] = orKey;
           }
         }
+      }
+
+      // Now ask for each required provider
+      for (const provider of requiredProviders) {
+        const envKey = `${provider.toUpperCase()}_API_KEY`;
+        const currentValue = process.env[envKey];
+
+        if (currentValue) {
+          yield `Using existing ${provider} API key from environment.\n`;
+          keys[envKey] = currentValue;
+        } else {
+          // Show which provider is required by the configuration
+          const key = await getUserInput(`${provider} API key (required by your config): `);
+          keys[envKey] = key;
+        }
+      }
+
+      // Check if user provided at least one key
+      const hasAtLeastOneKey = Object.values(keys).some((value) => !!value);
+
+      if (!hasAtLeastOneKey) {
+        yield '\nWarning: No API keys provided. You will need to set up keys manually to use cursor-tools with your configuration.\n';
       }
 
       // Write keys to file
