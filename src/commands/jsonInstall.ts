@@ -1,5 +1,5 @@
 import type { Command, CommandGenerator, CommandOptions, Provider, Config } from '../types';
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { loadEnv } from '../config';
@@ -28,6 +28,14 @@ async function getUserInput(prompt: string): Promise<string> {
 // Note: The case here is important as it's used to normalize user input to the expected format
 const VALID_PROVIDERS = ['Openrouter', 'Perplexity', 'Openai', 'Anthropic', 'Modelbox', 'Gemini'];
 const VALID_PROVIDERS_LOWERCASE = VALID_PROVIDERS.map((p) => p.toLowerCase());
+
+// Define directory paths
+const LEGACY_HOME_DIR = join(homedir(), '.cursor-tools');
+const VIBE_HOME_DIR = join(homedir(), '.vibe-tools');
+const VIBE_HOME_ENV_PATH = join(VIBE_HOME_DIR, '.env');
+const VIBE_HOME_CONFIG_PATH = join(VIBE_HOME_DIR, 'config.json');
+const LOCAL_ENV_PATH = join(process.cwd(), '.vibe-tools.env'); // Keep local path definition separate
+const LOCAL_CONFIG_PATH = join(process.cwd(), 'vibe-tools.config.json'); // Keep local path definition separate
 
 // Helper to parse JSON configuration
 function parseJsonConfig(
@@ -85,9 +93,6 @@ function collectRequiredProviders(
 export class JsonInstallCommand implements Command {
   private async *setupApiKeys(requiredProviders: Provider[]): CommandGenerator {
     loadEnv(); // Load existing env files if any
-
-    const homeEnvPath = join(homedir(), '.vibe-tools', '.env');
-    const localEnvPath = join(process.cwd(), '.vibe-tools.env');
 
     try {
       // Welcome message
@@ -182,12 +187,12 @@ export class JsonInstallCommand implements Command {
 
       // Try to write to home directory first, fall back to local if it fails
       try {
-        writeKeysToFile(homeEnvPath, keys);
-        yield '\nAPI keys written to ~/.vibe-tools/.env\n';
+        writeKeysToFile(VIBE_HOME_ENV_PATH, keys);
+        yield `\nAPI keys written to ${VIBE_HOME_ENV_PATH}\n`;
       } catch (error) {
         console.error('Error writing API keys to home directory:', error);
-        writeKeysToFile(localEnvPath, keys);
-        yield '\nAPI keys written to .vibe-tools.env in the current directory\n';
+        writeKeysToFile(LOCAL_ENV_PATH, keys);
+        yield `\nAPI keys written to ${LOCAL_ENV_PATH} in the current directory\n`;
       }
     } catch (error) {
       console.error('Error setting up API keys:', error);
@@ -244,22 +249,18 @@ export class JsonInstallCommand implements Command {
       }
     }
 
-    const homeConfigPath = join(homedir(), '.vibe-tools', 'config.json');
-    const localConfigPath = join(process.cwd(), 'vibe-tools.config.json');
-
-    // Create directory if it doesn't exist
-    const homeConfigDir = join(homedir(), '.vibe-tools');
-    if (!existsSync(homeConfigDir)) {
-      mkdirSync(homeConfigDir, { recursive: true });
+    // Ensure the VIBE_HOME_DIR exists (might have been created during migration or needs creation now)
+    if (!existsSync(VIBE_HOME_DIR)) {
+      mkdirSync(VIBE_HOME_DIR, { recursive: true });
     }
 
     // Ask user where to save the config
     console.log('\nWhere would you like to save the configuration?');
-    console.log('1) Global config (~/.vibe-tools/config.json)');
-    console.log('2) Local config (./vibe-tools.config.json)');
+    console.log(`1) Global config (${VIBE_HOME_CONFIG_PATH})`);
+    console.log(`2) Local config (${LOCAL_CONFIG_PATH})`);
 
     const answer = await getUserInput('Enter choice (1 or 2): ');
-    const configPath = answer === '2' ? localConfigPath : homeConfigPath;
+    const configPath = answer === '2' ? LOCAL_CONFIG_PATH : VIBE_HOME_CONFIG_PATH;
 
     try {
       writeFileSync(configPath, JSON.stringify(config, null, 2));
@@ -268,6 +269,66 @@ export class JsonInstallCommand implements Command {
       console.error(`Error writing config to ${configPath}:`, error);
       throw error;
     }
+  }
+
+  // New method to handle migration from .cursor-tools
+  private async *handleMigration(): CommandGenerator {
+    yield 'Checking for legacy ~/.cursor-tools directory...\n';
+
+    if (existsSync(LEGACY_HOME_DIR)) {
+      yield `Found legacy configuration directory: ${LEGACY_HOME_DIR}\n`;
+
+      if (existsSync(VIBE_HOME_DIR)) {
+        yield `Existing new configuration directory found: ${VIBE_HOME_DIR}\n`;
+        const answer = await getUserInput(
+          `Do you want to replace ${VIBE_HOME_DIR} with the contents of ${LEGACY_HOME_DIR}? (y/N): `
+        );
+
+        if (answer.toLowerCase() === 'y') {
+          try {
+            yield `Removing existing ${VIBE_HOME_DIR}...\n`;
+            rmSync(VIBE_HOME_DIR, { recursive: true, force: true });
+            yield `Migrating ${LEGACY_HOME_DIR} to ${VIBE_HOME_DIR}...\n`;
+            renameSync(LEGACY_HOME_DIR, VIBE_HOME_DIR);
+            yield `✅ Migration successful. Using configuration from migrated ${VIBE_HOME_DIR}.\n`;
+          } catch (error) {
+            yield `❌ Error during migration: ${error instanceof Error ? error.message : 'Unknown error'}\nPlease resolve manually.\n`;
+            // Ensure VIBE_HOME_DIR exists even if migration failed mid-way
+            if (!existsSync(VIBE_HOME_DIR)) {
+              mkdirSync(VIBE_HOME_DIR, { recursive: true });
+            }
+          }
+        } else {
+          yield `Skipping migration. Using existing ${VIBE_HOME_DIR}.\n`;
+        }
+      } else {
+        // New directory doesn't exist, just rename the legacy one
+        try {
+          yield `Migrating ${LEGACY_HOME_DIR} to ${VIBE_HOME_DIR}...\n`;
+          renameSync(LEGACY_HOME_DIR, VIBE_HOME_DIR);
+          yield `✅ Migration successful. Using configuration from migrated ${VIBE_HOME_DIR}.\n`;
+        } catch (error) {
+          yield `❌ Error migrating ${LEGACY_HOME_DIR}: ${error instanceof Error ? error.message : 'Unknown error'}\nPlease create ${VIBE_HOME_DIR} manually.\n`;
+          // Ensure VIBE_HOME_DIR exists even if migration failed
+          if (!existsSync(VIBE_HOME_DIR)) {
+            mkdirSync(VIBE_HOME_DIR, { recursive: true });
+          }
+        }
+      }
+    } else {
+      yield 'No legacy ~/.cursor-tools directory found.\n';
+      // Ensure the new directory exists if the legacy one wasn't found
+      if (!existsSync(VIBE_HOME_DIR)) {
+        try {
+          mkdirSync(VIBE_HOME_DIR, { recursive: true });
+          yield `Created configuration directory: ${VIBE_HOME_DIR}\n`;
+        } catch (error) {
+          yield `❌ Error creating ${VIBE_HOME_DIR}: ${error instanceof Error ? error.message : 'Unknown error'}\n`;
+        }
+      }
+    }
+    // Add a newline for better formatting after migration messages
+    yield '\n';
   }
 
   async *execute(query: string, options: CommandOptions): CommandGenerator {
@@ -279,6 +340,9 @@ export class JsonInstallCommand implements Command {
     }
 
     try {
+      // Handle migration first
+      yield* this.handleMigration();
+
       // Parse JSON configuration
       const jsonConfig = parseJsonConfig(options.json);
 
