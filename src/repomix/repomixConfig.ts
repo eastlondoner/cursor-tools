@@ -24,7 +24,13 @@ export const ignorePatterns = [
   '**/*.tsbuildinfo',
 ];
 
-export const includePatterns = ['**/*', '.cursorrules', '.cursor/rules/*'];
+export const includePatterns = [
+  '**/*',
+  '.cursorrules',
+  '.cursor/rules/*',
+  '.clinerules',
+  'CLAUDE.md',
+];
 
 export const outputOptions = {
   git: {

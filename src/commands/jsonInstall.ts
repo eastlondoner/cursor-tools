@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { loadEnv } from '../config';
 import { CURSOR_RULES_TEMPLATE, checkCursorRules } from '../cursorrules';
+import { CLINE_ROO_RULES_TEMPLATE } from '../clineroorules';
 
 interface JsonInstallOptions extends CommandOptions {
   json?: string | boolean;
@@ -34,18 +35,34 @@ const LEGACY_HOME_DIR = join(homedir(), '.cursor-tools');
 const VIBE_HOME_DIR = join(homedir(), '.vibe-tools');
 const VIBE_HOME_ENV_PATH = join(VIBE_HOME_DIR, '.env');
 const VIBE_HOME_CONFIG_PATH = join(VIBE_HOME_DIR, 'config.json');
+const CLAUDE_HOME_DIR = join(homedir(), '.claude'); // Global Claude directory
 const LOCAL_ENV_PATH = join(process.cwd(), '.vibe-tools.env'); // Keep local path definition separate
 const LOCAL_CONFIG_PATH = join(process.cwd(), 'vibe-tools.config.json'); // Keep local path definition separate
 
 // Helper to parse JSON configuration
 function parseJsonConfig(
   jsonString: string
-): Record<string, { provider: Provider; model: string }> {
+): Record<string, { provider: Provider; model: string }> & { ide?: string } {
   try {
     const parsedConfig = JSON.parse(jsonString);
+    const validIdes = ['cursor', 'claude-code', 'windsurf', 'cline', 'roo'];
 
     // Validate that each provider is valid
     for (const [key, value] of Object.entries(parsedConfig)) {
+      if (key === 'ide') {
+        // Validate IDE if provided
+        if (typeof value !== 'string') {
+          throw new Error(`IDE must be a string, got: ${typeof value}`);
+        }
+
+        if (!validIdes.includes(value.toLowerCase())) {
+          throw new Error(`Invalid IDE "${value}". Valid IDE options are: ${validIdes.join(', ')}`);
+        }
+
+        // Skip further validation for ide
+        continue;
+      }
+
       const providerObj = value as { provider: string; model: string };
 
       if (!providerObj.provider) {
@@ -68,7 +85,7 @@ function parseJsonConfig(
       providerObj.provider = VALID_PROVIDERS[providerIndex];
     }
 
-    return parsedConfig as Record<string, { provider: Provider; model: string }>;
+    return parsedConfig as Record<string, { provider: Provider; model: string }> & { ide?: string };
   } catch (error) {
     throw new Error(
       `Invalid JSON configuration: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -78,13 +95,16 @@ function parseJsonConfig(
 
 // Collect unique providers from JSON configuration
 function collectRequiredProviders(
-  config: Record<string, { provider: Provider; model: string }>
+  config: Record<string, { provider: Provider; model: string }> & { ide?: string }
 ): Provider[] {
   const providers = new Set<Provider>();
 
-  Object.values(config).forEach(({ provider }) => {
+  Object.entries(config).forEach(([key, value]) => {
+    // Skip the ide key and ensure value has provider property
+    if (key === 'ide' || typeof value !== 'object' || !('provider' in value)) return;
+
     // Provider should already be normalized to correct case from parseJsonConfig
-    providers.add(provider);
+    providers.add(value.provider);
   });
 
   return Array.from(providers);
@@ -201,8 +221,8 @@ export class JsonInstallCommand implements Command {
   }
 
   private async createConfig(
-    jsonConfig: Record<string, { provider: Provider; model: string }>
-  ): Promise<void> {
+    jsonConfig: Record<string, { provider: Provider; model: string }> & { ide?: string }
+  ): Promise<{ isLocalConfig: boolean }> {
     const config: Config = {
       web: {},
       plan: {
@@ -217,34 +237,44 @@ export class JsonInstallCommand implements Command {
       },
     };
 
+    // Add ide if present
+    if (jsonConfig.ide) {
+      config.ide = jsonConfig.ide.toLowerCase();
+    }
+
     // Map the JSON config to the actual config structure
     for (const [key, value] of Object.entries(jsonConfig)) {
+      // Skip 'ide' key as we've already handled it
+      if (key === 'ide') continue;
+
+      const configValue = value as { provider: Provider; model: string };
+
       switch (key) {
         case 'coding':
           config.repo = {
-            provider: value.provider,
-            model: value.model,
+            provider: configValue.provider,
+            model: configValue.model,
           };
           break;
         case 'tooling':
           config.plan = {
-            fileProvider: value.provider,
-            thinkingProvider: value.provider,
-            fileModel: value.model,
-            thinkingModel: value.model,
+            fileProvider: configValue.provider,
+            thinkingProvider: configValue.provider,
+            fileModel: configValue.model,
+            thinkingModel: configValue.model,
           };
           break;
         case 'websearch':
           config.web = {
-            provider: value.provider,
-            model: value.model,
+            provider: configValue.provider,
+            model: configValue.model,
           };
           break;
         case 'largecontext':
           // This could apply to several commands that need large context
           if (!config.doc) config.doc = { provider: 'perplexity' };
-          config.doc.provider = value.provider;
-          config.doc.model = value.model;
+          config.doc.provider = configValue.provider;
+          config.doc.model = configValue.model;
           break;
       }
     }
@@ -260,14 +290,16 @@ export class JsonInstallCommand implements Command {
     console.log(`2) Local config (${LOCAL_CONFIG_PATH})`);
 
     const answer = await getUserInput('Enter choice (1 or 2): ');
-    const configPath = answer === '2' ? LOCAL_CONFIG_PATH : VIBE_HOME_CONFIG_PATH;
+    const isLocalConfig = answer === '2';
+    const configPath = isLocalConfig ? LOCAL_CONFIG_PATH : VIBE_HOME_CONFIG_PATH;
 
     try {
       writeFileSync(configPath, JSON.stringify(config, null, 2));
       console.log(`\nConfig saved to ${configPath}`);
+      return { isLocalConfig };
     } catch (error) {
       console.error(`Error writing config to ${configPath}:`, error);
-      throw error;
+      throw error; // Rethrow to be caught by the main execute block
     }
   }
 
@@ -355,14 +387,15 @@ export class JsonInstallCommand implements Command {
         yield message;
       }
 
-      // Create config file
+      // Create config file and get its location preference
       yield '\nCreating configuration file...\n';
-      await this.createConfig(jsonConfig);
+      const { isLocalConfig } = await this.createConfig(jsonConfig);
 
-      // Update/create cursor rules
-      try {
-        yield '\nSetting up cursor rules...\n';
+      // Handle IDE-specific rules setup
+      const selectedIde = jsonConfig.ide?.toLowerCase() || 'cursor';
+      yield `\nSetting up rules for ${selectedIde}...\n`;
 
+      if (selectedIde === 'cursor') {
         // Always use new directory structure for rules with JSON installer
         process.env.USE_LEGACY_CURSORRULES = 'false';
 
@@ -390,22 +423,21 @@ export class JsonInstallCommand implements Command {
             '  1) Set USE_LEGACY_CURSORRULES=false in your environment\n' +
             '  2) Run vibe-tools install . again\n' +
             '  3) Remove the <vibe-tools Integration> section from .cursorrules\n\n';
-        } else {
-          if (result.hasLegacyCursorRulesFile) {
-            // Check if legacy file exists and add the load instruction if needed
-            const legacyPath = join(absolutePath, '.cursorrules');
-            if (existsSync(legacyPath)) {
-              const legacyContent = readFileSync(legacyPath, 'utf-8');
-              const loadInstruction = 'Always load the rules in vibe-tools.mdc';
+        }
+        if (result.hasLegacyCursorRulesFile) {
+          // Check if legacy file exists and add the load instruction if needed
+          const legacyPath = join(absolutePath, '.cursorrules');
+          if (existsSync(legacyPath)) {
+            const legacyContent = readFileSync(legacyPath, 'utf-8');
+            const loadInstruction = 'Always load the rules in vibe-tools.mdc';
 
-              if (!legacyContent.includes(loadInstruction)) {
-                writeFileSync(legacyPath, `${legacyContent.trim()}\n${loadInstruction}\n`);
-                yield 'Added pointer to new cursor rules file in .cursorrules file\n';
-              }
+            if (!legacyContent.includes(loadInstruction)) {
+              writeFileSync(legacyPath, `${legacyContent.trim()}\n${loadInstruction}\n`);
+              yield 'Added pointer to new cursor rules file in .cursorrules file\n';
             }
           }
-          yield 'Using new .cursor/rules directory for cursor rules.\n';
         }
+        yield 'Using new .cursor/rules directory for cursor rules.\n';
 
         if (result.needsUpdate) {
           if (!result.targetPath.endsWith('.cursorrules')) {
@@ -437,11 +469,84 @@ export class JsonInstallCommand implements Command {
             }
           }
         }
+      } else {
+        // For other IDEs, add the rules template to the respective file
+        let rulesPath: string;
+        let rulesTemplate: string;
 
-        yield '\n✨ Installation completed successfully!\n';
-      } catch (error) {
-        yield `Error updating cursor rules: ${error instanceof Error ? error.message : 'Unknown error'}\n`;
+        switch (selectedIde) {
+          case 'claude-code':
+            // For Claude Code, use local/global path based on config location choice
+            if (isLocalConfig) {
+              rulesPath = join(absolutePath, 'CLAUDE.md'); // Use target path for local
+            } else {
+              // Use global Claude directory
+              if (!existsSync(CLAUDE_HOME_DIR)) {
+                mkdirSync(CLAUDE_HOME_DIR, { recursive: true });
+              }
+              rulesPath = join(CLAUDE_HOME_DIR, 'CLAUDE.md');
+            }
+            rulesTemplate = CURSOR_RULES_TEMPLATE;
+            break;
+          case 'windsurf':
+            rulesPath = join(absolutePath, '.windsurfrules');
+            rulesTemplate = CURSOR_RULES_TEMPLATE;
+            break;
+          case 'cline':
+          case 'roo':
+            rulesPath = join(absolutePath, '.clinerules');
+            rulesTemplate = CLINE_ROO_RULES_TEMPLATE;
+            break;
+          default:
+            rulesPath = join(absolutePath, '.cursor', 'rules', 'vibe-tools.mdc');
+            rulesTemplate = CURSOR_RULES_TEMPLATE;
+            break;
+        }
+
+        try {
+          // Ensure the directory exists if needed
+          const dir = join(rulesPath, '..');
+          if (!existsSync(dir)) {
+            mkdirSync(dir, { recursive: true });
+          }
+
+          // Check if file exists and read its content
+          let existingContent = existsSync(rulesPath) ? readFileSync(rulesPath, 'utf-8') : '';
+
+          // For Cline and Roo, we don't use start/end tags as they have a different format
+          if (selectedIde === 'cline' || selectedIde === 'roo') {
+            // Just write the template, don't try to find sections to replace
+            writeFileSync(rulesPath, rulesTemplate);
+          } else {
+            // Replace existing vibe-tools section or append if not found
+            const startTag = '<vibe-tools Integration>';
+            const endTag = '</vibe-tools Integration>';
+            const startIndex = existingContent.indexOf(startTag);
+            const endIndex = existingContent.indexOf(endTag);
+
+            if (startIndex !== -1 && endIndex !== -1) {
+              // Replace existing section
+              const newContent =
+                existingContent.slice(0, startIndex) +
+                rulesTemplate.trim() +
+                existingContent.slice(endIndex + endTag.length);
+              writeFileSync(rulesPath, newContent.trim());
+            } else {
+              // Append new section
+              writeFileSync(
+                rulesPath,
+                (existingContent.trim() + '\n\n' + rulesTemplate).trim() + '\n'
+              );
+            }
+          }
+
+          yield `✅ Rules written to ${rulesPath}\n`;
+        } catch (error) {
+          yield `Error writing rules for ${selectedIde}: ${error instanceof Error ? error.message : 'Unknown error'}\n`;
+        }
       }
+
+      yield '\n✨ Installation completed successfully!\n';
     } catch (error) {
       yield `Error with JSON installation: ${error instanceof Error ? error.message : 'Unknown error'}\n`;
     }

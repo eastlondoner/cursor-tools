@@ -5,6 +5,7 @@ import type { Config } from './types';
 // so we just use 8000 for all the defaults so people have a fighting chance of not hitting the limits
 export const defaultMaxTokens = 8000;
 export const defaultConfig: Config = {
+  ide: 'cursor', // Default IDE
   web: {
     provider: 'perplexity',
   },

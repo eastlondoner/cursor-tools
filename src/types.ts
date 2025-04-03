@@ -47,6 +47,7 @@ export interface CommandMap {
 
 // Interface for the vibe-tools.config.json config file
 export interface Config {
+  ide?: string; // The IDE being used (cursor, claude-code, windsurf, cline, roo)
   reasoningEffort?: ReasoningEffort; // Global default reasoning effort setting
   perplexity?: {
     model?: string;
