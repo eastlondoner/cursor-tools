@@ -46,9 +46,19 @@ function parseJsonConfig(
   try {
     const parsedConfig = JSON.parse(jsonString);
     const validIdes = ['cursor', 'claude-code', 'windsurf', 'cline', 'roo'];
+    let configToUse = parsedConfig;
+
+    // Check if there's an "agents" wrapper and use it if present
+    if (parsedConfig.agents && typeof parsedConfig.agents === 'object') {
+      // Merge agents into top level, preserving ide if it exists
+      configToUse = {
+        ...parsedConfig.agents,
+        ...(parsedConfig.ide ? { ide: parsedConfig.ide } : {}),
+      };
+    }
 
     // Validate that each provider is valid
-    for (const [key, value] of Object.entries(parsedConfig)) {
+    for (const [key, value] of Object.entries(configToUse)) {
       if (key === 'ide') {
         // Validate IDE if provided
         if (typeof value !== 'string') {
@@ -85,7 +95,7 @@ function parseJsonConfig(
       providerObj.provider = VALID_PROVIDERS[providerIndex];
     }
 
-    return parsedConfig as Record<string, { provider: Provider; model: string }> & { ide?: string };
+    return configToUse as Record<string, { provider: Provider; model: string }> & { ide?: string };
   } catch (error) {
     throw new Error(
       `Invalid JSON configuration: ${error instanceof Error ? error.message : 'Unknown error'}`
