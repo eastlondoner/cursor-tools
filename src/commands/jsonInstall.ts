@@ -1,14 +1,18 @@
 import type { Command, CommandGenerator, CommandOptions, Provider, Config } from '../types';
-import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync, rmSync } from 'node:fs';
+import {
+  readFileSync,
+  writeFileSync,
+  existsSync,
+  mkdirSync,
+  renameSync,
+  rmSync,
+  statSync,
+} from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { loadEnv } from '../config';
 import { CURSOR_RULES_TEMPLATE } from '../cursorrules';
 import { CLINE_ROO_RULES_TEMPLATE } from '../clineroorules';
-
-interface JsonInstallOptions extends CommandOptions {
-  json?: string | boolean;
-}
 
 // Helper function to get user input and properly close stdin
 async function getUserInput(prompt: string): Promise<string> {
@@ -487,19 +491,141 @@ export class JsonInstallCommand implements Command {
           }
           case 'cline':
           case 'roo': {
-            const rulesDir = join(absolutePath, '.clinerules');
-            ensureDirectoryExists(rulesDir);
-            rulesPath = join(rulesDir, 'vibe-tools.md');
-            rulesTemplate = CLINE_ROO_RULES_TEMPLATE;
+            const clinerulePath = join(absolutePath, '.clinerules');
 
-            // Write the vibe-tools rule file into the .clinerules directory
-            writeFileSync(rulesPath, rulesTemplate);
+            // First check if the .clinerules path exists
+            yield `Checking for .clinerules at ${clinerulePath}...\n`;
 
-            // Log information about where the rule was placed
-            console.log(
-              `Vibe-tools rule created in ${rulesPath} - this follows Cline's folder-based rules system`
-            );
-            yield `✅ Rules written to ${rulesPath} (using the modern .clinerules/ folder structure)\n`;
+            let isLegacyFile = false;
+            if (existsSync(clinerulePath)) {
+              try {
+                const stats = statSync(clinerulePath);
+                isLegacyFile = stats.isFile();
+                yield `Found existing .clinerules - isFile: ${isLegacyFile}, isDirectory: ${stats.isDirectory()}\n`;
+              } catch (error) {
+                yield `Error checking .clinerules: ${error instanceof Error ? error.message : 'Unknown error'}\n`;
+              }
+            } else {
+              yield `.clinerules does not exist, will create new directory structure\n`;
+            }
+
+            if (isLegacyFile) {
+              // Handle legacy .clinerules file format
+              yield `Found legacy .clinerules file format. Checking how to proceed...\n`;
+              const answer = await getUserInput(
+                `Do you want to convert to the new .clinerules/ directory format? (recommended) (y/N): `
+              );
+
+              if (answer.toLowerCase() === 'y') {
+                try {
+                  // Convert to directory format
+                  yield `Reading legacy .clinerules file content...\n`;
+                  // First, read the content of the legacy file
+                  const legacyContent = readFileSync(clinerulePath, 'utf-8');
+
+                  // Create a backup of the legacy file
+                  yield `Creating backup of legacy file...\n`;
+                  const backupPath = join(absolutePath, '.clinerules.backup');
+                  writeFileSync(backupPath, legacyContent);
+                  yield `Created backup at ${backupPath}\n`;
+
+                  // Remove the original file
+                  yield `Removing original .clinerules file...\n`;
+                  rmSync(clinerulePath);
+
+                  // Create the new directory structure
+                  yield `Creating new .clinerules directory...\n`;
+                  mkdirSync(clinerulePath, { recursive: true });
+
+                  if (!existsSync(clinerulePath)) {
+                    throw new Error(`Failed to create directory at ${clinerulePath}`);
+                  }
+
+                  // Create base.md with legacy content
+                  yield `Creating base.md with legacy content...\n`;
+                  const basePath = join(clinerulePath, 'base.md');
+                  writeFileSync(basePath, legacyContent);
+
+                  if (!existsSync(basePath)) {
+                    throw new Error(`Failed to create file at ${basePath}`);
+                  }
+
+                  // Write the vibe-tools rule file
+                  yield `Creating vibe-tools.md rules file...\n`;
+                  rulesPath = join(clinerulePath, 'vibe-tools.md');
+                  rulesTemplate = CLINE_ROO_RULES_TEMPLATE;
+                  // Wrap with vibe-tools Integration tags if not already wrapped
+                  if (!rulesTemplate.includes('<vibe-tools Integration>')) {
+                    rulesTemplate = `<vibe-tools Integration>\n${rulesTemplate}\n</vibe-tools Integration>`;
+                  }
+                  writeFileSync(rulesPath, rulesTemplate);
+
+                  if (!existsSync(rulesPath)) {
+                    throw new Error(`Failed to create file at ${rulesPath}`);
+                  }
+
+                  yield `✅ Converted to directory format. Legacy content saved to .clinerules/base.md and vibe-tools rules added to .clinerules/vibe-tools.md\n`;
+                } catch (error) {
+                  yield `❌ Error during migration: ${error instanceof Error ? error.message : 'Unknown error'}\n`;
+
+                  // Try to restore the backup if possible
+                  if (
+                    existsSync(join(absolutePath, '.clinerules.backup')) &&
+                    !existsSync(clinerulePath)
+                  ) {
+                    try {
+                      renameSync(join(absolutePath, '.clinerules.backup'), clinerulePath);
+                      yield `Restored original .clinerules file from backup\n`;
+                    } catch (restoreError) {
+                      yield `Failed to restore from backup: ${restoreError instanceof Error ? restoreError.message : 'Unknown error'}\n`;
+                    }
+                  }
+                }
+              } else {
+                // Keep legacy format, update the file
+                yield `Keeping legacy format, updating .clinerules file...\n`;
+                rulesPath = clinerulePath;
+                rulesTemplate = CLINE_ROO_RULES_TEMPLATE;
+                // Wrap with vibe-tools Integration tags if not already wrapped
+                if (!rulesTemplate.includes('<vibe-tools Integration>')) {
+                  rulesTemplate = `<vibe-tools Integration>\n${rulesTemplate}\n</vibe-tools Integration>`;
+                }
+                updateRulesSection(rulesPath, rulesTemplate);
+                yield `✅ Updated existing .clinerules file with vibe-tools section\n`;
+              }
+            } else {
+              // Handle new directory format or create new directory
+              try {
+                if (!existsSync(clinerulePath)) {
+                  yield `Creating .clinerules directory...\n`;
+                  mkdirSync(clinerulePath, { recursive: true });
+
+                  if (!existsSync(clinerulePath)) {
+                    throw new Error(`Failed to create directory at ${clinerulePath}`);
+                  }
+                }
+
+                yield `Creating vibe-tools.md in the .clinerules directory...\n`;
+                rulesPath = join(clinerulePath, 'vibe-tools.md');
+                rulesTemplate = CLINE_ROO_RULES_TEMPLATE;
+
+                // Wrap with vibe-tools Integration tags if not already wrapped
+                if (!rulesTemplate.includes('<vibe-tools Integration>')) {
+                  rulesTemplate = `<vibe-tools Integration>\n${rulesTemplate}\n</vibe-tools Integration>`;
+                }
+
+                // Write the vibe-tools rule file
+                writeFileSync(rulesPath, rulesTemplate);
+
+                if (!existsSync(rulesPath)) {
+                  throw new Error(`Failed to create file at ${rulesPath}`);
+                }
+
+                yield `✅ Rules written to ${rulesPath} (using the modern .clinerules/ folder structure)\n`;
+              } catch (error) {
+                yield `❌ Error creating directory structure: ${error instanceof Error ? error.message : 'Unknown error'}\n`;
+              }
+            }
             break;
           }
           default: {
