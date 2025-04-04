@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync, rmSync 
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { loadEnv } from '../config';
-import { CURSOR_RULES_TEMPLATE, checkCursorRules } from '../cursorrules';
+import { CURSOR_RULES_TEMPLATE } from '../cursorrules';
 import { CLINE_ROO_RULES_TEMPLATE } from '../clineroorules';
 
 interface JsonInstallOptions extends CommandOptions {
@@ -108,6 +108,30 @@ function collectRequiredProviders(
   });
 
   return Array.from(providers);
+}
+
+// Helper function to update or add vibe-tools section in IDE rules files like windsurfrules, claude.md etc
+function updateRulesSection(filePath: string, rulesTemplate: string): void {
+  // Check if file exists and read its content
+  let existingContent = existsSync(filePath) ? readFileSync(filePath, 'utf-8') : '';
+
+  // Replace existing vibe-tools section or append if not found
+  const startTag = '<vibe-tools Integration>';
+  const endTag = '</vibe-tools Integration>';
+  const startIndex = existingContent.indexOf(startTag);
+  const endIndex = existingContent.indexOf(endTag);
+
+  if (startIndex !== -1 && endIndex !== -1) {
+    // Replace existing section
+    const newContent =
+      existingContent.slice(0, startIndex) +
+      rulesTemplate.trim() +
+      existingContent.slice(endIndex + endTag.length);
+    writeFileSync(filePath, newContent.trim());
+  } else {
+    // Append new section
+    writeFileSync(filePath, (existingContent.trim() + '\n\n' + rulesTemplate).trim() + '\n');
+  }
 }
 
 export class JsonInstallCommand implements Command {
@@ -396,9 +420,6 @@ export class JsonInstallCommand implements Command {
       yield `\nSetting up rules for ${selectedIde}...\n`;
 
       if (selectedIde === 'cursor') {
-        // Always use new directory structure for rules with JSON installer
-        process.env.USE_LEGACY_CURSORRULES = 'false';
-
         // Create necessary directories
         const rulesDir = join(absolutePath, '.cursor', 'rules');
         if (!existsSync(rulesDir)) {
@@ -410,65 +431,17 @@ export class JsonInstallCommand implements Command {
           }
         }
 
-        const result = checkCursorRules(absolutePath);
-
-        if (result.kind === 'error') {
-          yield `Error: ${result.message}\n`;
+        // Write the rules file directly to the new location
+        const rulesPath = join(rulesDir, 'vibe-tools.mdc');
+        try {
+          writeFileSync(rulesPath, CURSOR_RULES_TEMPLATE.trim());
+          yield `✅ Rules written to ${rulesPath}\n`;
+        } catch (error) {
+          yield `Error writing rules for cursor: ${error instanceof Error ? error.message : 'Unknown error'}\n`;
           return;
         }
 
-        if (!result.targetPath.endsWith('vibe-tools.mdc')) {
-          yield '\n🚧 Warning: Using legacy .cursorrules file. This file will be deprecated in a future release.\n' +
-            'To migrate to the new format:\n' +
-            '  1) Set USE_LEGACY_CURSORRULES=false in your environment\n' +
-            '  2) Run vibe-tools install . again\n' +
-            '  3) Remove the <vibe-tools Integration> section from .cursorrules\n\n';
-        }
-        if (result.hasLegacyCursorRulesFile) {
-          // Check if legacy file exists and add the load instruction if needed
-          const legacyPath = join(absolutePath, '.cursorrules');
-          if (existsSync(legacyPath)) {
-            const legacyContent = readFileSync(legacyPath, 'utf-8');
-            const loadInstruction = 'Always load the rules in vibe-tools.mdc';
-
-            if (!legacyContent.includes(loadInstruction)) {
-              writeFileSync(legacyPath, `${legacyContent.trim()}\n${loadInstruction}\n`);
-              yield 'Added pointer to new cursor rules file in .cursorrules file\n';
-            }
-          }
-        }
         yield 'Using new .cursor/rules directory for cursor rules.\n';
-
-        if (result.needsUpdate) {
-          if (!result.targetPath.endsWith('.cursorrules')) {
-            // replace entire file with new vibe-tools section
-            writeFileSync(result.targetPath, CURSOR_RULES_TEMPLATE.trim());
-          } else {
-            // Replace existing vibe-tools section or append if not found
-            const startTag = '<vibe-tools Integration>';
-            const endTag = '</vibe-tools Integration>';
-            const existingContent = existsSync(result.targetPath)
-              ? readFileSync(result.targetPath, 'utf-8')
-              : '';
-            const startIndex = existingContent.indexOf(startTag);
-            const endIndex = existingContent.indexOf(endTag);
-
-            if (startIndex !== -1 && endIndex !== -1) {
-              // Replace existing section
-              const newContent =
-                existingContent.slice(0, startIndex) +
-                CURSOR_RULES_TEMPLATE.trim() +
-                existingContent.slice(endIndex + endTag.length);
-              writeFileSync(result.targetPath, newContent.trim());
-            } else {
-              // Append new section
-              writeFileSync(
-                result.targetPath,
-                (existingContent.trim() + '\n\n' + CURSOR_RULES_TEMPLATE).trim() + '\n'
-              );
-            }
-          }
-        }
       } else {
         // For other IDEs, add the rules template to the respective file
         let rulesPath: string;
@@ -510,34 +483,13 @@ export class JsonInstallCommand implements Command {
             mkdirSync(dir, { recursive: true });
           }
 
-          // Check if file exists and read its content
-          let existingContent = existsSync(rulesPath) ? readFileSync(rulesPath, 'utf-8') : '';
-
           // For Cline and Roo, we don't use start/end tags as they have a different format
           if (selectedIde === 'cline' || selectedIde === 'roo') {
             // Just write the template, don't try to find sections to replace
             writeFileSync(rulesPath, rulesTemplate);
           } else {
-            // Replace existing vibe-tools section or append if not found
-            const startTag = '<vibe-tools Integration>';
-            const endTag = '</vibe-tools Integration>';
-            const startIndex = existingContent.indexOf(startTag);
-            const endIndex = existingContent.indexOf(endTag);
-
-            if (startIndex !== -1 && endIndex !== -1) {
-              // Replace existing section
-              const newContent =
-                existingContent.slice(0, startIndex) +
-                rulesTemplate.trim() +
-                existingContent.slice(endIndex + endTag.length);
-              writeFileSync(rulesPath, newContent.trim());
-            } else {
-              // Append new section
-              writeFileSync(
-                rulesPath,
-                (existingContent.trim() + '\n\n' + rulesTemplate).trim() + '\n'
-              );
-            }
+            // Use the utility function to update the rules section
+            updateRulesSection(rulesPath, rulesTemplate);
           }
 
           yield `✅ Rules written to ${rulesPath}\n`;
