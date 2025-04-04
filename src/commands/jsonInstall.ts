@@ -477,12 +477,19 @@ export class JsonInstallCommand implements Command {
           }
           case 'cline':
           case 'roo': {
-            rulesPath = join(absolutePath, '.clinerules');
+            const rulesDir = join(absolutePath, '.clinerules');
+            ensureDirectoryExists(rulesDir);
+            rulesPath = join(rulesDir, 'vibe-tools.md');
             rulesTemplate = CLINE_ROO_RULES_TEMPLATE;
-            ensureDirectoryExists(join(rulesPath, '..'));
-            // For Cline and Roo, we don't use start/end tags as they have a different format
+
+            // Write the vibe-tools rule file into the .clinerules directory
             writeFileSync(rulesPath, rulesTemplate);
-            yield `✅ Rules written to ${rulesPath}\n`;
+
+            // Log information about where the rule was placed
+            console.log(
+              `Vibe-tools rule created in ${rulesPath} - this follows Cline's folder-based rules system`
+            );
+            yield `✅ Rules written to ${rulesPath} (using the modern .clinerules/ folder structure)\n`;
             break;
           }
           default: {
