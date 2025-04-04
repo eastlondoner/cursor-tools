@@ -4,7 +4,7 @@ import type { AsyncReturnType } from '../utils/AsyncReturnType';
 
 import { defaultMaxTokens, loadConfig, loadEnv } from '../config';
 import { pack } from 'repomix';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { FileError, ProviderError } from '../errors';
 import type { ModelOptions, BaseModelProvider } from '../providers/base';
@@ -96,7 +96,15 @@ export class RepoCommand implements Command {
         }
 
         try {
-          repoContext = readFileSync('.repomix-output.txt', 'utf-8');
+          // Check if Repomix created the output file as expected
+          if (!existsSync('.repomix-output.txt')) {
+            // In case Repomix failed to create the output file, we'll create an empty one
+            console.log('Output file does not exist after pack operation, creating an empty one');
+            writeFileSync('.repomix-output.txt', '');
+            repoContext = '';
+          } else {
+            repoContext = readFileSync('.repomix-output.txt', 'utf-8');
+          }
         } catch (error) {
           throw new FileError('Failed to read repository context', error);
         }
