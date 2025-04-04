@@ -134,6 +134,13 @@ function updateRulesSection(filePath: string, rulesTemplate: string): void {
   }
 }
 
+// Helper function for directory creation
+function ensureDirectoryExists(dir: string): void {
+  if (!existsSync(dir)) {
+    mkdirSync(dir, { recursive: true });
+  }
+}
+
 export class JsonInstallCommand implements Command {
   private async *setupApiKeys(requiredProviders: Provider[]): CommandGenerator {
     loadEnv(); // Load existing env files if any
@@ -422,14 +429,7 @@ export class JsonInstallCommand implements Command {
       if (selectedIde === 'cursor') {
         // Create necessary directories
         const rulesDir = join(absolutePath, '.cursor', 'rules');
-        if (!existsSync(rulesDir)) {
-          try {
-            mkdirSync(rulesDir, { recursive: true });
-          } catch (error) {
-            yield `Error creating rules directory: ${error instanceof Error ? error.message : 'Unknown error'}\n`;
-            return;
-          }
-        }
+        ensureDirectoryExists(rulesDir);
 
         // Write the rules file directly to the new location
         const rulesPath = join(rulesDir, 'vibe-tools.mdc');
@@ -448,53 +448,51 @@ export class JsonInstallCommand implements Command {
         let rulesTemplate: string;
 
         switch (selectedIde) {
-          case 'claude-code':
-            // For Claude Code, use local/global path based on config location choice
-            if (isLocalConfig) {
-              rulesPath = join(absolutePath, 'CLAUDE.md'); // Use target path for local
-            } else {
-              // Use global Claude directory
-              if (!existsSync(CLAUDE_HOME_DIR)) {
-                mkdirSync(CLAUDE_HOME_DIR, { recursive: true });
-              }
-              rulesPath = join(CLAUDE_HOME_DIR, 'CLAUDE.md');
-            }
+          case 'claude-code': {
             rulesTemplate = CURSOR_RULES_TEMPLATE;
+
+            // Handle both global and local Claude.md files
+            if (isLocalConfig) {
+              // Local Claude.md
+              rulesPath = join(absolutePath, 'CLAUDE.md');
+              ensureDirectoryExists(join(rulesPath, '..'));
+              updateRulesSection(rulesPath, rulesTemplate);
+              yield `✅ Updated local Claude.md rules at ${rulesPath}\n`;
+            } else {
+              // Global Claude.md
+              ensureDirectoryExists(CLAUDE_HOME_DIR);
+              rulesPath = join(CLAUDE_HOME_DIR, 'CLAUDE.md');
+              updateRulesSection(rulesPath, rulesTemplate);
+              yield `✅ Updated global Claude.md rules at ${rulesPath}\n`;
+            }
             break;
-          case 'windsurf':
+          }
+          case 'windsurf': {
             rulesPath = join(absolutePath, '.windsurfrules');
             rulesTemplate = CURSOR_RULES_TEMPLATE;
+            ensureDirectoryExists(join(rulesPath, '..'));
+            updateRulesSection(rulesPath, rulesTemplate);
+            yield `✅ Updated .windsurfrules at ${rulesPath}\n`;
             break;
+          }
           case 'cline':
-          case 'roo':
+          case 'roo': {
             rulesPath = join(absolutePath, '.clinerules');
             rulesTemplate = CLINE_ROO_RULES_TEMPLATE;
+            ensureDirectoryExists(join(rulesPath, '..'));
+            // For Cline and Roo, we don't use start/end tags as they have a different format
+            writeFileSync(rulesPath, rulesTemplate);
+            yield `✅ Rules written to ${rulesPath}\n`;
             break;
-          default:
+          }
+          default: {
             rulesPath = join(absolutePath, '.cursor', 'rules', 'vibe-tools.mdc');
             rulesTemplate = CURSOR_RULES_TEMPLATE;
+            ensureDirectoryExists(join(rulesPath, '..'));
+            writeFileSync(rulesPath, rulesTemplate.trim());
+            yield `✅ Rules written to ${rulesPath}\n`;
             break;
-        }
-
-        try {
-          // Ensure the directory exists if needed
-          const dir = join(rulesPath, '..');
-          if (!existsSync(dir)) {
-            mkdirSync(dir, { recursive: true });
           }
-
-          // For Cline and Roo, we don't use start/end tags as they have a different format
-          if (selectedIde === 'cline' || selectedIde === 'roo') {
-            // Just write the template, don't try to find sections to replace
-            writeFileSync(rulesPath, rulesTemplate);
-          } else {
-            // Use the utility function to update the rules section
-            updateRulesSection(rulesPath, rulesTemplate);
-          }
-
-          yield `✅ Rules written to ${rulesPath}\n`;
-        } catch (error) {
-          yield `Error writing rules for ${selectedIde}: ${error instanceof Error ? error.message : 'Unknown error'}\n`;
         }
       }
 
