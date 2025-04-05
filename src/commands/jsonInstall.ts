@@ -11,8 +11,7 @@ import {
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { loadEnv } from '../config';
-import { CURSOR_RULES_TEMPLATE } from '../cursorrules';
-import { CLINE_ROO_RULES_TEMPLATE } from '../clineroorules';
+import { generateRules } from '../vibe-rules';
 
 // Helper function to get user input and properly close stdin
 async function getUserInput(prompt: string): Promise<string> {
@@ -448,7 +447,7 @@ export class JsonInstallCommand implements Command {
         // Write the rules file directly to the new location
         const rulesPath = join(rulesDir, 'vibe-tools.mdc');
         try {
-          writeFileSync(rulesPath, CURSOR_RULES_TEMPLATE.trim());
+          writeFileSync(rulesPath, generateRules('cursor', true));
           yield `✅ Rules written to ${rulesPath}\n`;
         } catch (error) {
           yield `Error writing rules for cursor: ${error instanceof Error ? error.message : 'Unknown error'}\n`;
@@ -463,7 +462,7 @@ export class JsonInstallCommand implements Command {
 
         switch (selectedIde) {
           case 'claude-code': {
-            rulesTemplate = CURSOR_RULES_TEMPLATE;
+            rulesTemplate = generateRules('claude-code');
 
             // Handle both global and local Claude.md files
             if (isLocalConfig) {
@@ -483,7 +482,7 @@ export class JsonInstallCommand implements Command {
           }
           case 'windsurf': {
             rulesPath = join(absolutePath, '.windsurfrules');
-            rulesTemplate = CURSOR_RULES_TEMPLATE;
+            rulesTemplate = generateRules('windsurf');
             ensureDirectoryExists(join(rulesPath, '..'));
             updateRulesSection(rulesPath, rulesTemplate);
             yield `✅ Updated .windsurfrules at ${rulesPath}\n`;
@@ -553,7 +552,7 @@ export class JsonInstallCommand implements Command {
                   // Write the vibe-tools rule file
                   yield `Creating vibe-tools.md rules file...\n`;
                   rulesPath = join(clinerulePath, 'vibe-tools.md');
-                  rulesTemplate = CLINE_ROO_RULES_TEMPLATE;
+                  rulesTemplate = generateRules('cline');
                   // Wrap with vibe-tools Integration tags if not already wrapped
                   if (!rulesTemplate.includes('<vibe-tools Integration>')) {
                     rulesTemplate = `<vibe-tools Integration>\n${rulesTemplate}\n</vibe-tools Integration>`;
@@ -585,7 +584,7 @@ export class JsonInstallCommand implements Command {
                 // Keep legacy format, update the file
                 yield `Keeping legacy format, updating .clinerules file...\n`;
                 rulesPath = clinerulePath;
-                rulesTemplate = CLINE_ROO_RULES_TEMPLATE;
+                rulesTemplate = generateRules('cline');
                 // Wrap with vibe-tools Integration tags if not already wrapped
                 if (!rulesTemplate.includes('<vibe-tools Integration>')) {
                   rulesTemplate = `<vibe-tools Integration>\n${rulesTemplate}\n</vibe-tools Integration>`;
@@ -607,7 +606,7 @@ export class JsonInstallCommand implements Command {
 
                 yield `Creating vibe-tools.md in the .clinerules directory...\n`;
                 rulesPath = join(clinerulePath, 'vibe-tools.md');
-                rulesTemplate = CLINE_ROO_RULES_TEMPLATE;
+                rulesTemplate = generateRules('cline');
 
                 // Wrap with vibe-tools Integration tags if not already wrapped
                 if (!rulesTemplate.includes('<vibe-tools Integration>')) {
@@ -630,7 +629,7 @@ export class JsonInstallCommand implements Command {
           }
           default: {
             rulesPath = join(absolutePath, '.cursor', 'rules', 'vibe-tools.mdc');
-            rulesTemplate = CURSOR_RULES_TEMPLATE;
+            rulesTemplate = generateRules('cursor', true);
             ensureDirectoryExists(join(rulesPath, '..'));
             writeFileSync(rulesPath, rulesTemplate.trim());
             yield `✅ Rules written to ${rulesPath}\n`;
