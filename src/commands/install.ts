@@ -1,287 +1,180 @@
-import type { Command, CommandGenerator, CommandOptions } from '../types';
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import type { Command, CommandGenerator, CommandOptions, Provider, Config } from '../types';
+import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { homedir } from 'node:os';
 import { loadEnv } from '../config';
-import { CURSOR_RULES_TEMPLATE, CURSOR_RULES_VERSION, checkCursorRules } from '../cursorrules';
+import { generateRules } from '../vibe-rules';
+import { consola } from 'consola';
+import { colors } from 'consola/utils';
 import { JsonInstallCommand } from './jsonInstall';
+import {
+  VIBE_HOME_DIR,
+  VIBE_HOME_ENV_PATH,
+  VIBE_HOME_CONFIG_PATH,
+  CLAUDE_HOME_DIR,
+  LOCAL_ENV_PATH,
+  LOCAL_CONFIG_PATH,
+  updateRulesSection,
+  ensureDirectoryExists,
+  clearScreen,
+  writeKeysToFile,
+  checkLocalDependencies,
+  getVibeToolsLogo,
+  collectRequiredProviders,
+  parseProviderModel,
+  setupClinerules,
+} from '../utils/installUtils';
 
 interface InstallOptions extends CommandOptions {
   packageManager?: 'npm' | 'yarn' | 'pnpm';
   global?: boolean;
 }
 
-// Helper function to check for local vibe-tools dependencies
-async function checkLocalDependencies(targetPath: string): Promise<string | null> {
-  const packageJsonPath = join(targetPath, 'package.json');
-  if (!existsSync(packageJsonPath)) {
-    return null;
-  }
-
-  try {
-    const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
-    const dependencies = packageJson.dependencies || {};
-    const devDependencies = packageJson.devDependencies || {};
-
-    if (dependencies['vibe-tools'] || devDependencies['vibe-tools']) {
-      return `Warning: Found local vibe-tools dependency in package.json. Since vibe-tools is now designed for global installation only, please remove it from your package.json dependencies and run 'npm uninstall vibe-tools', 'pnpm uninstall vibe-tools', or 'yarn remove vibe-tools' to clean up any local installation.\n`;
-    }
-  } catch (error) {
-    console.error('Error reading package.json:', error);
-  }
-  return null;
-}
-
-// Helper function to get user input and properly close stdin
-async function getUserInput(prompt: string): Promise<string> {
-  return new Promise<string>((resolve) => {
-    process.stdout.write(prompt);
-    const onData = (data: Buffer) => {
-      const input = data.toString().trim();
-      process.stdin.removeListener('data', onData);
-      process.stdin.pause();
-      resolve(input);
-    };
-    process.stdin.resume();
-    process.stdin.once('data', onData);
-  });
-}
-
-async function askForCursorRulesDirectory(): Promise<boolean> {
-  // If USE_LEGACY_CURSORRULES is explicitly set, respect that setting
-  if (process.env.USE_LEGACY_CURSORRULES?.toLowerCase() === 'true') {
-    return false;
-  }
-  if (process.env.USE_LEGACY_CURSORRULES?.toLowerCase() === 'false') {
-    return true;
-  }
-  // If USE_LEGACY_CURSORRULES is set and not empty if we've got to this point it's an unknown value.
-  if (process.env.USE_LEGACY_CURSORRULES && process.env.USE_LEGACY_CURSORRULES.trim() !== '') {
-    throw new Error('USE_LEGACY_CURSORRULES must be either "true" or "false"');
-  }
-
-  // Otherwise, ask the user
-  const answer = await getUserInput(
-    'Would you like to use the new .cursor/rules directory for cursor rules? (y/N): '
-  );
-  return answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes';
-}
-
 export class InstallCommand implements Command {
-  private async *setupApiKeys(): CommandGenerator {
-    loadEnv(); // Load existing env files if any
-
-    const homeEnvPath = join(homedir(), '.vibe-tools', '.env');
-    const localEnvPath = join(process.cwd(), '.vibe-tools.env');
-
-    const apiKeysConfigFileExists = existsSync(homeEnvPath) || existsSync(localEnvPath);
-
-    // Check if keys are already set
-    const hasPerplexity = !!process.env.PERPLEXITY_API_KEY;
-    const hasGemini = !!process.env.GEMINI_API_KEY;
-    const hasOpenAI = !!process.env.OPENAI_API_KEY;
-    const hasAnthropic = !!process.env.ANTHROPIC_API_KEY;
-    const hasOpenRouter = !!process.env.OPENROUTER_API_KEY;
-    const hasModelBox = !!process.env.MODELBOX_API_KEY;
-    const hasClickUp = !!process.env.CLICKUP_API_TOKEN;
-
-    // For Stagehand, we need either OpenAI or Anthropic
-    const hasStagehandProvider = hasOpenAI || hasAnthropic;
-
-    if (
-      (apiKeysConfigFileExists &&
-        hasPerplexity &&
-        hasGemini &&
-        hasOpenRouter &&
-        hasModelBox &&
-        hasClickUp) ||
-      (process.env.SKIP_CLICKUP && (hasStagehandProvider || process.env.SKIP_STAGEHAND))
-    ) {
-      return;
-    }
-
-    /**
-     * Writes keys to an environment file while preserving existing content.
-     * Handles comments, empty lines, and special characters in values.
-     *
-     * Features:
-     * - Preserves existing environment variables not being updated
-     * - Maintains comments and empty lines in existing file
-     * - Properly handles values containing equals signs or quotes
-     * - Always quotes values for consistency
-     *
-     * Limitations:
-     * - Does not preserve the exact formatting of the original file
-     * - Assumes UTF-8 encoding for the environment file
-     * - May not handle complex multi-line values
-     * - Assumes basic key=value format with optional comments
-     *
-     * @param filePath - Path to the environment file
-     * @param keys - Record of key-value pairs to write
-     * @throws Will throw an error if file operations fail
-     */
-    const writeKeysToFile = (filePath: string, keys: Record<string, string>) => {
-      // Read existing content if file exists
-      let existingEnvVars: Record<string, string> = {};
-      if (existsSync(filePath)) {
-        try {
-          const existingContent = readFileSync(filePath, 'utf-8');
-          // Parse existing .env file content
-          existingContent.split('\n').forEach((line) => {
-            line = line.trim();
-            // Skip empty lines and comments
-            if (!line || line.startsWith('#')) return;
-
-            // Find first non-escaped equals sign
-            const eqIndex = line.split('').findIndex((char, i) => {
-              if (char !== '=') return false;
-              // Count backslashes before the equals sign
-              let escapeCount = 0;
-              for (let j = i - 1; j >= 0 && line[j] === '\\'; j--) {
-                escapeCount++;
-              }
-              // If odd number of backslashes, equals is escaped
-              return escapeCount % 2 === 0;
-            });
-
-            if (eqIndex !== -1) {
-              const key = line.slice(0, eqIndex).trim();
-              let value = line.slice(eqIndex + 1).trim();
-              // Handle existing quoted values
-              if (
-                (value.startsWith('"') && value.endsWith('"')) ||
-                (value.startsWith("'") && value.endsWith("'"))
-              ) {
-                // Remove surrounding quotes but preserve any escaped quotes within
-                value = value.slice(1, -1);
-              }
-              if (key) {
-                existingEnvVars[key] = value;
-              }
-            }
-          });
-        } catch (error) {
-          console.error(`Warning: Error reading existing .env file at ${filePath}:`, error);
-          // Continue with empty existingEnvVars rather than failing
-        }
-      }
-
-      try {
-        // Merge new keys with existing ones, only updating keys that have values
-        const mergedKeys = {
-          ...existingEnvVars,
-          ...Object.fromEntries(
-            Object.entries(keys).filter(([_, value]) => value) // Only include keys with values
-          ),
-        };
-
-        const envContent =
-          Object.entries(mergedKeys)
-            .map(([key, value]) => {
-              // Normalize the value to a string and handle escaping
-              const normalizedValue = String(value);
-              // Escape any quotes that aren't already escaped
-              const escapedValue = normalizedValue.replace(/(?<!\\)"/g, '\\"');
-              return `${key}="${escapedValue}"`;
-            })
-            .join('\n') + '\n';
-
-        const dir = join(filePath, '..');
-        if (!existsSync(dir)) {
-          mkdirSync(dir, { recursive: true });
-        }
-        writeFileSync(filePath, envContent, 'utf-8');
-      } catch (error) {
-        console.error(`Error writing to .env file at ${filePath}:`, error);
-        throw error; // Rethrow to handle in caller
-      }
-    };
-
-    // Try to write to home directory first, fall back to local if it fails
+  private async *setupApiKeys(requiredProviders: Provider[]): CommandGenerator {
     try {
-      const keys: Record<string, string> = {
-        PERPLEXITY_API_KEY: process.env.PERPLEXITY_API_KEY || '',
-        GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
-        OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
-        ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY || '',
-        OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY || '',
-        MODELBOX_API_KEY: process.env.MODELBOX_API_KEY || '',
-        CLICKUP_API_TOKEN: process.env.CLICKUP_API_TOKEN || '',
-        SKIP_STAGEHAND: process.env.SKIP_STAGEHAND || '',
-      };
+      loadEnv(); // Load existing env files if any
 
-      if (!hasPerplexity) {
-        const key = await getUserInput('Enter your Perplexity API key (or press Enter to skip): ');
-        keys.PERPLEXITY_API_KEY = key;
-      }
+      // Record to store keys
+      const keys: Record<string, string> = {};
 
-      if (!hasGemini) {
-        const key = await getUserInput('Enter your Gemini API key (or press Enter to skip): ');
-        keys.GEMINI_API_KEY = key;
-      }
+      // Now ask for each required provider
+      for (const provider of requiredProviders) {
+        const envKey = `${provider.toUpperCase()}_API_KEY`;
+        const currentValue = process.env[envKey];
 
-      if (!hasOpenRouter) {
-        yield '\nOpenRouter provides access to various AI models including Perplexity models.\n';
-        yield 'It can be used as an alternative to direct Perplexity access for web search.\n';
-        const key = await getUserInput('Enter your OpenRouter API key (or press Enter to skip): ');
-        keys.OPENROUTER_API_KEY = key;
-      }
-
-      if (!hasModelBox) {
-        yield '\nModelBox provides unified access to various AI models through an OpenAI-compatible API.\n';
-        const key = await getUserInput('Enter your ModelBox API key (or press Enter to skip): ');
-        keys.MODELBOX_API_KEY = key;
-      }
-
-      // Handle Stagehand setup
-      if (!hasStagehandProvider && !process.env.SKIP_STAGEHAND) {
-        yield '\nStagehand requires either an OpenAI or Anthropic API key to function: ';
-        const skipStagehand = await getUserInput('Would you like to skip Stagehand setup? (y/N): ');
-        if (skipStagehand.toLowerCase() === 'y' || skipStagehand.toLowerCase() === 'yes') {
-          keys.SKIP_STAGEHAND = 'true';
-          yield 'Skipping Stagehand setup.\n';
+        if (currentValue) {
+          consola.success(`Using existing ${colors.cyan(provider)} API key from environment.`);
+          keys[envKey] = currentValue;
         } else {
-          yield '\n';
-          if (!hasOpenAI) {
-            const key = await getUserInput(
-              'Enter your OpenAI API key (required for Stagehand if not using Anthropic): '
+          // Skip if SKIP_SETUP is set
+          if (process.env.SKIP_SETUP) {
+            consola.warn(
+              `No ${colors.cyan(provider)} API key found in environment. You may need to set it manually.`
             );
-            keys.OPENAI_API_KEY = key;
+            continue;
           }
 
-          if (!hasAnthropic && !keys.OPENAI_API_KEY) {
-            const key = await getUserInput(
-              'Enter your Anthropic API key (required for Stagehand if not using OpenAI): '
-            );
-            keys.ANTHROPIC_API_KEY = key;
-          }
+          // Ask for API key with interactive prompt
+          const key = await consola.prompt(`${colors.cyan(provider)} API Key:`, {
+            type: 'text',
+            placeholder: 'sk-...',
+            validate: (value: string) => value.length > 0 || 'Press Enter to skip',
+          });
 
-          // Validate that at least one Stagehand provider key is set if not skipped
-          if (!keys.OPENAI_API_KEY && !keys.ANTHROPIC_API_KEY) {
-            yield '\nWarning: No API key provided for Stagehand. You will need to set either OPENAI_API_KEY or ANTHROPIC_API_KEY to use Stagehand features.\n';
+          if (key && typeof key === 'string') {
+            keys[envKey] = key;
+            consola.success(`${colors.cyan(provider)} API key set`);
+          } else {
+            consola.warn(`Skipped ${colors.cyan(provider)} API key`);
           }
         }
       }
 
-      if (!hasClickUp) {
-        const key = await getUserInput(
-          '[https://app.clickup.com/settings/apps] Enter your ClickUp API token (or press Enter to skip): '
-        );
-        keys.CLICKUP_API_TOKEN = key;
+      // Check if user provided at least one key
+      const hasAtLeastOneKey = Object.values(keys).some((value) => !!value);
+
+      if (!hasAtLeastOneKey) {
+        consola.warn(`No API keys were provided. You'll need to set them up manually later.`);
+        return;
       }
 
+      // Try to write to home directory first, fall back to local if it fails
       try {
-        writeKeysToFile(homeEnvPath, keys);
-        yield 'API keys written to ~/.vibe-tools/.env\n';
+        writeKeysToFile(VIBE_HOME_ENV_PATH, keys);
+        consola.success(`API keys saved to ${colors.cyan(VIBE_HOME_ENV_PATH)}`);
       } catch (error) {
-        console.error('Error writing API keys to home directory:', error);
-        // Fall back to local file if home directory write fails
-        writeKeysToFile(localEnvPath, keys);
-        yield 'API keys written to .vibe-tools.env in the current directory\n';
+        consola.error(`${colors.red('Failed to write to home directory:')}`, error);
+        writeKeysToFile(LOCAL_ENV_PATH, keys);
+        consola.success(
+          `API keys saved to ${colors.cyan(LOCAL_ENV_PATH)} in the current directory`
+        );
       }
     } catch (error) {
-      console.error('Error setting up API keys:', error);
+      consola.error(`${colors.red('Error setting up API keys:')}`, error);
       yield 'Error setting up API keys. You can add them later manually.\n';
+    }
+  }
+
+  private async createConfig(config: {
+    ide?: string;
+    coding?: { provider: Provider; model: string };
+    websearch?: { provider: Provider; model: string };
+    tooling?: { provider: Provider; model: string };
+    largecontext?: { provider: Provider; model: string };
+  }): Promise<{ isLocalConfig: boolean }> {
+    const finalConfig: Config = {
+      web: {},
+      plan: {
+        fileProvider: 'gemini',
+        thinkingProvider: 'openai',
+      },
+      repo: {
+        provider: 'gemini',
+      },
+      doc: {
+        provider: 'perplexity',
+      },
+    };
+
+    // Add ide if present
+    if (config.ide) {
+      finalConfig.ide = config.ide.toLowerCase();
+    }
+
+    // Map the config to the actual config structure
+    if (config.coding) {
+      finalConfig.repo = {
+        provider: config.coding.provider,
+        model: config.coding.model,
+      };
+    }
+
+    if (config.tooling) {
+      finalConfig.plan = {
+        fileProvider: config.tooling.provider,
+        thinkingProvider: config.tooling.provider,
+        fileModel: config.tooling.model,
+        thinkingModel: config.tooling.model,
+      };
+    }
+
+    if (config.websearch) {
+      finalConfig.web = {
+        provider: config.websearch.provider,
+        model: config.websearch.model,
+      };
+    }
+
+    if (config.largecontext) {
+      // This could apply to several commands that need large context
+      if (!finalConfig.doc) finalConfig.doc = { provider: 'perplexity' };
+      finalConfig.doc.provider = config.largecontext.provider;
+      finalConfig.doc.model = config.largecontext.model;
+    }
+
+    // Ensure the VIBE_HOME_DIR exists
+    ensureDirectoryExists(VIBE_HOME_DIR);
+
+    // Ask user where to save the config
+    consola.info('');
+    const answer = await consola.prompt('Where would you like to save the configuration?', {
+      type: 'select',
+      options: [
+        { value: 'global', label: `Global config (${VIBE_HOME_CONFIG_PATH})` },
+        { value: 'local', label: `Local config (${LOCAL_CONFIG_PATH})` },
+      ],
+    });
+
+    const isLocalConfig = answer === 'local';
+    const configPath = isLocalConfig ? LOCAL_CONFIG_PATH : VIBE_HOME_CONFIG_PATH;
+
+    try {
+      writeFileSync(configPath, JSON.stringify(finalConfig, null, 2));
+      consola.success(`Configuration saved to ${colors.cyan(configPath)}`);
+      return { isLocalConfig };
+    } catch (error) {
+      consola.error(`Error writing config to ${colors.cyan(configPath)}:`, error);
+      throw error; // Rethrow to be caught by the main execute block
     }
   }
 
@@ -297,123 +190,263 @@ export class InstallCommand implements Command {
 
     const absolutePath = join(process.cwd(), targetPath);
 
-    // Check for local dependencies first
-    const dependencyWarning = await checkLocalDependencies(absolutePath);
-    if (dependencyWarning) {
-      yield dependencyWarning;
-    }
-
-    // Setup API keys
-    yield 'Checking API keys setup...\n';
-    for await (const message of this.setupApiKeys()) {
-      yield message;
-    }
-
-    // Update/create cursor rules
     try {
-      yield 'Checking cursor rules...\n';
+      // Clear the screen for a clean start
+      clearScreen();
 
-      // Ask user for directory preference first
-      const useNewDirectory = await askForCursorRulesDirectory();
-      process.env.USE_LEGACY_CURSORRULES = (!useNewDirectory).toString();
+      // Welcome message
+      const logo = getVibeToolsLogo();
 
-      // Create necessary directories only if using new structure
-      if (useNewDirectory) {
+      consola.box({
+        title: '🚀 Welcome to Vibe-Tools Setup!',
+        titleColor: 'white',
+        borderColor: 'green',
+        style: {
+          padding: 2,
+          borderStyle: 'rounded',
+        },
+        message: logo,
+      });
+
+      // Load env AFTER displaying welcome message
+      loadEnv();
+
+      // Check for local dependencies first
+      const dependencyWarning = await checkLocalDependencies(absolutePath);
+      if (dependencyWarning) {
+        consola.warn(dependencyWarning);
+      }
+
+      // Ask for IDE preference
+      const selectedIde = await consola.prompt('Which IDE will you be using with vibe-tools?', {
+        type: 'select',
+        options: [
+          { value: 'cursor', label: 'Cursor', hint: 'recommended' },
+          { value: 'claude-code', label: 'Claude Code' },
+          { value: 'windsurf', label: 'Windsurf' },
+          { value: 'cline', label: 'Cline' },
+          { value: 'roo', label: 'Roo' },
+        ],
+        initial: 'cursor',
+      });
+
+      // Ask for model preferences
+      consola.info('\nSelect your preferred models for different tasks:');
+
+      // Coding (repo command)
+      const coding = await consola.prompt('Coding Assistant (repository analysis):', {
+        type: 'select',
+        options: [
+          { value: 'gemini:gemini-2-5-pro', label: 'Gemini Pro 2.5', hint: 'recommended' },
+          { value: 'perplexity:perplexity-sonar', label: 'Perplexity Sonar' },
+          { value: 'openai:gpt-4o', label: 'GPT-4o' },
+          { value: 'anthropic:claude-3-opus-20240229', label: 'Claude 3 Opus' },
+          {
+            value: 'openrouter:openrouter/anthropic/claude-3-opus:beta',
+            label: 'OpenRouter - Claude 3 Opus',
+          },
+        ],
+        initial: 'gemini:gemini-2-5-pro',
+      });
+
+      // Web search (web command)
+      const websearch = await consola.prompt('Web Search:', {
+        type: 'select',
+        options: [
+          { value: 'perplexity:perplexity-sonar', label: 'Perplexity Sonar', hint: 'recommended' },
+          { value: 'gemini:gemini-2-5-flash', label: 'Gemini Flash 2.5' },
+          {
+            value: 'openrouter:openrouter/perplexity/sonar-small-online',
+            label: 'OpenRouter - Perplexity Sonar',
+          },
+        ],
+        initial: 'perplexity:perplexity-sonar',
+      });
+
+      // Tooling (plan command)
+      const tooling = await consola.prompt('Implementation Planning:', {
+        type: 'select',
+        options: [
+          { value: 'gemini:gemini-2-5-pro', label: 'Gemini Pro 2.5', hint: 'recommended' },
+          { value: 'openai:gpt-4o', label: 'GPT-4o' },
+          { value: 'anthropic:claude-3-opus-20240229', label: 'Claude 3 Opus' },
+          {
+            value: 'openrouter:openrouter/anthropic/claude-3-opus:beta',
+            label: 'OpenRouter - Claude 3 Opus',
+          },
+        ],
+        initial: 'gemini:gemini-2-5-pro',
+      });
+
+      // Large context (doc command)
+      const largecontext = await consola.prompt('Documentation Generation:', {
+        type: 'select',
+        options: [
+          { value: 'perplexity:perplexity-sonar', label: 'Perplexity Sonar', hint: 'recommended' },
+          { value: 'gemini:gemini-2-5-pro', label: 'Gemini Pro 2.5' },
+          { value: 'openai:gpt-4o', label: 'GPT-4o' },
+          { value: 'anthropic:claude-3-opus-20240229', label: 'Claude 3 Opus' },
+        ],
+        initial: 'perplexity:perplexity-sonar',
+      });
+
+      // Collect all selected options into a config object
+      const config = {
+        ide: selectedIde,
+        coding: parseProviderModel(coding as string),
+        websearch: parseProviderModel(websearch as string),
+        tooling: parseProviderModel(tooling as string),
+        largecontext: parseProviderModel(largecontext as string),
+      };
+
+      // Create a more compact and readable display of the configuration
+      const formatProviderInfo = (provider: string, model: string) => {
+        // Trim the provider prefix from the model name if it exists
+        const modelDisplay = model.includes('/') ? model.split('/').pop() : model;
+        return `${colors.cyan(provider.charAt(0).toUpperCase() + provider.slice(1))} ${colors.gray('→')} ${colors.green(modelDisplay || model)}`;
+      };
+
+      const configDisplay = Object.entries(config)
+        .map(([key, value]) => {
+          if (key === 'ide') return `IDE: ${colors.magenta(String(value))}`;
+          const configVal = value as { provider: string; model: string };
+          // Format key as "Coding:" instead of "coding:"
+          const formattedKey = key.charAt(0).toUpperCase() + key.slice(1);
+          return `${colors.yellow(formattedKey)}: ${formatProviderInfo(configVal.provider, configVal.model)}`;
+        })
+        .join('\n  • ');
+
+      consola.box({
+        title: '📋 Your Configuration',
+        titleColor: 'white',
+        borderColor: 'green',
+        style: {
+          padding: 2,
+          borderStyle: 'rounded',
+        },
+        message: `  • ${configDisplay}`,
+      });
+
+      // Identify required providers
+      const requiredProviders = collectRequiredProviders(config);
+
+      // Setup API keys
+      for await (const message of this.setupApiKeys(requiredProviders)) {
+        yield message;
+      }
+
+      // Create config file and get its location preference
+      const { isLocalConfig } = await this.createConfig(config);
+
+      // Handle IDE-specific rules setup
+      // For cursor, create the new directory structure
+      if (selectedIde === 'cursor') {
+        // Create necessary directories
         const rulesDir = join(absolutePath, '.cursor', 'rules');
-        if (!existsSync(rulesDir)) {
-          try {
-            mkdirSync(rulesDir, { recursive: true });
-          } catch (error) {
-            yield `Error creating rules directory: ${error instanceof Error ? error.message : 'Unknown error'}\n`;
-            return;
-          }
+        ensureDirectoryExists(rulesDir);
+
+        // Write the rules file directly to the new location
+        const rulesPath = join(rulesDir, 'vibe-tools.mdc');
+        try {
+          writeFileSync(rulesPath, generateRules('cursor', true));
+          consola.success(`Rules written to ${colors.cyan(rulesPath)}`);
+        } catch (error) {
+          consola.error(`${colors.red('Error writing rules for cursor:')}`, error);
+          return;
         }
-      }
-
-      const result = checkCursorRules(absolutePath);
-
-      if (result.kind === 'error') {
-        yield `Error: ${result.message}\n`;
-        return;
-      }
-
-      let existingContent = '';
-      let needsUpdate = result.needsUpdate;
-
-      if (!result.targetPath.endsWith('vibe-tools.mdc')) {
-        yield '\n🚧 Warning: Using legacy .cursorrules file. This file will be deprecated in a future release.\n' +
-          'To migrate to the new format:\n' +
-          '  1) Set USE_LEGACY_CURSORRULES=false in your environment\n' +
-          '  2) Run vibe-tools install . again\n' +
-          '  3) Remove the <vibe-tools Integration> section from .cursorrules\n\n';
       } else {
-        if (result.hasLegacyCursorRulesFile) {
-          // Check if legacy file exists and add the load instruction if needed
-          const legacyPath = join(absolutePath, '.cursorrules');
-          if (existsSync(legacyPath)) {
-            const legacyContent = readFileSync(legacyPath, 'utf-8');
-            const loadInstruction = 'Always load the rules in vibe-tools.mdc';
+        // For other IDEs, add the rules template to the respective file
+        let rulesPath: string;
+        let rulesTemplate: string;
 
-            if (!legacyContent.includes(loadInstruction)) {
-              writeFileSync(legacyPath, `${legacyContent.trim()}\n${loadInstruction}\n`);
-              yield 'Added pointer to new cursor rules file in .cursorrules file\n';
+        switch (selectedIde) {
+          case 'claude-code': {
+            rulesTemplate = generateRules('claude-code');
+
+            // Handle both global and local Claude.md files
+            if (isLocalConfig) {
+              // Local Claude.md
+              rulesPath = join(absolutePath, 'CLAUDE.md');
+              ensureDirectoryExists(join(rulesPath, '..'));
+              updateRulesSection(rulesPath, rulesTemplate);
+              consola.success(`Updated local Claude.md rules at ${rulesPath}`);
+            } else {
+              // Global Claude.md
+              ensureDirectoryExists(CLAUDE_HOME_DIR);
+              rulesPath = join(CLAUDE_HOME_DIR, 'CLAUDE.md');
+              updateRulesSection(rulesPath, rulesTemplate);
+              consola.success(`Updated global Claude.md rules at ${rulesPath}`);
             }
+            break;
           }
-        }
-        yield 'Using new .cursor/rules directory for cursor rules.\n';
-      }
-
-      if (existsSync(result.targetPath)) {
-        existingContent = readFileSync(result.targetPath, 'utf-8');
-        const versionMatch = existingContent.match(/<!-- vibe-tools-version: ([\w.-]+) -->/);
-        const currentVersion = versionMatch ? versionMatch[1] : '0';
-
-        if (needsUpdate) {
-          // Ask for confirmation before overwriting
-          yield `\nAbout to update cursor rules file at ${result.targetPath} from version ${currentVersion} to ${CURSOR_RULES_VERSION}.\n`;
-          const answer = await getUserInput('Do you want to continue? (y/N): ');
-          if (answer.toLowerCase() !== 'y' && answer.toLowerCase() !== 'yes') {
-            yield 'Skipping cursor rules update.\n';
-            yield 'Warning: Your cursor rules are outdated. You may be missing new features and instructions.\n';
-            return;
+          case 'windsurf': {
+            rulesPath = join(absolutePath, '.windsurfrules');
+            rulesTemplate = generateRules('windsurf');
+            ensureDirectoryExists(join(rulesPath, '..'));
+            updateRulesSection(rulesPath, rulesTemplate);
+            consola.success(`Updated .windsurfrules at ${rulesPath}`);
+            break;
           }
-          yield `Updating cursor rules...\n`;
-        }
-      } else {
-        yield `Creating new cursor rules file at ${result.targetPath}...\n`;
-      }
-
-      if (needsUpdate) {
-        if (!result.targetPath.endsWith('.cursorrules')) {
-          // replace entire file with new vibe-tools section
-          writeFileSync(result.targetPath, CURSOR_RULES_TEMPLATE.trim());
-        } else {
-          // Replace existing vibe-tools section or append if not found
-          const startTag = '<vibe-tools Integration>';
-          const endTag = '</vibe-tools Integration>';
-          const startIndex = existingContent.indexOf(startTag);
-          const endIndex = existingContent.indexOf(endTag);
-
-          if (startIndex !== -1 && endIndex !== -1) {
-            // Replace existing section
-            const newContent =
-              existingContent.slice(0, startIndex) +
-              CURSOR_RULES_TEMPLATE.trim() +
-              existingContent.slice(endIndex + endTag.length);
-            writeFileSync(result.targetPath, newContent.trim());
-          } else {
-            // Append new section
-            writeFileSync(
-              result.targetPath,
-              (existingContent.trim() + '\n\n' + CURSOR_RULES_TEMPLATE).trim() + '\n'
-            );
+          case 'cline': {
+            await setupClinerules(absolutePath, 'cline', generateRules);
+            break;
+          }
+          case 'roo': {
+            // Roo uses the same .clinerules directory/file as cline
+            await setupClinerules(absolutePath, 'roo', generateRules);
+            break;
+          }
+          default: {
+            rulesPath = join(absolutePath, '.cursor', 'rules', 'vibe-tools.mdc');
+            rulesTemplate = generateRules('cursor', true);
+            ensureDirectoryExists(join(rulesPath, '..'));
+            writeFileSync(rulesPath, rulesTemplate.trim());
+            consola.success(`Rules written to ${rulesPath}`);
+            break;
           }
         }
       }
 
-      yield 'Installation completed successfully!\n';
+      // Installation completed
+      consola.box({
+        title: '🎉 Installation Complete!',
+        titleColor: 'white',
+        borderColor: 'green',
+        style: {
+          padding: 2,
+          borderStyle: 'rounded',
+        },
+        message: [
+          `${colors.green('Vibe-Tools has been successfully configured!')}`,
+          '',
+          `📋 Configuration: ${colors.cyan(isLocalConfig ? 'Local' : 'Global')}`,
+          `🔧 IDE: ${colors.cyan(selectedIde)}`,
+          '',
+          `${colors.yellow('Get started with:')}`,
+          `  ${colors.green('vibe-tools repo')} ${colors.white('"Explain this codebase"')}`,
+          `  ${colors.green('vibe-tools web')} ${colors.white('"Search for something online"')}`,
+          `  ${colors.green('vibe-tools plan')} ${colors.white('"Create implementation plan"')}`,
+        ].join('\n'),
+      });
     } catch (error) {
-      yield `Error updating cursor rules: ${error instanceof Error ? error.message : 'Unknown error'}\n`;
+      consola.box({
+        title: '❌ Installation Failed',
+        titleColor: 'white',
+        borderColor: 'red',
+        style: {
+          padding: 2,
+          borderStyle: 'rounded',
+        },
+        message: [
+          `Error: ${colors.red(error instanceof Error ? error.message : 'Unknown error')}`,
+          '',
+          `${colors.yellow('Possible solutions:')}`,
+          `• ${colors.cyan('Check if you have appropriate permissions')}`,
+          `• ${colors.cyan('Ensure your environment is correctly set up')}`,
+          '',
+          `For help: ${colors.green('vibe-tools --help')}`,
+        ].join('\n'),
+      });
     }
   }
 }
