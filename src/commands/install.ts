@@ -238,61 +238,86 @@ export class InstallCommand implements Command {
       consola.info('\nSelect your preferred models for different tasks:');
 
       // Coding (repo command)
-      const coding = await consola.prompt('Coding Assistant (repository analysis):', {
+      const coding = await consola.prompt('Coding Agent - Code Crafter & Bug Blaster:', {
         type: 'select',
         options: [
-          { value: 'gemini:gemini-2-5-pro', label: 'Gemini Pro 2.5', hint: 'recommended' },
-          { value: 'perplexity:perplexity-sonar', label: 'Perplexity Sonar' },
-          { value: 'openai:gpt-4o', label: 'GPT-4o' },
-          { value: 'anthropic:claude-3-opus-20240229', label: 'Claude 3 Opus' },
           {
-            value: 'openrouter:openrouter/anthropic/claude-3-opus:beta',
-            label: 'OpenRouter - Claude 3 Opus',
+            value: 'gemini:gemini-2.5-pro-exp-03-25',
+            label: 'Gemini Pro 2.5',
+            hint: 'recommended',
+          },
+          { value: 'anthropic:claude-3-7-sonnet', label: 'Claude 3.7 Sonnet', hint: 'recommended' },
+          { value: 'perplexity:sonar', label: 'Perplexity Sonar' },
+          { value: 'openai:gpt-4o', label: 'GPT-4o' },
+          {
+            value: 'openrouter:anthropic/claude-3.7-sonnet',
+            label: 'OpenRouter - Claude 3.7 Sonnet',
           },
         ],
-        initial: 'gemini:gemini-2-5-pro',
+        initial: 'gemini:gemini-2.5-pro-exp-03-25',
       });
 
       // Web search (web command)
-      const websearch = await consola.prompt('Web Search:', {
+      const websearch = await consola.prompt('Web Search Agent - Deep Researcher & Web Wanderer:', {
         type: 'select',
         options: [
-          { value: 'perplexity:perplexity-sonar', label: 'Perplexity Sonar', hint: 'recommended' },
-          { value: 'gemini:gemini-2-5-flash', label: 'Gemini Flash 2.5' },
+          { value: 'perplexity:sonar-pro', label: 'Perplexity Sonar Pro', hint: 'recommended' },
+          { value: 'perplexity:sonar', label: 'Perplexity Sonar', hint: 'recommended' },
+          { value: 'gemini:gemini-2.0-flash', label: 'Gemini Flash 2.0' },
           {
-            value: 'openrouter:openrouter/perplexity/sonar-small-online',
-            label: 'OpenRouter - Perplexity Sonar',
+            value: 'openrouter:perplexity/sonar-pro',
+            label: 'OpenRouter - Perplexity Sonar Pro',
           },
         ],
-        initial: 'perplexity:perplexity-sonar',
+        initial: 'perplexity:sonar-pro',
       });
 
       // Tooling (plan command)
-      const tooling = await consola.prompt('Implementation Planning:', {
+      const tooling = await consola.prompt('Tooling Agent - Gear Turner & MCP Master:', {
         type: 'select',
         options: [
-          { value: 'gemini:gemini-2-5-pro', label: 'Gemini Pro 2.5', hint: 'recommended' },
-          { value: 'openai:gpt-4o', label: 'GPT-4o' },
-          { value: 'anthropic:claude-3-opus-20240229', label: 'Claude 3 Opus' },
+          { value: 'anthropic:claude-3-7-sonnet', label: 'Claude 3.7 Sonnet', hint: 'recommended' },
           {
-            value: 'openrouter:openrouter/anthropic/claude-3-opus:beta',
-            label: 'OpenRouter - Claude 3 Opus',
+            value: 'gemini:gemini-2.5-pro-exp-03-25',
+            label: 'Gemini Pro 2.5',
+            hint: 'recommended',
+          },
+          { value: 'openai:gpt-4o', label: 'GPT-4o' },
+          {
+            value: 'openrouter:anthropic/claude-3.7-sonnet',
+            label: 'OpenRouter - Claude 3.7 Sonnet',
           },
         ],
-        initial: 'gemini:gemini-2-5-pro',
+        initial: 'anthropic:claude-3-7-sonnet',
       });
 
       // Large context (doc command)
-      const largecontext = await consola.prompt('Documentation Generation:', {
-        type: 'select',
-        options: [
-          { value: 'perplexity:perplexity-sonar', label: 'Perplexity Sonar', hint: 'recommended' },
-          { value: 'gemini:gemini-2-5-pro', label: 'Gemini Pro 2.5' },
-          { value: 'openai:gpt-4o', label: 'GPT-4o' },
-          { value: 'anthropic:claude-3-opus-20240229', label: 'Claude 3 Opus' },
-        ],
-        initial: 'perplexity:perplexity-sonar',
-      });
+      const largecontext = await consola.prompt(
+        'Large Context Agent - Systems Thinker & Expert Planner:',
+        {
+          type: 'select',
+          options: [
+            {
+              value: 'gemini:gemini-2.5-pro-exp-03-25',
+              label: 'Gemini Pro 2.5',
+              hint: 'recommended',
+            },
+            {
+              value: 'anthropic:claude-3-7-sonnet',
+              label: 'Claude 3.7 Sonnet',
+              hint: 'recommended',
+            },
+            {
+              value: 'gemini:gemini-2.0-pro',
+              label: 'Gemini 2.0 Pro',
+              hint: 'recommended',
+            },
+            { value: 'perplexity:sonar', label: 'Perplexity Sonar' },
+            { value: 'openai:gpt-4o', label: 'GPT-4o' },
+          ],
+          initial: 'gemini:gemini-2.5-pro-exp-03-25',
+        }
+      );
 
       // Collect all selected options into a config object
       const config = {

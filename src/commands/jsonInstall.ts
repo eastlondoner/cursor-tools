@@ -50,9 +50,13 @@ function parseJsonConfig(
           throw new Error(`IDE must be a string, got: ${typeof value}`);
         }
 
-        if (!validIdes.includes(value.toLowerCase())) {
+        const lowerIde = value.toLowerCase(); // Normalize to lowercase
+        if (!validIdes.includes(lowerIde)) {
           throw new Error(`Invalid IDE "${value}". Valid IDE options are: ${validIdes.join(', ')}`);
         }
+
+        // Store the normalized lowercase IDE name
+        configToUse[key] = lowerIde;
 
         // Skip further validation for ide
         continue;
@@ -77,7 +81,8 @@ function parseJsonConfig(
 
       // Normalize provider case to match expected format
       const providerIndex = VALID_PROVIDERS_LOWERCASE.indexOf(providerObj.provider.toLowerCase());
-      providerObj.provider = VALID_PROVIDERS[providerIndex];
+      // Ensure provider is stored in lowercase
+      providerObj.provider = VALID_PROVIDERS_LOWERCASE[providerIndex] as Provider;
     }
 
     return configToUse as Record<string, { provider: Provider; model: string }> & { ide?: string };
@@ -173,7 +178,7 @@ export class JsonInstallCommand implements Command {
 
     // Add ide if present
     if (jsonConfig.ide) {
-      config.ide = jsonConfig.ide.toLowerCase();
+      config.ide = jsonConfig.ide.toLowerCase(); // Ensure IDE name is lowercase
     }
 
     // Map the JSON config to the actual config structure

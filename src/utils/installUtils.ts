@@ -177,8 +177,8 @@ export function collectRequiredProviders(config: {
     // Skip the ide key and ensure value has provider property
     if (key === 'ide' || typeof value !== 'object' || !('provider' in value)) return;
 
-    // Provider should already be normalized to correct case
-    providers.add(value.provider);
+    // Add the lowercase provider
+    providers.add(value.provider.toLowerCase() as Provider);
   });
 
   return Array.from(providers);
@@ -189,7 +189,8 @@ export function parseProviderModel(value: string): { provider: Provider; model: 
   const [provider, model] = value.split(':');
   // Normalize provider case to match expected format
   const providerIndex = VALID_PROVIDERS_LOWERCASE.indexOf(provider.toLowerCase());
-  const normalizedProvider = VALID_PROVIDERS[providerIndex] as Provider;
+  // Use the lowercase version from VALID_PROVIDERS_LOWERCASE
+  const normalizedProvider = VALID_PROVIDERS_LOWERCASE[providerIndex] as Provider;
   return { provider: normalizedProvider, model };
 }
 
@@ -315,7 +316,7 @@ export async function* handleLegacyMigration(): CommandGenerator {
               },
               doc: legacyConfig.doc || { provider: 'perplexity' }, // Default provider if missing
               // Preserve other top-level keys like 'ide' if they exist
-              ...(legacyConfig.ide && { ide: legacyConfig.ide }),
+              ...(legacyConfig.ide && { ide: legacyConfig.ide.toLowerCase() }), // Lowercase IDE name
             };
 
             // Explicitly handle nested provider/model mapping if needed,
