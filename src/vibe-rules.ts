@@ -244,7 +244,6 @@ export function isRulesContentUpToDate(
 
 // For backwards compatibility, export the old constant names
 export const CURSOR_RULES_TEMPLATE = generateRules('cursor', true);
-export const CLINE_ROO_RULES_TEMPLATE = generateRules('cline');
 export const CURSOR_RULES_VERSION = VIBE_TOOLS_RULES_VERSION;
 
 // Function to determine which cursor rules path to use
