@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { consola } from 'consola';
 import { colors } from 'consola/utils';
-import type { Provider } from '../types';
+import type { Provider, Config, CommandGenerator } from '../types';
 
 // Create color bindings with consola colors
 export const VIBE_COLORS = {
@@ -197,7 +197,7 @@ export function parseProviderModel(value: string): { provider: Provider; model: 
 export async function setupClinerules(
   absolutePath: string,
   selectedIde: string,
-  generateRules: (ide: string) => string
+  generateRules: (ide: string, isMdc?: boolean) => string
 ): Promise<void> {
   // The remaining code is for cline IDE
   const clinerulePath = join(absolutePath, '.clinerules');
@@ -271,5 +271,71 @@ export async function setupClinerules(
     } catch (error) {
       consola.error(`Error creating directory structure:`, error);
     }
+  }
+}
+
+// New function for handling legacy migration
+export async function* handleLegacyMigration(): CommandGenerator {
+  try {
+    const legacyHomeDir = join(homedir(), '.cursor-tools');
+    if (existsSync(legacyHomeDir)) {
+      consola.info('Detected legacy .cursor-tools directory.');
+
+      const shouldMigrate = await consola.prompt(
+        'Do you want to migrate settings from cursor-tools to vibe-tools?',
+        { type: 'confirm' }
+      );
+
+      if (shouldMigrate) {
+        // Ensure vibe-tools directory exists
+        ensureDirectoryExists(VIBE_HOME_DIR);
+
+        // Check for and migrate env file
+        const legacyEnvPath = join(legacyHomeDir, '.env');
+        if (existsSync(legacyEnvPath)) {
+          const legacyEnvContent = readFileSync(legacyEnvPath, 'utf-8');
+          writeFileSync(VIBE_HOME_ENV_PATH, legacyEnvContent);
+          consola.success('Migrated environment variables');
+        }
+
+        // Check for and migrate config file
+        const legacyConfigPath = join(legacyHomeDir, 'config.json');
+        if (existsSync(legacyConfigPath)) {
+          try {
+            const legacyConfig = JSON.parse(readFileSync(legacyConfigPath, 'utf-8'));
+
+            // Update config with new keys if necessary
+            // Ensure default structure exists before assigning legacy values
+            const newConfig: Config = {
+              web: legacyConfig.web || { provider: 'perplexity' }, // Default provider if missing
+              repo: legacyConfig.repo || { provider: 'gemini' }, // Default provider if missing
+              plan: legacyConfig.plan || {
+                fileProvider: 'gemini', // Default providers if missing
+                thinkingProvider: 'openai',
+              },
+              doc: legacyConfig.doc || { provider: 'perplexity' }, // Default provider if missing
+              // Preserve other top-level keys like 'ide' if they exist
+              ...(legacyConfig.ide && { ide: legacyConfig.ide }),
+            };
+
+            // Explicitly handle nested provider/model mapping if needed,
+            // but the structure seems simpler now. Let's keep it direct.
+
+            writeFileSync(VIBE_HOME_CONFIG_PATH, JSON.stringify(newConfig, null, 2));
+            consola.success('Migrated configuration file');
+          } catch (error) {
+            consola.error(`Error migrating config: ${error}`);
+            yield `Error migrating config: ${error instanceof Error ? error.message : 'Unknown error'}`; // Yield error message
+          }
+        }
+
+        yield 'Migration completed successfully.';
+      } else {
+        yield 'Skipping migration.';
+      }
+    }
+  } catch (error) {
+    consola.error(`Error during migration: ${error}`);
+    yield `Error during migration: ${error instanceof Error ? error.message : 'Unknown error'}`;
   }
 }

@@ -198,69 +198,14 @@ export function generateRules(ide: string, includeCursorMetadata: boolean = fals
       return `${includeCursorMetadata ? CURSOR_METADATA + '\n' : ''}${CURSOR_INTRO_TEXT}\n\n<vibe-tools Integration>\n${VIBE_TOOLS_CORE_CONTENT}\n</vibe-tools Integration>`;
 
     case 'claude-code':
-      // For Claude Code, use the same format as cursor but without metadata
-      return `${CURSOR_INTRO_TEXT}\n\n<vibe-tools Integration>\n${VIBE_TOOLS_CORE_CONTENT}\n</vibe-tools Integration>`;
-
     case 'windsurf':
-      // For Windsurf, use the same format as cursor but without metadata
-      return `${CURSOR_INTRO_TEXT}\n\n<vibe-tools Integration>\n${VIBE_TOOLS_CORE_CONTENT}\n</vibe-tools Integration>`;
-
     case 'cline':
     case 'roo':
-      // For Cline/Roo, use the specific format
-      return `# Ask Gemini for help
-
-Gemini is your coding assistant. They have a vast knowledge of the codebase.
-
-## What Gemini can help with
-
--   Code Review
--   Planning solutions
--   Best practices and code style
--   Explaining long action chains across multiple files
-
-## How to run Gemini
-
--   Use the **terminal command** \`vibe-tools\`
--   This is a command you should run in terminal, not an MCP tool.
--   The commands \`vibe-tools plan\` & \`vibe-tools repo\` are explained in further detail below.
-
-# When to ask Gemini
-
-## Mandatory
-
-### Code review
-
-Whenever you finish a task and are ready to report back with your results, **you need to ask Gemini to review your work**.
-
-#### Use natural language and try to be as detailed as possible with your question
-\`vibe-tools repo "Take a look at the work I have done. These are the files: foo, bar, baz, etc. The goal of this work was to achieve XYZ. Please check for bugs or logic gaps, and let me know if I have matched the guidelines and style of the codebase."\`
-
-## Recommended
-
-### Implementation plan
-
-If the contents of \`./context/CURRENT_PROJECT.md\`, \`./context/CURRENT_TASK.md\`, and the guides in the \`./documentation\` directory do not provide enough information about your implementation, you should ask Gemini to help you plan out a solution to your specific issue.
-
-#### Architecture question
-\`vibe-tools plan "Please help me plan out a way to make personal assistants be able to create bookings etc. on behalf of the therapist they work for."\`
-
-#### Stack question
-\`vibe-tools plan "Please help me plan out step by step the refactor of our email template system from EJS to a more modern framework."\`
-
-### Second opinion
-
-Before you start writing a new file with a high level of complexity, you can ask Gemini for a second opinion on your intended course of action before you start.
-
-#### Be very specific about your implementation plan, and use Gemini's extensive codebase knowledge to your advantage
-\`vibe-tools repo "I need a second opinion on something. I am about to create a new webhook that captures data from Airtable and syncs it with a user's account. Here is a high level overview of the business logic, 1. x, 2. y, 3. z. I am planning to write this functionality inline in the webhook handler. Does this sound like the best plan, or are there some useful utilities in the codebase that may make this easier?"\`
-
-<vibe-tools Integration>
-${VIBE_TOOLS_CORE_CONTENT}
-</vibe-tools Integration>`;
+      // For non-cursor IDEs, use the same format but without metadata
+      return `${CURSOR_INTRO_TEXT}\n\n<vibe-tools Integration>\n${VIBE_TOOLS_CORE_CONTENT}\n</vibe-tools Integration>`;
 
     default:
-      // Default to cursor format without metadata
+      // Default to cursor format without metadata (same as claude-code, windsurf, cline, roo now)
       return `${CURSOR_INTRO_TEXT}\n\n<vibe-tools Integration>\n${VIBE_TOOLS_CORE_CONTENT}\n</vibe-tools Integration>`;
   }
 }

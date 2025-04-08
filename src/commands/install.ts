@@ -22,6 +22,7 @@ import {
   collectRequiredProviders,
   parseProviderModel,
   setupClinerules,
+  handleLegacyMigration,
 } from '../utils/installUtils';
 
 interface InstallOptions extends CommandOptions {
@@ -216,6 +217,9 @@ export class InstallCommand implements Command {
       if (dependencyWarning) {
         consola.warn(dependencyWarning);
       }
+
+      // Handle legacy migration *before* asking for new setup
+      yield* handleLegacyMigration();
 
       // Ask for IDE preference
       const selectedIde = await consola.prompt('Which IDE will you be using with vibe-tools?', {

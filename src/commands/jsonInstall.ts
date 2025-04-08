@@ -1,7 +1,6 @@
 import type { Command, CommandGenerator, CommandOptions, Provider, Config } from '../types';
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { homedir } from 'node:os';
 import { loadEnv } from '../config';
 import { generateRules } from '../vibe-rules';
 import { consola } from 'consola';
@@ -22,6 +21,7 @@ import {
   getVibeToolsLogo,
   collectRequiredProviders,
   setupClinerules,
+  handleLegacyMigration,
 } from '../utils/installUtils';
 
 // Helper to parse JSON configuration
@@ -89,64 +89,6 @@ function parseJsonConfig(
 }
 
 export class JsonInstallCommand implements Command {
-  private async *handleMigration(): CommandGenerator {
-    try {
-      const legacyHomeDir = join(homedir(), '.cursor-tools');
-      if (existsSync(legacyHomeDir)) {
-        consola.info('Detected legacy .cursor-tools directory.');
-
-        const shouldMigrate = await consola.prompt(
-          'Do you want to migrate settings from cursor-tools to vibe-tools?',
-          { type: 'confirm' }
-        );
-
-        if (shouldMigrate) {
-          // Ensure vibe-tools directory exists
-          ensureDirectoryExists(VIBE_HOME_DIR);
-
-          // Check for and migrate env file
-          const legacyEnvPath = join(legacyHomeDir, '.env');
-          if (existsSync(legacyEnvPath)) {
-            const legacyEnvContent = readFileSync(legacyEnvPath, 'utf-8');
-            writeFileSync(VIBE_HOME_ENV_PATH, legacyEnvContent);
-            consola.success('Migrated environment variables');
-          }
-
-          // Check for and migrate config file
-          const legacyConfigPath = join(legacyHomeDir, 'config.json');
-          if (existsSync(legacyConfigPath)) {
-            try {
-              const legacyConfig = JSON.parse(readFileSync(legacyConfigPath, 'utf-8'));
-
-              // Update config with new keys if necessary
-              const newConfig: Config = {
-                web: legacyConfig.web || {},
-                repo: legacyConfig.repo || { provider: 'gemini' },
-                plan: legacyConfig.plan || {
-                  fileProvider: 'gemini',
-                  thinkingProvider: 'openai',
-                },
-                doc: legacyConfig.doc || { provider: 'perplexity' },
-              };
-
-              writeFileSync(VIBE_HOME_CONFIG_PATH, JSON.stringify(newConfig, null, 2));
-              consola.success('Migrated configuration file');
-            } catch (error) {
-              consola.error(`Error migrating config: ${error}`);
-            }
-          }
-
-          yield 'Migration completed successfully.';
-        } else {
-          yield 'Skipping migration.';
-        }
-      }
-    } catch (error) {
-      consola.error(`Error during migration: ${error}`);
-      yield `Error during migration: ${error instanceof Error ? error.message : 'Unknown error'}`;
-    }
-  }
-
   private async *setupApiKeys(requiredProviders: Provider[]): CommandGenerator {
     try {
       loadEnv(); // Load existing env files if any
@@ -326,8 +268,8 @@ export class JsonInstallCommand implements Command {
       // Load env AFTER displaying welcome message
       loadEnv();
 
-      // Handle migration first
-      yield* this.handleMigration();
+      // Handle migration first using the shared utility function
+      yield* handleLegacyMigration();
 
       // Parse JSON configuration
       const jsonConfig = parseJsonConfig(options.json);
