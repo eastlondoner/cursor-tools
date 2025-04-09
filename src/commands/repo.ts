@@ -212,6 +212,7 @@ export class RepoCommand implements Command {
         model: modelName,
         maxTokens,
         debug: options?.debug,
+        tokenCount: options?.tokenCount,
       };
 
       const response = await analyzeRepository(
