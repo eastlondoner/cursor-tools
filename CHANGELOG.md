@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.60.1] - 2025-04-10
+
+### Changed
+
+- Switched from `gemini-2.0-pro-exp` to `gemini-1.5-pro` due to Google deprecating the experimental 2.0 model
+
 ## [0.60.0] - 2025-04-09
 
 ### Changed
