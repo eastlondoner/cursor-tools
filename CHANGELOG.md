@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.60.1-alpha.1]
+
+### Added
+
+- **Notion Web Url Integration**: Added `--with-notion <notion_url>` flag to `repo` and `doc` commands.
+  - Fetches content from the specified public Notion page (requires JavaScript rendering).
+  - Uses the internal `browser open` command with a wait time to capture rendered HTML.
+  - Implements retry logic (3s, 5s, 10s waits) for fetching Notion content to improve reliability.
+  - For `repo`: Prepends fetched Notion content to the user query sent to the analysis model.
+  - For `doc`: Includes fetched Notion content as additional context for documentation generation.
+  - Added tests for `repo` and `doc` commands with `--with-notion` integration.
+
 ## [0.60.0] - 2025-04-09
 
 ### Changed
@@ -11,12 +23,12 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - **Youtube command**: Added `youtube` command that can be used to analyze YouTube videos and generate detailed reports:
+
   - Support for multiple analysis types: summaries, transcripts, implementation plans, reviews, or custom analysis
   - Optional questions parameter for targeted insights about video content
   - Uses Gemini models which have native YouTube video understanding capabilities
   - Results can be saved to files for reference and sharing
   - Requires `GEMINI_API_KEY` to be set in your environment or .vibe-tools.env file
-
 
 - **Support for Reasoning Effort Parameter**: Added `--reasoning-effort` parameter to enhance the quality of responses for complex queries:
   - Supports `low`, `medium`, and `high` values for controlling reasoning depth
