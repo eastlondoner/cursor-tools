@@ -351,7 +351,7 @@ export class InstallCommand implements Command {
               hint: 'recommended',
             },
             {
-              value: 'anthropic:claude-3-7-sonnet',
+              value: 'anthropic:claude-3-7-sonnet-latest',
               label: 'Claude 3.7 Sonnet',
               hint: 'recommended',
             },

@@ -58,7 +58,7 @@ interface GoogleGenerativeLanguageRequestBody {
 export interface ModelOptions {
   model: string;
   maxTokens: number;
-  systemPrompt: string;
+  systemPrompt?: string;
   tokenCount?: number; // For handling large token counts
   webSearch?: boolean; // Whether to enable web search capabilities
   timeout?: number; // Timeout in milliseconds for model API calls

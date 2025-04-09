@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.60.5] - 2025-04-18
+
+### Added
+
+- **Document Web Url Integration**: Added `--with-doc <doc_url>` flag to `repo` and `doc` commands to fetch content from any web URL and include it as context.
+  - Uses the internal browser open command with a wait time to capture rendered HTML.
+  - Implements retry logic (3s, 5s, 10s waits) for fetching content to improve reliability.
+  - For repo: Prepends fetched document content to the user query sent to the analysis model.
+  - For doc: Includes fetched document content as additional context for documentation generation.
+
 ## [0.60.4] - 2025-04-16
 
 ### Added
@@ -22,6 +32,8 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **X.AI Provider Support**: Added support for the X.AI provider, enabling the use of Grok models (e.g., `grok-3-latest`, `grok-3-mini-latest`). Configure using the `XAI_API_KEY` environment variable.
+- **Document Web Url Integration**: Added `--with-doc <doc_url>` flag to `repo` and `doc` commands to fetch content from any web URL and include it as context.
 
 ## [0.60.0] - 2025-04-09
 
@@ -32,7 +44,6 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - **Youtube command**: Added `youtube` command that can be used to analyze YouTube videos and generate detailed reports:
-
 
   - Support for multiple analysis types: summaries, transcripts, implementation plans, reviews, or custom analysis
   - Optional questions parameter for targeted insights about video content

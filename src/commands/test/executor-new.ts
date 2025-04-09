@@ -14,7 +14,7 @@ import {
 } from '../../utils/tool-enabled-llm/unified-client.js';
 import { createCommandExecutionTool } from './tools';
 import { BaseModelProvider, retryWithBackoff } from '../../providers/base';
-import { CURSOR_RULES_TEMPLATE } from '../../cursorrules';
+import { CURSOR_RULES_TEMPLATE } from '../../vibe-rules';
 import { TestEnvironmentManager } from './environment';
 import { StdioServerParameters } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
