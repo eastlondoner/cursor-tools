@@ -16,21 +16,6 @@ import {
 import { getGithubRepoContext, looksLikeGithubRepo, parseGithubUrl } from '../utils/githubRepo';
 import { fetchNotionPageContent } from '../utils/notion.ts';
 
-interface DocCommandOptions extends CommandOptions {
-  withNotion?: string;
-  model?: ModelOptions['model'];
-  maxTokens?: ModelOptions['maxTokens'];
-  fromGithub?: string;
-  hint?: string;
-  debug: boolean;
-  provider?: Provider;
-  subdir?: string;
-  tokenCount?: ModelOptions['tokenCount'];
-  webSearch?: ModelOptions['webSearch'];
-  timeout?: ModelOptions['timeout'];
-  reasoningEffort?: ModelOptions['reasoningEffort'];
-}
-
 export class DocCommand implements Command {
   private config: Config;
 
@@ -39,7 +24,7 @@ export class DocCommand implements Command {
     this.config = loadConfig();
   }
 
-  async *execute(query: string, options: DocCommandOptions): CommandGenerator {
+  async *execute(query: string, options: CommandOptions): CommandGenerator {
     try {
       console.error('Generating repository documentation...\n');
 
@@ -205,7 +190,7 @@ export class DocCommand implements Command {
     }
   }
 
-  private validateApiKeys(options: DocCommandOptions): void {
+  private validateApiKeys(options: CommandOptions): void {
     if (options?.provider) {
       const providerInfo = getAllProviders().find((p) => p.provider === options.provider);
       if (!providerInfo?.available) {
@@ -233,7 +218,7 @@ export class DocCommand implements Command {
     provider: Provider,
     query: string,
     repoContext: { text: string; tokenCount: number },
-    options: DocCommandOptions,
+    options: CommandOptions,
     notionContent: string
   ): CommandGenerator {
     const modelProvider = createProvider(provider);
@@ -256,12 +241,11 @@ export class DocCommand implements Command {
       defaultMaxTokens;
 
     try {
-      const modelOptions: ModelOptions = {
+      const modelOptsForGeneration: Partial<ModelOptions> & { model: string } = {
         model,
         maxTokens,
-        systemPrompt: 'dummy',
         debug: options.debug,
-        tokenCount: options.tokenCount,
+        tokenCount: options.tokenCount ?? repoContext.tokenCount,
         webSearch: options.webSearch,
         timeout: options.timeout,
         reasoningEffort: options.reasoningEffort,
@@ -271,7 +255,7 @@ export class DocCommand implements Command {
         query,
         modelProvider,
         repoContext,
-        modelOptions,
+        modelOptsForGeneration,
         notionContent
       );
       yield '\n--- Repository Documentation ---\n\n';
@@ -304,7 +288,7 @@ async function generateDocumentation(
   query: string,
   provider: BaseModelProvider,
   repoContext: { text: string; tokenCount: number },
-  options: ModelOptions,
+  options: Partial<ModelOptions> & { model: string },
   notionContent: string
 ): Promise<string> {
   const notionContextString = notionContent
@@ -320,10 +304,16 @@ Include code examples where relevant.
 ${query ? 'Follow any specific instructions or hints provided by the user.' : ''}
 Structure the documentation logically with clear headings and explanations.`;
 
-  const finalOptions: ModelOptions = {
-    ...options,
+  const finalModelOptions: ModelOptions = {
+    model: options.model,
+    maxTokens: options.maxTokens ?? defaultMaxTokens,
     systemPrompt,
+    tokenCount: options.tokenCount ?? repoContext.tokenCount,
+    debug: options.debug,
+    webSearch: options.webSearch,
+    timeout: options.timeout,
+    reasoningEffort: options.reasoningEffort,
   };
 
-  return provider.executePrompt(prompt, finalOptions);
+  return provider.executePrompt(prompt, finalModelOptions);
 }
