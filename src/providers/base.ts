@@ -813,9 +813,9 @@ export class GoogleVertexAIProvider extends BaseProvider {
     if (tokenCount > 800_000 && tokenCount < 2_000_000) {
       // 1M is the limit but token counts are very approximate so play it safe
       console.error(
-        `Repository content is large (${Math.round(tokenCount / 1000)}K tokens), switching to gemini-2.0-pro-exp model...`
+        `Repository content is large (${Math.round(tokenCount / 1000)}K tokens), switching to gemini-1.5-pro model...`
       );
-      return { model: 'gemini-2.0-pro-exp' }; // correct name for vertex ai
+      return { model: 'gemini-1.5-pro' }; // correct name for vertex ai
     }
 
     if (tokenCount >= 2_000_000) {
@@ -1417,9 +1417,9 @@ export class GoogleGenerativeLanguageProvider extends BaseProvider {
     if (tokenCount > 800_000 && tokenCount < 2_000_000) {
       // 1M is the limit but token counts are very approximate so play it safe
       console.error(
-        `Repository content is large (${Math.round(tokenCount / 1000)}K tokens), switching to gemini-2.0-pro-exp model...`
+        `Repository content is large (${Math.round(tokenCount / 1000)}K tokens), switching to gemini-1.5-pro model...`
       );
-      return { model: 'gemini-2.0-pro-exp' };
+      return { model: 'gemini-1.5-pro' };
     }
 
     if (tokenCount >= 2_000_000) {
@@ -1578,7 +1578,7 @@ export class OpenRouterProvider extends OpenAIBase {
   protected handleLargeTokenCount(tokenCount: number): { model?: string; error?: string } {
     if (tokenCount > 800_000) {
       return {
-        model: 'google/gemini-2.0-pro-exp-02-05:free',
+        model: 'google/gemini-1.5-pro',
       };
     }
     if (tokenCount > 180_000) {

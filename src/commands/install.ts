@@ -308,7 +308,7 @@ export class InstallCommand implements Command {
               hint: 'recommended',
             },
             {
-              value: 'gemini:gemini-2.0-pro',
+              value: 'gemini:gemini-1.5-pro',
               label: 'Gemini 2.0 Pro',
               hint: 'recommended',
             },
