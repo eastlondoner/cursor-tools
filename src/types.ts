@@ -42,6 +42,12 @@ export interface CommandOptions {
   thinkingProvider?: Provider;
   fileModel?: string;
   thinkingModel?: string;
+
+  // Properties merged from RepoCommandOptions and DocCommandOptions
+  withNotion?: string; // URL of the Notion page
+  tokenCount?: number; // For handling large token counts (passed down)
+  webSearch?: boolean; // Whether web search is enabled (passed down)
+  timeout?: number; // Specific timeout for this command (passed down)
 }
 
 export interface Command {

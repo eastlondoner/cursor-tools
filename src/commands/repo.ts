@@ -19,16 +19,6 @@ import {
 import { getGithubRepoContext, looksLikeGithubRepo } from '../utils/githubRepo';
 import { fetchNotionPageContent } from '../utils/notion.ts';
 
-interface RepoCommandOptions extends CommandOptions {
-  withNotion?: string;
-  model?: ModelOptions['model'];
-  maxTokens?: ModelOptions['maxTokens'];
-  tokenCount?: ModelOptions['tokenCount'];
-  webSearch?: ModelOptions['webSearch'];
-  timeout?: ModelOptions['timeout'];
-  reasoningEffort?: ModelOptions['reasoningEffort'];
-}
-
 export class RepoCommand implements Command {
   private config: Config;
 
@@ -37,7 +27,7 @@ export class RepoCommand implements Command {
     this.config = loadConfig();
   }
 
-  async *execute(query: string, options: RepoCommandOptions): CommandGenerator {
+  async *execute(query: string, options: CommandOptions): CommandGenerator {
     try {
       // Handle query as GitHub repo if it looks like one and --from-github is not set
       if (query && !options?.fromGithub && looksLikeGithubRepo(query)) {
@@ -228,7 +218,7 @@ export class RepoCommand implements Command {
     query: string,
     repoContext: string,
     cursorRules: string,
-    options: RepoCommandOptions,
+    options: CommandOptions,
     notionContent: string
   ): CommandGenerator {
     const modelProvider = createProvider(provider);
@@ -250,8 +240,9 @@ export class RepoCommand implements Command {
         (this.config as Record<string, any>)[provider]?.maxTokens ||
         defaultMaxTokens;
 
-      // Create modelOptions, ensuring all properties from ModelOptions are included
-      const modelOptions: ModelOptions = {
+      // Simplify modelOptions creation - pass only relevant options
+      // The analyzeRepository function will construct the full ModelOptions internally
+      const modelOptsForAnalysis: Partial<ModelOptions> & { model: string } = {
         model: modelName,
         maxTokens,
         debug: options?.debug,
@@ -266,7 +257,7 @@ export class RepoCommand implements Command {
           cursorRules,
           notionContent,
         },
-        modelOptions // Pass the full ModelOptions object
+        modelOptsForAnalysis // Pass the simplified options
       );
       yield response;
     } catch (error) {
@@ -281,7 +272,7 @@ export class RepoCommand implements Command {
 async function analyzeRepository(
   provider: BaseModelProvider,
   props: { query: string; repoContext: string; cursorRules: string; notionContent: string },
-  options: ModelOptions // Expect the full ModelOptions object
+  options: Partial<ModelOptions> & { model: string } // Expect partial options + model
 ): Promise<string> {
   // Prepend Notion content if available
   const finalQuery = props.notionContent
@@ -291,12 +282,19 @@ async function analyzeRepository(
   // Construct the final prompt
   const finalPrompt = `${props.cursorRules}\n\n${props.repoContext}\n\n${finalQuery}`;
 
-  // Set the correct system prompt within the options passed to the provider
-  const finalOptions: ModelOptions = {
-    ...options,
+  // Construct the full ModelOptions here
+  const finalModelOptions: ModelOptions = {
+    model: options.model, // Use required model name
+    maxTokens: options.maxTokens ?? defaultMaxTokens, // Use provided or default maxTokens
     systemPrompt:
       "You are an expert software developer analyzing a repository and potentially a Notion page. Provide a comprehensive response to the user's request, considering both the code context and any provided Notion content. Include a list of relevant files. Follow user instructions exactly.",
+    // Pass through optional values
+    debug: options.debug,
+    tokenCount: options.tokenCount,
+    webSearch: options.webSearch,
+    timeout: options.timeout,
+    reasoningEffort: options.reasoningEffort,
   };
 
-  return provider.executePrompt(finalPrompt, finalOptions);
+  return provider.executePrompt(finalPrompt, finalModelOptions);
 }
