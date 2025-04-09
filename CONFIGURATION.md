@@ -94,7 +94,7 @@ Create this file in your project root to customize behavior. Here's a comprehens
 
 - `model`: The AI model for repository analysis
 - `maxTokens`: Maximum tokens in responses
-- Note: For repositories >800K tokens, automatically switches to gemini-2.0-pro-exp
+- Note: For repositories >800K tokens, automatically switches to gemini-1.5-pro
 
 ### Plan Command Settings
 
