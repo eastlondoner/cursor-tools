@@ -45,10 +45,10 @@ when using web for complex queries suggest writing the output to a file somewher
 --provider=<provider>: AI provider to use (perplexity, gemini, modelbox, or openrouter)
 
 **Repository Context:**
-\`vibe-tools repo "<your question>" [--subdir=<path>] [--from-github=<username/repo>]\` - Get context-aware answers about this repository using Google Gemini (e.g., \`vibe-tools repo "explain authentication flow"\`). Use the optional \`--subdir\` parameter to analyze a specific subdirectory instead of the entire repository (e.g., \`vibe-tools repo "explain the code structure" --subdir=src/components\`). Use the optional \`--from-github\` parameter to analyze a remote GitHub repository without cloning it locally (e.g., \`vibe-tools repo "explain the authentication system" --from-github=username/repo-name\`).
+\`vibe-tools repo "<your question>" [--subdir=<path>] [--from-github=<username/repo>] [--with-notion=<notion_url>]\` - Get context-aware answers about this repository using Google Gemini (e.g., \`vibe-tools repo "explain authentication flow"\`). Use optional flags for specific subdirectories, remote GitHub repos, or adding context from a Notion page.
 
 **Documentation Generation:**
-\`vibe-tools doc [options]\` - Generate comprehensive documentation for this repository (e.g., \`vibe-tools doc --output docs.md\`)
+\`vibe-tools doc [options] [--with-notion=<notion_url>]\` - Generate comprehensive documentation for this repository (e.g., \`vibe-tools doc --output docs.md\`). Can incorporate Notion page context.
 when using doc for remote repos suggest writing the output to a file somewhere like local-docs/<repo-name>.md.
 
 **YouTube Video Analysis:**
@@ -118,12 +118,14 @@ The \`search\` command helps you discover servers in the MCP Marketplace based o
 --max-tokens=<number>: Maximum tokens for response
 --from-github=<GitHub username>/<repository name>[@<branch>]: Analyze a remote GitHub repository without cloning it locally
 --subdir=<path>: Analyze a specific subdirectory instead of the entire repository
+--with-notion=<notion_url>: Fetch content from a Notion page and include it as context
 
 **Documentation Command Options:**
 --from-github=<GitHub username>/<repository name>[@<branch>]: Generate documentation for a remote GitHub repository
 --provider=<provider>: AI provider to use (gemini, openai, openrouter, perplexity, modelbox, anthropic, or xai)
 --model=<model>: Model to use for documentation generation
 --max-tokens=<number>: Maximum tokens for response
+--with-notion=<notion_url>: Fetch content from a Notion page and include it as context
 
 **YouTube Command Options:**
 --type=<summary|transcript|plan|review|custom>: Type of analysis to perform (default: summary)

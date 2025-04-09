@@ -1,13 +1,14 @@
 import type { Command, CommandGenerator, CommandOptions, Provider } from '../types';
 import type { Config } from '../types';
 import type { AsyncReturnType } from '../utils/AsyncReturnType';
+import type { ModelOptions } from '../providers/base';
 
 import { defaultMaxTokens, loadConfig, loadEnv } from '../config';
 import { pack } from 'repomix';
 import { readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { FileError, ProviderError } from '../errors';
-import type { ModelOptions, BaseModelProvider } from '../providers/base';
+import type { BaseModelProvider } from '../providers/base';
 import { createProvider } from '../providers/base';
 import { loadFileConfigWithOverrides } from '../repomix/repomixConfig';
 import {
@@ -16,6 +17,17 @@ import {
   getDefaultModel,
 } from '../utils/providerAvailability';
 import { getGithubRepoContext, looksLikeGithubRepo } from '../utils/githubRepo';
+import { fetchNotionPageContent } from '../utils/notion.ts';
+
+interface RepoCommandOptions extends CommandOptions {
+  withNotion?: string;
+  model?: ModelOptions['model'];
+  maxTokens?: ModelOptions['maxTokens'];
+  tokenCount?: ModelOptions['tokenCount'];
+  webSearch?: ModelOptions['webSearch'];
+  timeout?: ModelOptions['timeout'];
+  reasoningEffort?: ModelOptions['reasoningEffort'];
+}
 
 export class RepoCommand implements Command {
   private config: Config;
@@ -25,7 +37,7 @@ export class RepoCommand implements Command {
     this.config = loadConfig();
   }
 
-  async *execute(query: string, options: CommandOptions & Partial<ModelOptions>): CommandGenerator {
+  async *execute(query: string, options: RepoCommandOptions): CommandGenerator {
     try {
       // Handle query as GitHub repo if it looks like one and --from-github is not set
       if (query && !options?.fromGithub && looksLikeGithubRepo(query)) {
@@ -110,6 +122,28 @@ export class RepoCommand implements Command {
         }
       }
 
+      // Fetch Notion content if the flag is provided
+      let notionContent = '';
+      if (options?.withNotion) {
+        if (
+          typeof options.withNotion !== 'string' ||
+          !options.withNotion.startsWith('https://www.notion.so/')
+        ) {
+          throw new Error(
+            'Invalid Notion URL provided with --with-notion. Must be a valid Notion page URL.'
+          );
+        }
+        try {
+          yield `Fetching Notion page content from ${options.withNotion}...\n`;
+          notionContent = await fetchNotionPageContent(options.withNotion, options.debug ?? false);
+          yield `Successfully fetched Notion content.\n`;
+        } catch (error) {
+          console.error('Error fetching Notion content:', error);
+          // Let the user know fetching failed but continue without it
+          yield `Warning: Failed to fetch Notion content from ${options.withNotion}. Continuing analysis without it. Error: ${error instanceof Error ? error.message : String(error)}\n`;
+        }
+      }
+
       if (tokenCount > 200_000) {
         options.tokenCount = tokenCount;
       }
@@ -145,7 +179,8 @@ export class RepoCommand implements Command {
           query,
           repoContext,
           cursorRules,
-          options
+          options,
+          notionContent
         );
         return;
       }
@@ -154,7 +189,14 @@ export class RepoCommand implements Command {
       let currentProvider = getNextAvailableProvider('repo');
       while (currentProvider) {
         try {
-          yield* this.tryProvider(currentProvider, query, repoContext, cursorRules, options);
+          yield* this.tryProvider(
+            currentProvider,
+            query,
+            repoContext,
+            cursorRules,
+            options,
+            notionContent
+          );
           return; // If successful, we're done
         } catch (error) {
           console.error(
@@ -186,7 +228,8 @@ export class RepoCommand implements Command {
     query: string,
     repoContext: string,
     cursorRules: string,
-    options: CommandOptions & Partial<ModelOptions>
+    options: RepoCommandOptions,
+    notionContent: string
   ): CommandGenerator {
     const modelProvider = createProvider(provider);
     const modelName =
@@ -207,8 +250,8 @@ export class RepoCommand implements Command {
         (this.config as Record<string, any>)[provider]?.maxTokens ||
         defaultMaxTokens;
 
-      // Create modelOptions
-      const modelOptions: Omit<ModelOptions, 'systemPrompt'> = {
+      // Create modelOptions, ensuring all properties from ModelOptions are included
+      const modelOptions: ModelOptions = {
         model: modelName,
         maxTokens,
         debug: options?.debug,
@@ -221,8 +264,9 @@ export class RepoCommand implements Command {
           query,
           repoContext,
           cursorRules,
+          notionContent,
         },
-        modelOptions
+        modelOptions // Pass the full ModelOptions object
       );
       yield response;
     } catch (error) {
@@ -236,12 +280,23 @@ export class RepoCommand implements Command {
 
 async function analyzeRepository(
   provider: BaseModelProvider,
-  props: { query: string; repoContext: string; cursorRules: string },
-  options: Omit<ModelOptions, 'systemPrompt'>
+  props: { query: string; repoContext: string; cursorRules: string; notionContent: string },
+  options: ModelOptions // Expect the full ModelOptions object
 ): Promise<string> {
-  return provider.executePrompt(`${props.cursorRules}\n\n${props.repoContext}\n\n${props.query}`, {
+  // Prepend Notion content if available
+  const finalQuery = props.notionContent
+    ? `Context from Notion Page:\n--- START NOTION CONTENT ---\n${props.notionContent}\n--- END NOTION CONTENT ---\n\nUser Query:\n${props.query}`
+    : props.query;
+
+  // Construct the final prompt
+  const finalPrompt = `${props.cursorRules}\n\n${props.repoContext}\n\n${finalQuery}`;
+
+  // Set the correct system prompt within the options passed to the provider
+  const finalOptions: ModelOptions = {
     ...options,
     systemPrompt:
-      "You are an expert software developer analyzing a repository. You should provide a comprehensive response to the user's request. In your response inclulde a list of all the files that were relevant to answering the user's request. Follow user instructions exactly and satisfy the user's request.",
-  });
+      "You are an expert software developer analyzing a repository and potentially a Notion page. Provide a comprehensive response to the user's request, considering both the code context and any provided Notion content. Include a list of relevant files. Follow user instructions exactly.",
+  };
+
+  return provider.executePrompt(finalPrompt, finalOptions);
 }

@@ -336,3 +336,26 @@ Use vibe-tools to analyze the facebook/react GitHub repository, which is a very 
 - Command does not perform more than one or two retries before failing
 - The error handling is graceful with no stack traces unless --debug is used
 - The command output does not include any security tokens or API keys
+
+### Scenario 17: Combining Notion and Repository Context
+
+**Tags:** notion, context-augmentation
+**Task Description:**
+Analyze the `src/utils/notion.ts` file in the current repository _and_ the Notion page at `https://www.notion.so/1d0939cee1fa8058b002ef08412bc907?pvs=4`. Using `vibe-tools repo`, explain how the retry mechanism in `notion.ts` helps achieve the goals mentioned in the RAG document (like fetching up-to-date information reliably).
+
+**Expected Behavior:**
+
+- The AI agent should use `repo --with-notion` with the correct URL and a query referencing both the file and the Notion context.
+- The command should fetch Notion content and analyze the specified file.
+- The response should correctly identify the retry logic in `notion.ts` (e.g., multiple attempts with increasing wait times).
+- The response should connect this retry logic to the goal of reliably fetching potentially dynamic external information, as relevant to the RAG concept described in the Notion page.
+- The command should complete without errors.
+
+**Success Criteria:**
+
+- AI agent correctly identifies and uses `vibe-tools repo --with-notion "https://www.notion.so/1d0939cee1fa8058b002ef08412bc907?pvs=4" "Explain how the retry mechanism in src/utils/notion.ts helps achieve the goals mentioned in the RAG document provided via Notion."` (or similar).
+- Notion page content is fetched successfully.
+- Response correctly identifies retry logic in `src/utils/notion.ts`.
+- Response makes a logical connection between the retry logic and the RAG concepts from the Notion page.
+- No unexpected error messages are displayed.
+- Command completes within a reasonable time.

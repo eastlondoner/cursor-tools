@@ -34,6 +34,7 @@ All notable changes to this project will be documented in this file.
 
 - **Youtube command**: Added `youtube` command that can be used to analyze YouTube videos and generate detailed reports:
 
+
   - Support for multiple analysis types: summaries, transcripts, implementation plans, reviews, or custom analysis
   - Optional questions parameter for targeted insights about video content
   - Uses Gemini models which have native YouTube video understanding capabilities
