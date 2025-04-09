@@ -49,26 +49,52 @@ function inferProviderFromModel(modelName: string): FileProvider | undefined {
   // Convert to lowercase for case-insensitive comparison
   const model = modelName.toLowerCase();
 
+  // Check for model name patterns and return provider only if API key is available
+
+  // Check for Gemini
   if (model.includes('gemini') || model.startsWith('google/')) {
-    return 'gemini';
-  } else if (model.includes('gpt') || model.includes('o3-') || model.startsWith('openai/')) {
-    return 'openai';
-  } else if (model.includes('claude') || model.startsWith('anthropic/')) {
-    return 'anthropic';
-  } else if (
+    // Return Gemini only if API key is available
+    if (process.env.GEMINI_API_KEY) {
+      return 'gemini';
+    }
+  }
+  // Check for OpenAI
+  else if (model.includes('gpt') || model.includes('o3-') || model.startsWith('openai/')) {
+    if (process.env.OPENAI_API_KEY) {
+      return 'openai';
+    }
+  }
+  // Check for Anthropic
+  else if (model.includes('claude') || model.startsWith('anthropic/')) {
+    if (process.env.ANTHROPIC_API_KEY) {
+      return 'anthropic';
+    }
+  }
+  // Check for Perplexity
+  else if (
     model.includes('sonar') ||
     model.includes('mixtral') ||
     model.includes('mistral') ||
     model.startsWith('perplexity/')
   ) {
-    return 'perplexity';
-  } else if (model.includes('/')) {
-    // For models with provider prefixes (like in OpenRouter or ModelBox)
+    if (process.env.PERPLEXITY_API_KEY) {
+      return 'perplexity';
+    }
+  }
+  // Check for models with provider prefixes (like OpenRouter or ModelBox)
+  else if (model.includes('/')) {
     const providerPrefix = model.split('/')[0].toLowerCase();
-    if (providerPrefix === 'google') return 'gemini';
-    if (providerPrefix === 'openai') return 'openai';
-    if (providerPrefix === 'anthropic') return 'anthropic';
-    if (providerPrefix === 'perplexity') return 'perplexity';
+    if (providerPrefix === 'google' && process.env.GEMINI_API_KEY) return 'gemini';
+    if (providerPrefix === 'openai' && process.env.OPENAI_API_KEY) return 'openai';
+    if (providerPrefix === 'anthropic' && process.env.ANTHROPIC_API_KEY) return 'anthropic';
+    if (providerPrefix === 'perplexity' && process.env.PERPLEXITY_API_KEY) return 'perplexity';
+  }
+
+  // If we couldn't match with a provider that has API keys, try OpenRouter or ModelBox as fallbacks
+  if (process.env.OPENROUTER_API_KEY) {
+    return 'openrouter';
+  } else if (process.env.MODELBOX_API_KEY) {
+    return 'modelbox';
   }
 
   return undefined;
@@ -92,18 +118,25 @@ export class PlanCommand implements Command {
       }
 
       // If user provided fileModel without fileProvider, try to infer the provider
-      const fileModelProvider = options?.fileModel
-        ? inferProviderFromModel(options.fileModel)
-        : undefined;
+      const inferredFileModelProvider =
+        options?.fileModel && !options?.fileProvider
+          ? inferProviderFromModel(options.fileModel)
+          : undefined;
 
       // If user provided thinkingModel without thinkingProvider, try to infer the provider
-      const thinkingModelProvider =
-        options?.thinkingModel || options?.model
+      const inferredThinkingModelProvider =
+        (options?.thinkingModel || options?.model) &&
+        !(options?.provider || options?.thinkingProvider)
           ? inferProviderFromModel(options?.thinkingModel || (options?.model as string))
           : undefined;
 
+      // Select file provider with inference fallback and respect configuration
       const fileProviderName =
-        options?.fileProvider || fileModelProvider || this.config.plan?.fileProvider || 'gemini';
+        options?.fileProvider || // 1. Explicit fileProvider option
+        inferredFileModelProvider || // 2. Inferred from fileModel option
+        this.config.plan?.fileProvider || // 3. Configured default fileProvider
+        'gemini'; // 4. Overall default
+
       let fileProvider;
       try {
         fileProvider = createProvider(fileProviderName);
@@ -115,12 +148,14 @@ export class PlanCommand implements Command {
         );
       }
 
+      // Select thinking provider with inference fallback and respect configuration
       const thinkingProviderName =
-        options?.thinkingProvider ||
-        thinkingModelProvider ||
-        this.config.plan?.thinkingProvider ||
-        fileProviderName ||
-        'openai';
+        options?.thinkingProvider || // 1. Explicit thinkingProvider option
+        inferredThinkingModelProvider || // 2. Inferred from thinkingModel/model option
+        this.config.plan?.thinkingProvider || // 3. Configured default thinkingProvider
+        fileProviderName || // 4. Fallback to the selected fileProviderName
+        'openai'; // 5. Overall default
+
       let thinkingProvider;
       try {
         thinkingProvider = createProvider(thinkingProviderName);
