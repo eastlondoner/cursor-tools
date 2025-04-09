@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.60.1-alpha.1]
+## [0.60.3]
 
 ### Added
 
