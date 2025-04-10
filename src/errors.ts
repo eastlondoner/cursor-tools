@@ -73,6 +73,9 @@ export class ModelNotFoundError extends ProviderError {
         message +=
           '\nSuggested models:\n- perplexity/sonar-pro\n- openai/gpt-4o\n- anthropic/claude-3-7-sonnet'; // it's 3-7 on modelbox
         break;
+      case 'xai':
+        message += '\nSuggested models:\n- grok-3-latest\n- grok-3-mini-latest';
+        break;
     }
 
     message += '\nUse --model to specify a model.';

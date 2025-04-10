@@ -253,6 +253,14 @@ export class InstallCommand implements Command {
             value: 'openrouter:anthropic/claude-3.7-sonnet',
             label: 'OpenRouter - Claude 3.7 Sonnet',
           },
+          {
+            value: 'openrouter:x-ai/grok-3-beta',
+            label: 'OpenRouter - Grok 3',
+          },
+          {
+            value: 'openrouter:x-ai/grok-3-mini-beta',
+            label: 'OpenRouter - Grok 3 Mini',
+          },
         ],
         initial: 'gemini:gemini-2.5-pro-exp-03-25',
       });
@@ -287,6 +295,14 @@ export class InstallCommand implements Command {
             value: 'openrouter:anthropic/claude-3.7-sonnet',
             label: 'OpenRouter - Claude 3.7 Sonnet',
           },
+          {
+            value: 'openrouter:x-ai/grok-3-beta',
+            label: 'OpenRouter - Grok 3',
+          },
+          {
+            value: 'openrouter:x-ai/grok-3-mini-beta',
+            label: 'OpenRouter - Grok 3 Mini',
+          },
         ],
         initial: 'anthropic:claude-3-7-sonnet',
       });
@@ -314,6 +330,10 @@ export class InstallCommand implements Command {
             },
             { value: 'perplexity:sonar', label: 'Perplexity Sonar' },
             { value: 'openai:gpt-4o', label: 'GPT-4o' },
+            {
+              value: 'openrouter:x-ai/grok-3-beta',
+              label: 'OpenRouter - Grok 3',
+            },
           ],
           initial: 'gemini:gemini-2.5-pro-exp-03-25',
         }

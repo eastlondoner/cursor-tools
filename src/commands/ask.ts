@@ -55,6 +55,7 @@ export class AskCommand implements Command {
         perplexity: 'sonar-pro',
         openrouter: 'openai/gpt-3.5-turbo',
         modelbox: 'openai/gpt-3.5-turbo',
+        xai: 'grok-3-mini-latest',
       };
 
       model = defaultModels[providerName] || 'gpt-3.5-turbo';

@@ -288,7 +288,7 @@ Note: The ask command requires both --provider and --model parameters to be spec
 
 ## Authentication and API Keys
 
-`vibe-tools` requires API keys for Perplexity AI, Google Gemini, and optionally for OpenAI, Anthropic and OpenRouter. These can be configured in two ways:
+`vibe-tools` requires API keys for Perplexity AI, Google Gemini, and optionally for OpenAI, Anthropic, OpenRouter, and xAI. These can be configured in two ways:
 
 1. **Interactive Setup**: Run `vibe-tools install` and follow the prompts
 2. **Manual Setup**: Create `~/.vibe-tools/.env` in your home directory or `.vibe-tools.env` in your project root:
@@ -298,6 +298,7 @@ Note: The ask command requires both --provider and --model parameters to be spec
    OPENAI_API_KEY="your-openai-api-key"  # Optional, for Stagehand
    ANTHROPIC_API_KEY="your-anthropic-api-key" # Optional, for Stagehand and MCP
    OPENROUTER_API_KEY="your-openrouter-api-key" # Optional, for MCP
+   XAI_API_KEY="your-xai-api-key" # Optional, for xAI Grok models
    GITHUB_TOKEN="your-github-token"  # Optional, for enhanced GitHub access
    ```
    - At least one of `ANTHROPIC_API_KEY` and `OPENROUTER_API_KEY` must be provided to use the `mcp` commands.
@@ -575,6 +576,7 @@ The YouTube command leverages Gemini models' native ability to understand video 
 - Get answers to specific questions about the video content
 
 **YouTube Command Options:**
+
 - `--type=<summary|transcript|plan|custom>`: Type of analysis to perform (default: summary)
 
 **Note:** The YouTube command requires a `GEMINI_API_KEY` to be set in your environment or .vibe-tools.env file as the Gemini API is currently the only interface that reliably supports YouTube video analysis.
