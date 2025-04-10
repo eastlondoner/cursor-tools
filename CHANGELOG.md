@@ -2,17 +2,33 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.63.0]
+
+### Added
+
+- **Document Web Url Integration**: Added `--with-doc <doc_url>` flag to `repo` and `doc` commands to fetch content from any web URL and include it as context.
+- **YouTube Video Analysis**: Added `youtube` command for analyzing YouTube videos (summaries, transcripts, etc.).
+- **Xcode Integration**: Added `xcode` command with `build`, `run`, and `lint` subcommands for interacting with Xcode projects.
+
+## [0.60.0] - 2024-07-10
+
+### Added
+
+- Initial release of vibe-tools with core features:
+  - Web search integration using Perplexity
+  - Repository context-aware answers using Google Gemini
+  - Installation and configuration utilities
+
 ## [0.60.3]
 
 ### Added
 
-- **Notion Web Url Integration**: Added `--with-notion <notion_url>` flag to `repo` and `doc` commands.
-  - Fetches content from the specified public Notion page (requires JavaScript rendering).
+- **Document Web Url Integration**: Added `--with-doc <doc_url>` flag to `repo` and `doc` commands to fetch content from any web URL and include it as context.
   - Uses the internal `browser open` command with a wait time to capture rendered HTML.
-  - Implements retry logic (3s, 5s, 10s waits) for fetching Notion content to improve reliability.
-  - For `repo`: Prepends fetched Notion content to the user query sent to the analysis model.
-  - For `doc`: Includes fetched Notion content as additional context for documentation generation.
-  - Added tests for `repo` and `doc` commands with `--with-notion` integration.
+  - Implements retry logic (3s, 5s, 10s waits) for fetching content to improve reliability.
+  - For `repo`: Prepends fetched document content to the user query sent to the analysis model.
+  - For `doc`: Includes fetched document content as additional context for documentation generation.
+  - Added tests for `repo` and `doc` commands with `--with-doc` integration.
 
 ## [0.60.0] - 2025-04-09
 
@@ -474,3 +490,8 @@ Initial release with basic functionality:
 - Web search using Perplexity AI
 - Repository context-aware answers using Google Gemini
 - Installation and configuration utilities
+
+### Added
+
+- **Document Web Url Integration**: Added `--with-doc <doc_url>` flag to `repo` and `doc` commands to fetch content from any web URL and include it as context.
+- **YouTube Video Analysis**: Added `youtube` command for analyzing YouTube videos (summaries, transcripts, etc.).

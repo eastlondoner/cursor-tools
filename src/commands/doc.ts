@@ -14,7 +14,7 @@ import {
   PROVIDER_PREFERENCE,
 } from '../utils/providerAvailability';
 import { getGithubRepoContext, looksLikeGithubRepo, parseGithubUrl } from '../utils/githubRepo';
-import { fetchNotionPageContent } from '../utils/notion.ts';
+import { fetchDocContent } from '../utils/fetch-doc.ts';
 
 export class DocCommand implements Command {
   private config: Config;
@@ -43,23 +43,18 @@ export class DocCommand implements Command {
 
       let finalQuery = options.hint || '';
 
-      let notionContent = '';
-      if (options?.withNotion) {
-        if (
-          typeof options.withNotion !== 'string' ||
-          !options.withNotion.startsWith('https://www.notion.so/')
-        ) {
-          throw new Error(
-            'Invalid Notion URL provided with --with-notion. Must be a valid Notion page URL.'
-          );
+      let docContent = '';
+      if (options?.withDoc) {
+        if (typeof options.withDoc !== 'string') {
+          throw new Error('Invalid value provided for --with-doc. Must be a URL string.');
         }
         try {
-          yield `Fetching Notion page content from ${options.withNotion}...\n`;
-          notionContent = await fetchNotionPageContent(options.withNotion, options.debug ?? false);
-          yield `Successfully fetched Notion content.\n`;
+          yield `Fetching document content from ${options.withDoc}...\n`;
+          docContent = await fetchDocContent(options.withDoc, options.debug ?? false);
+          yield `Successfully fetched document content.\n`;
         } catch (error) {
-          console.error('Error fetching Notion content:', error);
-          yield `Warning: Failed to fetch Notion content from ${options.withNotion}. Continuing documentation generation without it. Error: ${error instanceof Error ? error.message : String(error)}\n`;
+          console.error('Error fetching document content:', error);
+          yield `Warning: Failed to fetch document content from ${options.withDoc}. Continuing documentation generation without it. Error: ${error instanceof Error ? error.message : String(error)}\n`;
         }
       }
 
@@ -127,7 +122,7 @@ export class DocCommand implements Command {
         if (!providerInfo?.available) {
           throw new ApiKeyMissingError(options.provider);
         }
-        yield* this.tryProvider(options.provider, finalQuery, repoContext, options, notionContent);
+        yield* this.tryProvider(options.provider, finalQuery, repoContext, options, docContent);
         return;
       }
 
@@ -149,7 +144,7 @@ export class DocCommand implements Command {
 
       while (currentProvider) {
         try {
-          yield* this.tryProvider(currentProvider, finalQuery, repoContext, options, notionContent);
+          yield* this.tryProvider(currentProvider, finalQuery, repoContext, options, docContent);
           return;
         } catch (error) {
           console.error(
@@ -219,7 +214,7 @@ export class DocCommand implements Command {
     query: string,
     repoContext: { text: string; tokenCount: number },
     options: CommandOptions,
-    notionContent: string
+    docContent: string
   ): CommandGenerator {
     const modelProvider = createProvider(provider);
     const model =
@@ -251,15 +246,15 @@ export class DocCommand implements Command {
         reasoningEffort: options.reasoningEffort,
       };
 
-      const response = await generateDocumentation(
+      const documentation = await generateDocumentation(
         query,
         modelProvider,
         repoContext,
         modelOptsForGeneration,
-        notionContent
+        docContent
       );
       yield '\n--- Repository Documentation ---\n\n';
-      yield response;
+      yield documentation;
       yield '\n\n--- End of Documentation ---\n';
 
       console.error('Documentation generation completed!\n');
@@ -289,15 +284,23 @@ async function generateDocumentation(
   provider: BaseModelProvider,
   repoContext: { text: string; tokenCount: number },
   options: Partial<ModelOptions> & { model: string },
-  notionContent: string
+  docContent: string
 ): Promise<string> {
-  const notionContextString = notionContent
-    ? `Context from Notion Page:\n--- START NOTION CONTENT ---\n${notionContent}\n--- END NOTION CONTENT ---\n\n`
-    : '';
+  const { model, maxTokens, webSearch, timeout, debug, reasoningEffort } = options;
 
-  const prompt = `${notionContextString}${repoContext.text}${query ? `\n\n${query}` : ''}`;
+  let prompt = `Generate comprehensive documentation for the following repository context.\n\n`;
 
-  const systemPrompt = `You are an expert technical writer generating documentation for a repository.${notionContent ? ' Additional context from a Notion page is provided.' : ''}
+  if (docContent) {
+    prompt += `DOCUMENT CONTEXT:\n${docContent}\n\n`;
+  }
+
+  prompt += `REPOSITORY CONTEXT:\n${repoContext.text}\n\n`;
+
+  if (query) {
+    prompt += `INSTRUCTIONS/HINT:\n${query}\n\n`;
+  }
+
+  const systemPrompt = `You are an expert technical writer generating documentation for a repository.${docContent ? ' Additional context from a document is provided.' : ''}
 Analyze the following codebase context and generate comprehensive, well-structured documentation in Markdown format.
 Focus on explaining the project structure, key components, functionality, and usage.
 Include code examples where relevant.
@@ -305,14 +308,14 @@ ${query ? 'Follow any specific instructions or hints provided by the user.' : ''
 Structure the documentation logically with clear headings and explanations.`;
 
   const finalModelOptions: ModelOptions = {
-    model: options.model,
-    maxTokens: options.maxTokens ?? defaultMaxTokens,
+    model,
+    maxTokens: maxTokens ?? defaultMaxTokens,
     systemPrompt,
     tokenCount: options.tokenCount ?? repoContext.tokenCount,
-    debug: options.debug,
-    webSearch: options.webSearch,
-    timeout: options.timeout,
-    reasoningEffort: options.reasoningEffort,
+    debug,
+    webSearch,
+    timeout,
+    reasoningEffort,
   };
 
   return provider.executePrompt(prompt, finalModelOptions);

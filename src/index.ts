@@ -34,7 +34,7 @@ type CLIStringOption =
   | 'hint'
   | 'fromGithub'
   | 'subdir'
-  | 'withNotion'
+  | 'withDoc'
   // Browser options
   | 'url'
   | 'screenshot'
@@ -94,7 +94,7 @@ interface CLIOptions {
   hint?: string;
   fromGithub?: string;
   subdir?: string;
-  withNotion?: string;
+  withDoc?: string;
 
   // Browser options
   url?: string;
@@ -148,7 +148,7 @@ const OPTION_KEYS: Record<string, CLIOptionKey> = {
   hint: 'hint',
   fromgithub: 'fromGithub',
   subdir: 'subdir',
-  withnotion: 'withNotion',
+  withdoc: 'withDoc',
 
   // Browser options
   url: 'url',
@@ -247,7 +247,7 @@ async function main() {
     json: undefined,
     reasoningEffort: undefined,
     subdir: undefined,
-    withNotion: undefined,
+    withDoc: undefined,
   };
   const queryArgs: string[] = [];
 
