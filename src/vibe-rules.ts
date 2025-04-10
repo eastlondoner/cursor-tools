@@ -19,7 +19,7 @@ Use the following commands to get AI assistance:
 Note: in general you should not use the ask command because it does not include any context - other commands like \`doc\`, \`repo\`, or \`plan\` are usually better. If you are using it, make sure to include in your question all the information and context that the model might need to answer usefully.
 
 **Ask Command Options:**
---provider=<provider>: AI provider to use (openai, anthropic, perplexity, gemini, modelbox, or openrouter)
+  --provider=<provider>: AI provider to use (openai, anthropic, perplexity, gemini, modelbox, openrouter, or xai)
 --model=<model>: Model to use (required for the ask command)
 --reasoning-effort=<low|medium|high>: Control the depth of reasoning for supported models (OpenAI o1/o3-mini models and Claude 3.7 Sonnet). Higher values produce more thorough responses for complex questions.
 
@@ -31,8 +31,8 @@ The plan command uses multiple AI models to:
 3. Generate a detailed implementation plan (using OpenAI o3-mini by default)
 
 **Plan Command Options:**
---fileProvider=<provider>: Provider for file identification (gemini, openai, anthropic, perplexity, modelbox, or openrouter)
---thinkingProvider=<provider>: Provider for plan generation (gemini, openai, anthropic, perplexity, modelbox, or openrouter)
+--fileProvider=<provider>: Provider for file identification (gemini, openai, anthropic, perplexity, modelbox, openrouter, or xai)
+--thinkingProvider=<provider>: Provider for plan generation (gemini, openai, anthropic, perplexity, modelbox, openrouter, or xai)
 --fileModel=<model>: Model to use for file identification
 --thinkingModel=<model>: Model to use for plan generation
 
@@ -105,7 +105,7 @@ The \`search\` command helps you discover servers in the MCP Marketplace based o
 1. Use \`vibe-tools <command>\` to execute commands (make sure vibe-tools is installed globally using npm install -g vibe-tools so that it is in your PATH)
 
 **General Command Options (Supported by all commands):**
---provider=<provider>: AI provider to use (openai, anthropic, perplexity, gemini, or openrouter). If provider is not specified, the default provider for that task will be used.
+--provider=<provider>: AI provider to use (openai, anthropic, perplexity, gemini, openrouter, modelbox, or xai). If provider is not specified, the default provider for that task will be used.
 --model=<model name>: Specify an alternative AI model to use. If model is not specified, the provider's default model for that task will be used.
 --max-tokens=<number>: Control response length
 --save-to=<file path>: Save command output to a file (in *addition* to displaying it)
@@ -113,7 +113,7 @@ The \`search\` command helps you discover servers in the MCP Marketplace based o
 --debug: Show detailed logs and error information
 
 **Repository Command Options:**
---provider=<provider>: AI provider to use (gemini, openai, openrouter, perplexity, or modelbox)
+--provider=<provider>: AI provider to use (gemini, openai, openrouter, perplexity, modelbox, anthropic, or xai)
 --model=<model>: Model to use for repository analysis
 --max-tokens=<number>: Maximum tokens for response
 --from-github=<GitHub username>/<repository name>[@<branch>]: Analyze a remote GitHub repository without cloning it locally
@@ -121,7 +121,7 @@ The \`search\` command helps you discover servers in the MCP Marketplace based o
 
 **Documentation Command Options:**
 --from-github=<GitHub username>/<repository name>[@<branch>]: Generate documentation for a remote GitHub repository
---provider=<provider>: AI provider to use (gemini, openai, openrouter, perplexity, or modelbox)
+--provider=<provider>: AI provider to use (gemini, openai, openrouter, perplexity, modelbox, anthropic, or xai)
 --model=<model>: Model to use for documentation generation
 --max-tokens=<number>: Maximum tokens for response
 
@@ -170,7 +170,7 @@ If people say "ask Gemini" or "ask Perplexity" or "ask Stagehand" they mean to u
 - Configuration is in \`vibe-tools.config.json\` (or \`~/.vibe-tools/config.json\`).
 - API keys are loaded from \`.vibe-tools.env\` (or \`~/.vibe-tools/.env\`).
 - ClickUp commands require a \`CLICKUP_API_TOKEN\` to be set in your \`.vibe-tools.env\` file.
-- Available models depend on your configured provider (OpenAI or Anthropic) in \`vibe-tools.config.json\`.
+- Available models depend on your configured provider (OpenAI, Anthropic, xAI, etc.) in \`vibe-tools.config.json\`.
 - repo has a limit of 2M tokens of context. The context can be reduced by filtering out files in a .repomixignore file.
 - problems running browser commands may be because playwright is not installed. Recommend installing playwright globally.
 - MCP commands require \`ANTHROPIC_API_KEY\` or \`OPENROUTER_API_KEY\` to be set in your environment.
