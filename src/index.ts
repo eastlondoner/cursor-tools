@@ -358,7 +358,7 @@ async function main() {
 
   if (!command) {
     console.error(
-      'Usage: vibe-tools [--model=<model>] [--max-tokens=<number>] [--from-github=<github_url>] [--output=<filepath>] [--save-to=<filepath>] [--hint=<hint>] <command> "<query>"\n' +
+      'Usage: vibe-tools <command> "<query>" [--provider=<provider>] [--model=<model>] [--max-tokens=<number>] [--reasoning-effort=<low|medium|high>] [--save-to=<filepath>] [--quiet] [--json] [--debug]\n' +
         '       Note: Options can be specified in kebab-case (--max-tokens) or camelCase (--maxTokens)\n' +
         '       Both --key=value and --key value formats are supported'
     );
