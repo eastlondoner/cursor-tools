@@ -222,24 +222,24 @@ First, create a repomix.config.json file using the content from {{path:doc-repom
 - The documentation content only references files that are included by the configuration
 - The documentation structure reflects the include/exclude patterns in the configuration
 
-### Scenario 12: Documentation Generation Enhanced with Notion Context
+### Scenario 12: Documentation Generation Enhanced with Document Context
 
-**Tags:** notion, context-augmentation
+**Tags:** context-augmentation
 **Task Description:**
-Generate documentation for the current repository using `vibe-tools doc`, but enhance it with context from the Notion page at `https://www.notion.so/1d0939cee1fa8058b002ef08412bc907?pvs=4`. Use a hint like "Document the repository, explaining how the Notion fetching utility (`src/utils/notion.ts`) relates to the RAG concepts described in the provided Notion page."
+Generate documentation for the current repository using `vibe-tools doc`, but enhance it with context from the document at `https://www.notion.so/1d0939cee1fa8058b002ef08412bc907?pvs=4`. Use a hint like "Document the repository, explaining how the document fetching utility (`src/utils/fetch-doc.ts`) relates to the RAG concepts described in the provided document."
 
 **Expected Behavior:**
 
-- The AI agent should use `doc --with-notion` with the correct URL and the specified hint.
-- The command should fetch Notion content and analyze the repository.
-- The generated documentation should cover the repository structure _and_ explicitly incorporate information from the Notion page, specifically linking the `notion.ts` utility to the RAG concepts.
+- The AI agent should use `doc --with-doc` with the correct URL and the specified hint.
+- The command should fetch document content and analyze the repository.
+- The generated documentation should cover the repository structure _and_ explicitly incorporate information from the document, specifically linking the `fetch-doc.ts` utility to the RAG concepts.
 - The command should complete without errors.
 
 **Success Criteria:**
 
-- AI agent correctly identifies and uses `vibe-tools doc --with-notion "https://www.notion.so/1d0939cee1fa8058b002ef08412bc907?pvs=4" --hint "Document the repository, explaining how the Notion fetching utility (src/utils/notion.ts) relates to the RAG concepts described in the provided Notion page."` (or similar).
-- Notion page content is fetched successfully (indicated by logs).
+- AI agent correctly identifies and uses `vibe-tools doc --with-doc "https://www.notion.so/1d0939cee1fa8058b002ef08412bc907?pvs=4" --hint "Document the repository, explaining how the document fetching utility (src/utils/fetch-doc.ts) relates to the RAG concepts described in the provided document."` (or similar).
+- Document content is fetched successfully (indicated by logs).
 - Generated documentation covers repository structure.
-- Documentation explicitly references and integrates RAG concepts from the Notion page, linking them to `src/utils/notion.ts`.
+- Documentation explicitly references and integrates RAG concepts from the document, linking them to `src/utils/fetch-doc.ts`.
 - No unexpected error messages are displayed.
 - Command completes within a reasonable time.

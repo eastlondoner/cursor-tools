@@ -22,7 +22,6 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- **X.AI Provider Support**: Added support for the X.AI provider, enabling the use of Grok models (e.g., `grok-3-latest`, `grok-3-mini-latest`). Configure using the `XAI_API_KEY` environment variable.
 
 ## [0.60.0] - 2025-04-09
 
@@ -485,3 +484,8 @@ Initial release with basic functionality:
 - Web search using Perplexity AI
 - Repository context-aware answers using Google Gemini
 - Installation and configuration utilities
+
+### Added
+
+- **Document Web Url Integration**: Added `--with-doc <doc_url>` flag to `repo` and `doc` commands to fetch content from any web URL and include it as context.
+- **YouTube Video Analysis**: Added `youtube` command for analyzing YouTube videos (summaries, transcripts, etc.).

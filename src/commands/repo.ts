@@ -17,7 +17,7 @@ import {
   getDefaultModel,
 } from '../utils/providerAvailability';
 import { getGithubRepoContext, looksLikeGithubRepo } from '../utils/githubRepo';
-import { fetchNotionPageContent } from '../utils/notion.ts';
+import { fetchDocContent } from '../utils/fetch-doc.ts';
 
 export class RepoCommand implements Command {
   private config: Config;
@@ -112,25 +112,21 @@ export class RepoCommand implements Command {
         }
       }
 
-      // Fetch Notion content if the flag is provided
-      let notionContent = '';
-      if (options?.withNotion) {
-        if (
-          typeof options.withNotion !== 'string' ||
-          !options.withNotion.startsWith('https://www.notion.so/')
-        ) {
-          throw new Error(
-            'Invalid Notion URL provided with --with-notion. Must be a valid Notion page URL.'
-          );
+      // Fetch document content if the flag is provided
+      let docContent = '';
+      if (options?.withDoc) {
+        if (typeof options.withDoc !== 'string') {
+          // Should theoretically not happen due to yargs validation, but keep as a safeguard
+          throw new Error('Invalid value provided for --with-doc. Must be a URL string.');
         }
         try {
-          yield `Fetching Notion page content from ${options.withNotion}...\n`;
-          notionContent = await fetchNotionPageContent(options.withNotion, options.debug ?? false);
-          yield `Successfully fetched Notion content.\n`;
+          yield `Fetching document content from ${options.withDoc}...\n`;
+          docContent = await fetchDocContent(options.withDoc, options.debug ?? false);
+          yield `Successfully fetched document content.\n`;
         } catch (error) {
-          console.error('Error fetching Notion content:', error);
+          console.error('Error fetching document content:', error);
           // Let the user know fetching failed but continue without it
-          yield `Warning: Failed to fetch Notion content from ${options.withNotion}. Continuing analysis without it. Error: ${error instanceof Error ? error.message : String(error)}\n`;
+          yield `Warning: Failed to fetch document content from ${options.withDoc}. Continuing analysis without it. Error: ${error instanceof Error ? error.message : String(error)}\n`;
         }
       }
 
@@ -170,7 +166,7 @@ export class RepoCommand implements Command {
           repoContext,
           cursorRules,
           options,
-          notionContent
+          docContent
         );
         return;
       }
@@ -185,7 +181,7 @@ export class RepoCommand implements Command {
             repoContext,
             cursorRules,
             options,
-            notionContent
+            docContent
           );
           return; // If successful, we're done
         } catch (error) {
@@ -219,7 +215,7 @@ export class RepoCommand implements Command {
     repoContext: string,
     cursorRules: string,
     options: CommandOptions,
-    notionContent: string
+    docContent: string
   ): CommandGenerator {
     const modelProvider = createProvider(provider);
     const modelName =
@@ -255,7 +251,7 @@ export class RepoCommand implements Command {
           query,
           repoContext,
           cursorRules,
-          notionContent,
+          docContent,
         },
         modelOptsForAnalysis // Pass the simplified options
       );
@@ -271,28 +267,33 @@ export class RepoCommand implements Command {
 
 async function analyzeRepository(
   provider: BaseModelProvider,
-  props: { query: string; repoContext: string; cursorRules: string; notionContent: string },
+  props: { query: string; repoContext: string; cursorRules: string; docContent: string },
   options: Partial<ModelOptions> & { model: string } // Expect partial options + model
 ): Promise<string> {
-  // Prepend Notion content if available
-  const finalQuery = props.notionContent
-    ? `Context from Notion Page:\n--- START NOTION CONTENT ---\n${props.notionContent}\n--- END NOTION CONTENT ---\n\nUser Query:\n${props.query}`
-    : props.query;
+  const { query, repoContext, cursorRules, docContent } = props;
+  const { model, maxTokens, webSearch, tokenCount, timeout, debug } = options;
+
+  // Construct the full prompt
+  let fullPrompt = query;
+
+  if (docContent) {
+    fullPrompt = `CONTEXT DOCUMENT:\n${docContent}\n\nUSER QUERY:\n${query}`;
+  }
 
   // Construct the final prompt
-  const finalPrompt = `${props.cursorRules}\n\n${props.repoContext}\n\n${finalQuery}`;
+  const finalPrompt = `${cursorRules}\n\n${repoContext}\n\n${fullPrompt}`;
 
   // Construct the full ModelOptions here
   const finalModelOptions: ModelOptions = {
-    model: options.model, // Use required model name
-    maxTokens: options.maxTokens ?? defaultMaxTokens, // Use provided or default maxTokens
+    model: model, // Use required model name
+    maxTokens: maxTokens ?? defaultMaxTokens, // Use provided or default maxTokens
     systemPrompt:
-      "You are an expert software developer analyzing a repository and potentially a Notion page. Provide a comprehensive response to the user's request, considering both the code context and any provided Notion content. Include a list of relevant files. Follow user instructions exactly.",
+      "You are an expert software developer analyzing a repository and potentially a document. Provide a comprehensive response to the user's request, considering both the code context and any provided document content. Include a list of relevant files. Follow user instructions exactly.",
     // Pass through optional values
-    debug: options.debug,
-    tokenCount: options.tokenCount,
-    webSearch: options.webSearch,
-    timeout: options.timeout,
+    debug: debug,
+    tokenCount: tokenCount,
+    webSearch: webSearch,
+    timeout: timeout,
     reasoningEffort: options.reasoningEffort,
   };
 

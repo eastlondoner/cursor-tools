@@ -45,11 +45,10 @@ when using web for complex queries suggest writing the output to a file somewher
 --provider=<provider>: AI provider to use (perplexity, gemini, modelbox, or openrouter)
 
 **Repository Context:**
-\`vibe-tools repo "<your question>" [--subdir=<path>] [--from-github=<username/repo>] [--with-notion=<notion_url>]\` - Get context-aware answers about this repository using Google Gemini (e.g., \`vibe-tools repo "explain authentication flow"\`). Use optional flags for specific subdirectories, remote GitHub repos, or adding context from a Notion page.
+\`vibe-tools repo "<your question>" [--subdir=<path>] [--from-github=<username/repo>] [--with-doc=<doc_url>]\` - Get context-aware answers about this repository using Google Gemini (e.g., \`vibe-tools repo "explain authentication flow"\`)
 
 **Documentation Generation:**
-\`vibe-tools doc [options] [--with-notion=<notion_url>]\` - Generate comprehensive documentation for this repository (e.g., \`vibe-tools doc --output docs.md\`). Can incorporate Notion page context.
-when using doc for remote repos suggest writing the output to a file somewhere like local-docs/<repo-name>.md.
+\`vibe-tools doc [options] [--with-doc=<doc_url>]\` - Generate comprehensive documentation for this repository (e.g., \`vibe-tools doc --output docs.md\`). Can incorporate document context.
 
 **YouTube Video Analysis:**
 \`vibe-tools youtube "<youtube-url>" [question] [--type=<summary|transcript|plan|review|custom>]\` - Analyze YouTube videos and generate detailed reports (e.g., \`vibe-tools youtube "https://youtu.be/43c-Sm5GMbc" --type=summary\`)
@@ -118,14 +117,14 @@ The \`search\` command helps you discover servers in the MCP Marketplace based o
 --max-tokens=<number>: Maximum tokens for response
 --from-github=<GitHub username>/<repository name>[@<branch>]: Analyze a remote GitHub repository without cloning it locally
 --subdir=<path>: Analyze a specific subdirectory instead of the entire repository
---with-notion=<notion_url>: Fetch content from a Notion page and include it as context
+--with-doc=<doc_url>: Fetch content from a document URL and include it as context
 
 **Documentation Command Options:**
 --from-github=<GitHub username>/<repository name>[@<branch>]: Generate documentation for a remote GitHub repository
 --provider=<provider>: AI provider to use (gemini, openai, openrouter, perplexity, modelbox, anthropic, or xai)
 --model=<model>: Model to use for documentation generation
 --max-tokens=<number>: Maximum tokens for response
---with-notion=<notion_url>: Fetch content from a Notion page and include it as context
+--with-doc=<doc_url>: Fetch content from a document URL and include it as context
 
 **YouTube Command Options:**
 --type=<summary|transcript|plan|review|custom>: Type of analysis to perform (default: summary)
@@ -175,7 +174,7 @@ If people say "ask Gemini" or "ask Perplexity" or "ask Stagehand" they mean to u
 - Available models depend on your configured provider (OpenAI, Anthropic, xAI, etc.) in \`vibe-tools.config.json\`.
 - repo has a limit of 2M tokens of context. The context can be reduced by filtering out files in a .repomixignore file.
 - problems running browser commands may be because playwright is not installed. Recommend installing playwright globally.
-- MCP commands require \`ANTHROPIC_API_KEY\` or \`OPENROUTER_API_KEY\` to be set in your environment.
+- MCP commands require \`ANTHROPIC_API_KEY\` or \`OPENROUTER_API_KEY\`
 - **Remember:** You're part of a team of superhuman expert AIs. Work together to solve complex problems.
 - **Repomix Configuration:** You can customize which files are included/excluded during repository analysis by creating a \`repomix.config.json\` file in your project root. This file will be automatically detected by \`repo\`, \`plan\`, and \`doc\` commands.
 
