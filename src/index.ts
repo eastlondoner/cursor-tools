@@ -360,7 +360,8 @@ async function main() {
     console.error(
       'Usage: vibe-tools <command> "<query>" [--provider=<provider>] [--model=<model>] [--max-tokens=<number>] [--reasoning-effort=<low|medium|high>] [--save-to=<filepath>] [--quiet] [--json] [--debug]\n' +
         '       Note: Options can be specified in kebab-case (--max-tokens) or camelCase (--maxTokens)\n' +
-        '       Both --key=value and --key value formats are supported'
+        '       Both --key=value and --key value formats are supported\n' +
+        "       Run 'vibe-tools <command> --help' for command-specific options"
     );
     process.exit(1);
   }
