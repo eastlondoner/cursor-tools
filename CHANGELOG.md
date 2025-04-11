@@ -2,33 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.63.0]
+## [0.60.3] - 2025-04-10
 
 ### Added
 
-- **Document Web Url Integration**: Added `--with-doc <doc_url>` flag to `repo` and `doc` commands to fetch content from any web URL and include it as context.
-- **YouTube Video Analysis**: Added `youtube` command for analyzing YouTube videos (summaries, transcripts, etc.).
-- **Xcode Integration**: Added `xcode` command with `build`, `run`, and `lint` subcommands for interacting with Xcode projects.
-
-## [0.60.0] - 2024-07-10
-
-### Added
-
-- Initial release of vibe-tools with core features:
-  - Web search integration using Perplexity
-  - Repository context-aware answers using Google Gemini
-  - Installation and configuration utilities
-
-## [0.60.3]
-
-### Added
-
-- **Document Web Url Integration**: Added `--with-doc <doc_url>` flag to `repo` and `doc` commands to fetch content from any web URL and include it as context.
-  - Uses the internal `browser open` command with a wait time to capture rendered HTML.
-  - Implements retry logic (3s, 5s, 10s waits) for fetching content to improve reliability.
-  - For `repo`: Prepends fetched document content to the user query sent to the analysis model.
-  - For `doc`: Includes fetched document content as additional context for documentation generation.
-  - Added tests for `repo` and `doc` commands with `--with-doc` integration.
+- **X.AI Provider Support**: Added support for the X.AI provider, enabling the use of Grok models (e.g., `grok-3-latest`, `grok-3-mini-latest`). Configure using the `XAI_API_KEY` environment variable.
 
 ## [0.60.0] - 2025-04-09
 

@@ -35,6 +35,7 @@ export const VALID_PROVIDERS = [
   'Anthropic',
   'Modelbox',
   'Gemini',
+  'xAI',
 ];
 export const VALID_PROVIDERS_LOWERCASE = VALID_PROVIDERS.map((p) => p.toLowerCase());
 

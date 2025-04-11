@@ -2,7 +2,14 @@ import * as z from 'zod';
 
 export type CommandGenerator = AsyncGenerator<string, void, unknown>;
 
-export type Provider = 'gemini' | 'openai' | 'openrouter' | 'perplexity' | 'modelbox' | 'anthropic';
+export type Provider =
+  | 'gemini'
+  | 'openai'
+  | 'openrouter'
+  | 'perplexity'
+  | 'modelbox'
+  | 'anthropic'
+  | 'xai';
 
 // Zod schema for reasoning effort
 export const reasoningEffortSchema = z.enum(['low', 'medium', 'high']);

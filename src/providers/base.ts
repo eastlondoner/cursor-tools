@@ -2223,9 +2223,34 @@ export class AnthropicProvider extends BaseProvider {
   }
 }
 
+// X.AI (Grok) provider implementation
+export class XAIProvider extends OpenAIBase {
+  constructor() {
+    const apiKey = process.env.XAI_API_KEY;
+    if (!apiKey) {
+      throw new ApiKeyMissingError('X.AI');
+    }
+    super(apiKey, 'https://api.x.ai/v1');
+
+    // X.AI doesn't have a public model list API yet, so hardcode known models.
+    this.availableModels = Promise.resolve(
+      new Set(['grok-3-latest', 'grok-3-mini-latest', 'grok-3-beta', 'grok-3-mini-beta'])
+    );
+  }
+
+  // X.AI API is OpenAI compatible, but doesn't support web search
+  async supportsWebSearch(
+    modelName: string
+  ): Promise<{ supported: boolean; model?: string; error?: string }> {
+    return {
+      supported: false,
+      error: 'X.AI does not support web search capabilities',
+    };
+  }
+}
 // Factory function to create providers
 export function createProvider(
-  provider: 'gemini' | 'openai' | 'openrouter' | 'perplexity' | 'modelbox' | 'anthropic'
+  provider: 'gemini' | 'openai' | 'openrouter' | 'perplexity' | 'modelbox' | 'anthropic' | 'xai'
 ): BaseModelProvider {
   switch (provider) {
     case 'gemini': {
@@ -2255,6 +2280,8 @@ export function createProvider(
     }
     case 'anthropic':
       return new AnthropicProvider();
+    case 'xai':
+      return new XAIProvider();
     default:
       throw exhaustiveMatchGuard(
         provider,

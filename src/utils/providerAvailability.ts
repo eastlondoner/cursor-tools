@@ -14,15 +14,16 @@ const DEFAULT_MODELS: Record<Provider, string> = {
   anthropic: 'claude-3-7-sonnet-latest',
   openrouter: 'anthropic/claude-3.7-sonnet',
   modelbox: 'anthropic/claude-3-5-sonnet',
+  xai: 'grok-3-mini-latest',
 };
 
 // Provider preference order for each command type
 export const PROVIDER_PREFERENCE: Record<string, Provider[]> = {
   web: ['perplexity', 'gemini', 'modelbox', 'openrouter'],
-  repo: ['gemini', 'modelbox', 'openrouter', 'openai', 'perplexity'],
-  plan_file: ['gemini', 'modelbox', 'openrouter', 'openai', 'perplexity'],
-  plan_thinking: ['openai', 'modelbox', 'openrouter', 'gemini', 'anthropic', 'perplexity'],
-  doc: ['gemini', 'modelbox', 'openrouter', 'openai', 'perplexity', 'anthropic'],
+  repo: ['gemini', 'modelbox', 'openrouter', 'openai', 'perplexity', 'anthropic', 'xai'],
+  plan_file: ['gemini', 'modelbox', 'openrouter', 'openai', 'perplexity', 'anthropic', 'xai'],
+  plan_thinking: ['openai', 'modelbox', 'openrouter', 'gemini', 'anthropic', 'perplexity', 'xai'],
+  doc: ['gemini', 'modelbox', 'openrouter', 'openai', 'perplexity', 'anthropic', 'xai'],
   ask: ['openai', 'modelbox', 'openrouter', 'gemini', 'anthropic', 'perplexity'],
   browser: ['anthropic', 'openai', 'modelbox', 'openrouter', 'gemini', 'perplexity'],
 };
@@ -62,6 +63,11 @@ export function getAllProviders(): ProviderInfo[] {
       provider: 'modelbox',
       available: !!process.env.MODELBOX_API_KEY,
       defaultModel: DEFAULT_MODELS.modelbox,
+    },
+    {
+      provider: 'xai',
+      available: !!process.env.XAI_API_KEY,
+      defaultModel: DEFAULT_MODELS.xai,
     },
   ];
 }
