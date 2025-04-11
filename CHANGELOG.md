@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.60.5] - Unreleased
+
+### Added
+
+- **Notion Integration**: Added new `notion` command to interact with Notion workspaces through the Notion API
+  - Search for pages and databases by name or content
+  - Read and extract content from Notion pages
+  - Filter database entries based on properties
+  - Implemented using Model Context Protocol (MCP) for sophisticated Notion API interactions
+  - Requires `NOTION_ACCESS_KEY` to be set in your environment or .vibe-tools.env file
+
 ## [0.60.0] - 2025-04-09
 
 ### Changed
@@ -11,12 +22,12 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - **Youtube command**: Added `youtube` command that can be used to analyze YouTube videos and generate detailed reports:
+
   - Support for multiple analysis types: summaries, transcripts, implementation plans, reviews, or custom analysis
   - Optional questions parameter for targeted insights about video content
   - Uses Gemini models which have native YouTube video understanding capabilities
   - Results can be saved to files for reference and sharing
   - Requires `GEMINI_API_KEY` to be set in your environment or .vibe-tools.env file
-
 
 - **Support for Reasoning Effort Parameter**: Added `--reasoning-effort` parameter to enhance the quality of responses for complex queries:
   - Supports `low`, `medium`, and `high` values for controlling reasoning depth

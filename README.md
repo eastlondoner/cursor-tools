@@ -39,6 +39,7 @@
     - [Troubleshooting Browser Commands](#troubleshooting-browser-commands)
   - [YouTube Video Analysis](#youtube-video-analysis)
 - [Skills](#skills)
+  - [Notion Integration](#notion-integration)
   - [GitHub Integration](#github-integration)
   - [Xcode Tools](#xcode-tools)
   - [Documentation Generation](#documentation-generation-uses-gemini-20)
@@ -575,11 +576,53 @@ The YouTube command leverages Gemini models' native ability to understand video 
 - Get answers to specific questions about the video content
 
 **YouTube Command Options:**
+
 - `--type=<summary|transcript|plan|custom>`: Type of analysis to perform (default: summary)
 
 **Note:** The YouTube command requires a `GEMINI_API_KEY` to be set in your environment or .vibe-tools.env file as the Gemini API is currently the only interface that reliably supports YouTube video analysis.
 
 ## Skills
+
+### Notion Integration
+
+The Notion command allows you to interact with your Notion workspace through the Notion API:
+
+```bash
+vibe-tools notion "<your query>"
+```
+
+This command leverages Notion's API through MCP (Model Context Protocol) to:
+
+- Search for pages and databases
+- Read and update content
+- Add comments or execute other Notion-specific operations
+
+**Examples:**
+
+```bash
+# Find a specific page by name and retrieve its contents
+vibe-tools notion "Find a page called 'RAG Implementation' and return its contents"
+
+# Search for pages on a specific topic
+vibe-tools notion "Find all pages related to project planning"
+
+# Extract specific information from a page
+vibe-tools notion "Extract the main action items from my 'Weekly Tasks' page"
+
+# Get database entries with filters
+vibe-tools notion "List all items in my 'Projects' database where status is 'In Progress'"
+```
+
+**Requirements:**
+
+- A Notion integration token (NOTION_ACCESS_KEY) stored in your ~/.vibe-tools/.env file
+- Notion pages/databases shared with your integration
+
+To set up your Notion integration:
+
+1. Go to https://www.notion.so/profile/integrations and create a new internal integration
+2. Add the integration secret as NOTION_ACCESS_KEY in your ~/.vibe-tools/.env file
+3. Share relevant pages/databases with your integration in Notion
 
 ### GitHub Integration
 

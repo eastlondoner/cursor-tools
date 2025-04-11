@@ -55,6 +55,14 @@ when using doc for remote repos suggest writing the output to a file somewhere l
 \`vibe-tools youtube "<youtube-url>" [question] [--type=<summary|transcript|plan|review|custom>]\` - Analyze YouTube videos and generate detailed reports (e.g., \`vibe-tools youtube "https://youtu.be/43c-Sm5GMbc" --type=summary\`)
 Note: The YouTube command requires a \`GEMINI_API_KEY\` to be set in your environment or .vibe-tools.env file as the GEMINI API is the only interface that supports YouTube analysis.
 
+**Notion Integration:**
+\`vibe-tools notion "<your query>"\` - Interact with your Notion workspace through the Notion API (e.g., \`vibe-tools notion "find documents about RAG implementation"\`). This allows you to search, read, and interact with Notion pages and databases.
+
+**Notes on Notion Commands:**
+- Requires a \`NOTION_ACCESS_KEY\` to be set in your environment or .vibe-tools.env file
+- Pages and databases must be shared with your Notion integration
+- You can search for pages, read content, add comments, and perform other Notion operations
+
 **GitHub Information:**
 \`vibe-tools github pr [number]\` - Get the last 10 PRs, or a specific PR by number (e.g., \`vibe-tools github pr 123\`)
 \`vibe-tools github issue [number]\` - Get the last 10 issues, or a specific issue by number (e.g., \`vibe-tools github issue 456\`)
