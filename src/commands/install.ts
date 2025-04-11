@@ -246,7 +246,11 @@ export class InstallCommand implements Command {
             label: 'Gemini Pro 2.5',
             hint: 'recommended',
           },
-          { value: 'anthropic:claude-3-7-sonnet', label: 'Claude 3.7 Sonnet', hint: 'recommended' },
+          {
+            value: 'anthropic:claude-3-7-sonnet-latest',
+            label: 'Claude 3.7 Sonnet',
+            hint: 'recommended',
+          },
           { value: 'perplexity:sonar', label: 'Perplexity Sonar' },
           { value: 'openai:gpt-4o', label: 'GPT-4o' },
           {
@@ -284,7 +288,11 @@ export class InstallCommand implements Command {
       const tooling = await consola.prompt('Tooling Agent - Gear Turner & MCP Master:', {
         type: 'select',
         options: [
-          { value: 'anthropic:claude-3-7-sonnet', label: 'Claude 3.7 Sonnet', hint: 'recommended' },
+          {
+            value: 'anthropic:claude-3-7-sonnet-latest',
+            label: 'Claude 3.7 Sonnet',
+            hint: 'recommended',
+          },
           {
             value: 'gemini:gemini-2.5-pro-exp-03-25',
             label: 'Gemini Pro 2.5',
@@ -319,7 +327,7 @@ export class InstallCommand implements Command {
               hint: 'recommended',
             },
             {
-              value: 'anthropic:claude-3-7-sonnet',
+              value: 'anthropic:claude-3-7-sonnet-latest',
               label: 'Claude 3.7 Sonnet',
               hint: 'recommended',
             },

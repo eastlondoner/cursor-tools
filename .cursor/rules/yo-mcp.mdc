@@ -1,7 +1,7 @@
 ---
 description: 
 globs: 
-alwaysApply: false
+alwaysApply: true
 ---
 If you need my input to answer a question or when you finish a task and want to know what to do next you must send me a yo using the yo-mcp MCP tool.
 

@@ -35,6 +35,7 @@ export interface CommandOptions {
   // Context options
   hint?: string; // Additional context or hint for the AI
   subdir?: string; // Subdirectory to analyze (for repo command)
+  withDoc?: string; // URL of the Notion page
   fromGithub?: string; // GitHub repository to analyze (for repo and doc commands)
 
   // Plan command specific options
@@ -42,6 +43,11 @@ export interface CommandOptions {
   thinkingProvider?: Provider;
   fileModel?: string;
   thinkingModel?: string;
+
+  // Properties merged from RepoCommandOptions and DocCommandOptions
+  tokenCount?: number; // For handling large token counts (passed down)
+  webSearch?: boolean; // Whether web search is enabled (passed down)
+  timeout?: number; // Specific timeout for this command (passed down)
 }
 
 export interface Command {

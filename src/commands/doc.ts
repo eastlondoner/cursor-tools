@@ -14,16 +14,7 @@ import {
   PROVIDER_PREFERENCE,
 } from '../utils/providerAvailability';
 import { getGithubRepoContext, looksLikeGithubRepo, parseGithubUrl } from '../utils/githubRepo';
-
-interface DocCommandOptions extends CommandOptions {
-  model: string;
-  maxTokens?: number;
-  fromGithub?: string;
-  hint?: string;
-  debug: boolean;
-  provider?: Provider;
-  subdir?: string;
-}
+import { fetchDocContent } from '../utils/fetch-doc.ts';
 
 export class DocCommand implements Command {
   private config: Config;
@@ -33,34 +24,43 @@ export class DocCommand implements Command {
     this.config = loadConfig();
   }
 
-  async *execute(query: string, options: DocCommandOptions): CommandGenerator {
+  async *execute(query: string, options: CommandOptions): CommandGenerator {
     try {
       console.error('Generating repository documentation...\n');
 
-      // Handle query as GitHub repo if it looks like one and --from-github is not set
       if (query && !options?.fromGithub && looksLikeGithubRepo(query)) {
         options = { ...options, fromGithub: query };
       } else if (query) {
-        // Use query as hint if it's not a repo reference
         options = {
           ...options,
           hint: options?.hint ? `${options.hint}\n\n${query}` : query,
         };
       }
 
-      // Validate API keys before proceeding
       this.validateApiKeys(options);
 
       let repoContext: { text: string; tokenCount: number };
 
-      if (options?.hint) {
-        query += `\nHint: ${options.hint}\n`;
+      let finalQuery = options.hint || '';
+
+      let docContent = '';
+      if (options?.withDoc) {
+        if (typeof options.withDoc !== 'string') {
+          throw new Error('Invalid value provided for --with-doc. Must be a URL string.');
+        }
+        try {
+          yield `Fetching document content from ${options.withDoc}...\n`;
+          docContent = await fetchDocContent(options.withDoc, options.debug ?? false);
+          yield `Successfully fetched document content.\n`;
+        } catch (error) {
+          console.error('Error fetching document content:', error);
+          yield `Warning: Failed to fetch document content from ${options.withDoc}. Continuing documentation generation without it. Error: ${error instanceof Error ? error.message : String(error)}\n`;
+        }
       }
 
       if (options?.fromGithub) {
         console.error(`Fetching repository context for ${options.fromGithub}...\n`);
 
-        // Throw an error if subdir is set since we're not handling it with GitHub repos
         if (options.subdir) {
           throw new Error(
             'Subdirectory option (--subdir) is not supported with --from-github. Please clone the repository locally and use the doc command without --from-github to analyze a subdirectory.'
@@ -93,14 +93,16 @@ export class DocCommand implements Command {
         }
       }
 
-      // Check if repository is empty or nearly empty
+      if (repoContext.tokenCount > 200_000) {
+        options = { ...options, tokenCount: repoContext.tokenCount };
+      }
+
       const isEmptyRepo = repoContext.text.trim() === '' || repoContext.tokenCount < 50;
       if (isEmptyRepo) {
         console.error('Repository appears to be empty or contains minimal code.');
         yield '\n\n\u2139\uFE0F Repository Notice: This repository appears to be empty or contains minimal code.\n';
         yield 'Basic structure documentation:\n';
 
-        // Generate minimal documentation for empty repository
         if (options?.fromGithub) {
           const { username, reponame } = parseGithubUrl(options.fromGithub);
           yield `Repository: ${username}/${reponame}\n`;
@@ -115,13 +117,12 @@ export class DocCommand implements Command {
         return;
       }
 
-      // If provider is explicitly specified, try only that provider
       if (options?.provider) {
         const providerInfo = getAllProviders().find((p) => p.provider === options.provider);
         if (!providerInfo?.available) {
           throw new ApiKeyMissingError(options.provider);
         }
-        yield* this.tryProvider(options.provider, query, repoContext, options);
+        yield* this.tryProvider(options.provider, finalQuery, repoContext, options, docContent);
         return;
       }
 
@@ -136,7 +137,6 @@ export class DocCommand implements Command {
         throw new ModelNotFoundError(providerName);
       }
 
-      // Otherwise try providers in preference order
       let currentProvider = getNextAvailableProvider('doc');
       if (!currentProvider) {
         throw new ApiKeyMissingError('AI');
@@ -144,8 +144,8 @@ export class DocCommand implements Command {
 
       while (currentProvider) {
         try {
-          yield* this.tryProvider(currentProvider, query, repoContext, options);
-          return; // If successful, we're done
+          yield* this.tryProvider(currentProvider, finalQuery, repoContext, options, docContent);
+          return;
         } catch (error) {
           console.error(
             `Provider ${currentProvider} failed:`,
@@ -156,12 +156,10 @@ export class DocCommand implements Command {
         }
       }
 
-      // If we get here, no providers worked
       throw new ProviderError(
         'No suitable AI provider available for doc command. Please ensure at least one of the following API keys are set in your ~/.vibe-tools/.env file: GEMINI_API_KEY, OPENAI_API_KEY, OPENROUTER_API_KEY, PERPLEXITY_API_KEY, MODELBOX_API_KEY.'
       );
     } catch (error) {
-      // Format and yield error message
       if (error instanceof CursorToolsError) {
         const errorMessage = error.formatUserMessage(options?.debug);
         console.error('Error in doc command:', errorMessage);
@@ -183,18 +181,11 @@ export class DocCommand implements Command {
         yield `\n❌ Error: An unknown error occurred in the doc command.\n`;
       }
 
-      // Always throw the error to terminate the generator
       throw error;
     }
   }
 
-  /**
-   * Validates that at least one required API key is available for the doc command
-   * @param options Command options
-   * @throws ApiKeyMissingError if no required API keys are found
-   */
-  private validateApiKeys(options: DocCommandOptions): void {
-    // If a specific provider is requested, validate just that provider
+  private validateApiKeys(options: CommandOptions): void {
     if (options?.provider) {
       const providerInfo = getAllProviders().find((p) => p.provider === options.provider);
       if (!providerInfo?.available) {
@@ -203,17 +194,14 @@ export class DocCommand implements Command {
       return;
     }
 
-    // Check if any of the preferred providers for doc command are available
     const docProviders = PROVIDER_PREFERENCE.doc;
     const availableProviders = getAllProviders().filter((p) => p.available);
 
-    // Check if any of the preferred providers are available
     const hasAvailableProvider = docProviders.some((provider) =>
       availableProviders.some((p) => p.provider === provider)
     );
 
     if (!hasAvailableProvider) {
-      // No providers available, throw error with list of required API keys
       throw new ProviderError(
         `No available providers for doc command`,
         `Run vibe-tools install and provide an API key for one of these providers: ${docProviders.join(', ')}`
@@ -225,7 +213,8 @@ export class DocCommand implements Command {
     provider: Provider,
     query: string,
     repoContext: { text: string; tokenCount: number },
-    options: DocCommandOptions
+    options: CommandOptions,
+    docContent: string
   ): CommandGenerator {
     const modelProvider = createProvider(provider);
     const model =
@@ -247,27 +236,42 @@ export class DocCommand implements Command {
       defaultMaxTokens;
 
     try {
-      const response = await generateDocumentation(query, modelProvider, repoContext, {
-        ...options,
+      const modelOptsForGeneration: Partial<ModelOptions> & { model: string } = {
         model,
         maxTokens,
-      });
+        debug: options.debug,
+        tokenCount: options.tokenCount ?? repoContext.tokenCount,
+        webSearch: options.webSearch,
+        timeout: options.timeout,
+        reasoningEffort: options.reasoningEffort,
+      };
 
+      const documentation = await generateDocumentation(
+        query,
+        modelProvider,
+        repoContext,
+        modelOptsForGeneration,
+        docContent
+      );
       yield '\n--- Repository Documentation ---\n\n';
-      yield response;
+      yield documentation;
       yield '\n\n--- End of Documentation ---\n';
 
       console.error('Documentation generation completed!\n');
     } catch (error) {
-      throw new ProviderError(
-        error instanceof Error ? error.message : 'Unknown error during generation',
-        error
-      );
+      if (error instanceof ModelNotFoundError) {
+        yield `Model ${model} not found for provider ${provider}. Please check the model name and your provider configuration.\n`;
+        throw error;
+      } else {
+        throw new ProviderError(
+          error instanceof Error ? error.message : 'Unknown error during documentation generation',
+          error
+        );
+      }
     }
   }
 }
 
-// Documentation-specific provider interface
 export interface DocModelProvider extends BaseModelProvider {
   generateDocumentation(
     repoContext: { text: string; tokenCount: number },
@@ -279,29 +283,40 @@ async function generateDocumentation(
   query: string,
   provider: BaseModelProvider,
   repoContext: { text: string; tokenCount: number },
-  options: Omit<ModelOptions, 'systemPrompt'>
+  options: Partial<ModelOptions> & { model: string },
+  docContent: string
 ): Promise<string> {
-  const userInstructions = query ? `User Instructions:\n${query}` : '';
-  const prompt = `
-Focus on:
-1. Repository purpose and "what is it" summary
-2. Quick start: How to install and use the basic core features of the project
-3. Configuration options and how to configure the project for use (if applicable)
-4. If a repository has multiple public packages perform all the following steps for every package:
-5. Package summary & how to install / import it 
-6. Detailed documentation of every public feature / API / interface
-7. Dependencies and requirements
-8. Advanced usage examples
+  const { model, maxTokens, webSearch, timeout, debug, reasoningEffort } = options;
 
-${userInstructions}
+  let prompt = `Generate comprehensive documentation for the following repository context.\n\n`;
 
-Repository Context:
-${repoContext.text}`;
+  if (docContent) {
+    prompt += `DOCUMENT CONTEXT:\n${docContent}\n\n`;
+  }
 
-  return provider.executePrompt(prompt, {
-    ...options,
-    tokenCount: repoContext.tokenCount,
-    systemPrompt:
-      'You are a documentation expert generating documentation for the provided codebase. You are generating documentation for AIs to use. Focus on communicating comprehensive information concisely. Public interfaces are more important than internal details. Generate comprehensive documentation that is clear, well-structured, and follows best practices. Always follow user instructions exactly.',
-  });
+  prompt += `REPOSITORY CONTEXT:\n${repoContext.text}\n\n`;
+
+  if (query) {
+    prompt += `INSTRUCTIONS/HINT:\n${query}\n\n`;
+  }
+
+  const systemPrompt = `You are an expert technical writer generating documentation for a repository.${docContent ? ' Additional context from a document is provided.' : ''}
+Analyze the following codebase context and generate comprehensive, well-structured documentation in Markdown format.
+Focus on explaining the project structure, key components, functionality, and usage.
+Include code examples where relevant.
+${query ? 'Follow any specific instructions or hints provided by the user.' : ''}
+Structure the documentation logically with clear headings and explanations.`;
+
+  const finalModelOptions: ModelOptions = {
+    model,
+    maxTokens: maxTokens ?? defaultMaxTokens,
+    systemPrompt,
+    tokenCount: options.tokenCount ?? repoContext.tokenCount,
+    debug,
+    webSearch,
+    timeout,
+    reasoningEffort,
+  };
+
+  return provider.executePrompt(prompt, finalModelOptions);
 }
