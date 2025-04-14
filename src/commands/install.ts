@@ -517,14 +517,13 @@ export class InstallCommand implements Command {
           tooling: parseProviderModel(tooling as string),
           largecontext: parseProviderModel(largecontext as string),
         };
-      }
 
-      // Create a more compact and readable display of the configuration
-      const formatProviderInfo = (provider: string, model: string) => {
-        // Trim the provider prefix from the model name if it exists
-        const modelDisplay = model.includes('/') ? model.split('/').pop() : model;
-        return `${colors.cyan(provider.charAt(0).toUpperCase() + provider.slice(1))} ${colors.gray('→')} ${colors.green(modelDisplay || model)}`;
-      };
+        // Create a more compact and readable display of the configuration
+        const formatProviderInfo = (provider: string, model: string) => {
+          // Trim the provider prefix from the model name if it exists
+          const modelDisplay = model.includes('/') ? model.split('/').pop() : model;
+          return `${colors.cyan(provider.charAt(0).toUpperCase() + provider.slice(1))} ${colors.gray('→')} ${colors.green(modelDisplay || model)}`;
+        };
 
       const configDisplay = Object.entries(userConfig)
         .map(([key, value]) => {
@@ -538,16 +537,17 @@ export class InstallCommand implements Command {
         .filter(Boolean) // Remove null entries
         .join('\n  • ');
 
-      consola.box({
-        title: '📋 Your Configuration',
-        titleColor: 'white',
-        borderColor: 'green',
-        style: {
-          padding: 2,
-          borderStyle: 'rounded',
-        },
-        message: `  • ${configDisplay}`,
-      });
+        consola.box({
+          title: '📋 Your Configuration',
+          titleColor: 'white',
+          borderColor: 'green',
+          style: {
+            padding: 2,
+            borderStyle: 'rounded',
+          },
+          message: `  • ${configDisplay}`,
+        });
+      }
 
       // Identify required providers
       const requiredProviders = collectRequiredProviders(userConfig);
