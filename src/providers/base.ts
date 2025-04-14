@@ -13,6 +13,7 @@ import { execSync } from 'child_process';
 import { once } from '../utils/once';
 import { getAllProviders } from '../utils/providerAvailability';
 import { isModelNotFoundError } from './notFoundErrors';
+import { trackEvent } from '../telemetry';
 
 const TEN_MINUTES = 600000;
 // Interfaces for Gemini response types
@@ -540,6 +541,26 @@ abstract class OpenAIBase extends BaseProvider {
       return content;
     } catch (error) {
       this.debugLog(options, `Error in ${this.constructor.name} executePrompt:`, error);
+
+      // Track provider API error
+      const errorType = error instanceof Error ? error.constructor.name : 'UnknownError';
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const telemetryProps = {
+        provider: this.constructor.name,
+        model: options.model,
+        error_type: errorType,
+        error_message: errorMessage.substring(0, 256), // Truncate
+        is_timeout:
+          error instanceof Error &&
+          (error.name === 'TimeoutError' || error.message.toLowerCase().includes('timeout')),
+      };
+      // Don't await this, let it run in the background
+      trackEvent('provider_api_error', telemetryProps).catch((telemetryError) => {
+        if (options.debug) {
+          console.error('Telemetry error during provider_api_error:', telemetryError);
+        }
+      });
+
       // Always log the full error details for better debugging
       console.error(
         'Full error details:',

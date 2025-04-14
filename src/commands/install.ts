@@ -26,10 +26,24 @@ import {
   setupClinerules,
   handleLegacyMigration,
 } from '../utils/installUtils';
+import {
+  trackEvent,
+  isTelemetryEnabled,
+  setTelemetryStatus,
+  TELEMETRY_DATA_DESCRIPTION,
+} from '../telemetry';
 
 interface InstallOptions extends CommandOptions {
   packageManager?: 'npm' | 'yarn' | 'pnpm';
   global?: boolean;
+}
+
+interface UserConfig {
+  ide?: string;
+  coding?: { provider: Provider; model: string };
+  websearch?: { provider: Provider; model: string };
+  tooling?: { provider: Provider; model: string };
+  largecontext?: { provider: Provider; model: string };
 }
 
 export class InstallCommand implements Command {
@@ -111,13 +125,9 @@ export class InstallCommand implements Command {
     return null;
   }
 
-  private async createConfig(config: {
-    ide?: string;
-    coding?: { provider: Provider; model: string };
-    websearch?: { provider: Provider; model: string };
-    tooling?: { provider: Provider; model: string };
-    largecontext?: { provider: Provider; model: string };
-  }): Promise<{ isLocalConfig: boolean }> {
+  private async createConfig(
+    config: Omit<UserConfig, 'telemetryOptIn'>
+  ): Promise<{ isLocalConfig: boolean }> {
     const finalConfig: Config = {
       web: {},
       plan: {
@@ -236,6 +246,10 @@ export class InstallCommand implements Command {
 
     const absolutePath = join(process.cwd(), targetPath);
 
+    let selectedIde: string = 'unknown';
+    let isLocalConfig: boolean = false;
+    let userConfig: Omit<UserConfig, 'telemetryOptIn'> = {};
+
     try {
       // Clear the screen for a clean start
       clearScreen();
@@ -266,6 +280,58 @@ export class InstallCommand implements Command {
       // Handle legacy migration *before* asking for new setup
       yield* handleLegacyMigration();
 
+      // --- Telemetry Opt-in Check & Prompt ---
+      const currentTelemetryStatus = isTelemetryEnabled();
+
+      if (currentTelemetryStatus === null) {
+        // Status unknown, need to prompt
+        consola.info('\n📊 Help Improve Vibe-Tools!');
+        let initialAnswer = await consola.prompt(
+          'Enable anonymous telemetry? (We NEVER track queries, code, or personal data)',
+          {
+            type: 'select',
+            options: [
+              { value: 'yes', label: 'Yes, enable anonymous telemetry' },
+              { value: 'no', label: "No, don't enable telemetry" },
+              {
+                value: 'details',
+                label: 'Show details',
+              },
+            ],
+          }
+        );
+
+        let finalChoice: boolean;
+        if (initialAnswer === 'details') {
+          consola.info(
+            `
+--- Telemetry Details ---${TELEMETRY_DATA_DESCRIPTION}---------------------------
+`
+          );
+          const finalAnswer = await consola.prompt('Enable anonymous telemetry?', {
+            type: 'select',
+            options: [
+              { value: 'yes', label: 'Yes, enable' },
+              { value: 'no', label: 'No, disable' },
+            ],
+          });
+          finalChoice = finalAnswer === 'yes';
+        } else {
+          finalChoice = initialAnswer === 'yes';
+        }
+
+        // Save the choice persistently
+        setTelemetryStatus(finalChoice);
+        consola.success(`Telemetry status set to: ${finalChoice ? 'enabled' : 'disabled.'}`);
+      } else {
+        // Status already known
+        consola.info(
+          `
+📊 Telemetry status is currently: ${currentTelemetryStatus ? 'enabled' : 'disabled.'}`
+        );
+      }
+      // --- End Telemetry Opt-in ---
+
       // Check for existing global config before asking for preferences
       const existingGlobalConfig = await this.checkExistingGlobalConfig();
       let useExistingGlobal = false;
@@ -278,7 +344,7 @@ export class InstallCommand implements Command {
       }
 
       // Ask for IDE preference
-      const selectedIde = await consola.prompt('Which IDE will you be using with vibe-tools?', {
+      selectedIde = await consola.prompt('Which IDE will you be using with vibe-tools?', {
         type: 'select',
         options: [
           { value: 'cursor', label: 'Cursor', hint: 'recommended' },
@@ -471,7 +537,7 @@ export class InstallCommand implements Command {
         return `${colors.cyan(provider.charAt(0).toUpperCase() + provider.slice(1))} ${colors.gray('→')} ${colors.green(modelDisplay || model)}`;
       };
 
-      const configDisplay = Object.entries(config)
+      const configDisplay = Object.entries(userConfig)
         .map(([key, value]) => {
           if (key === 'ide') return `IDE: ${colors.magenta(String(value))}`;
           if (!value) return null; // Skip undefined values
@@ -495,7 +561,7 @@ export class InstallCommand implements Command {
       });
 
       // Identify required providers
-      const requiredProviders = collectRequiredProviders(config);
+      const requiredProviders = collectRequiredProviders(userConfig);
 
       // Setup API keys
       for await (const message of this.setupApiKeys(requiredProviders)) {
@@ -503,7 +569,8 @@ export class InstallCommand implements Command {
       }
 
       // Create config file and get its location preference
-      const { isLocalConfig } = await this.createConfig(config);
+      const { isLocalConfig: configLocation } = await this.createConfig(userConfig);
+      isLocalConfig = configLocation;
 
       // Handle IDE-specific rules setup using switch-case
       // Declare variables outside switch to avoid lexical declaration errors
@@ -588,6 +655,20 @@ export class InstallCommand implements Command {
 
       consola.success('✨ All done! Vibe-Tools is ready to rock. ✨');
       consola.info(`\n${colors.cyan('Tip:')} Run 'vibe-tools --help' to see available commands.\n`);
+
+      // Track successful installation (re-check status now)
+      if (isTelemetryEnabled() === true) {
+        trackEvent('install_completed', {
+          ide: selectedIde,
+          config_location: isLocalConfig ? 'local' : 'global',
+          coding_provider: userConfig.coding?.provider,
+          websearch_provider: userConfig.websearch?.provider,
+          tooling_provider: userConfig.tooling?.provider,
+          largecontext_provider: userConfig.largecontext?.provider,
+        }).catch((telemetryError) => {
+          console.error('Telemetry error during install_completed:', telemetryError);
+        });
+      }
     } catch (error) {
       consola.box({
         title: '❌ Installation Failed',
