@@ -1,4 +1,4 @@
-import type { Command, CommandGenerator, CommandOptions, Provider } from '../types';
+import type { Command, CommandGenerator, CommandOptions, Provider, TokenUsage } from '../types';
 import type { Config } from '../types';
 import type { AsyncReturnType } from '../utils/AsyncReturnType';
 
@@ -16,6 +16,7 @@ import {
   getDefaultModel,
 } from '../utils/providerAvailability';
 import { getGithubRepoContext, looksLikeGithubRepo } from '../utils/githubRepo';
+import { trackEvent } from '../telemetry';
 
 export class RepoCommand implements Command {
   private config: Config;
@@ -200,6 +201,10 @@ export class RepoCommand implements Command {
     }
 
     yield `Analyzing repository using ${modelName}...\n`;
+    let usage: TokenUsage | undefined;
+    const tokenUsageCallback = (tokenData: TokenUsage) => {
+      usage = tokenData;
+    };
     try {
       const maxTokens =
         options?.maxTokens ||
@@ -207,12 +212,14 @@ export class RepoCommand implements Command {
         (this.config as Record<string, any>)[provider]?.maxTokens ||
         defaultMaxTokens;
 
-      // Create modelOptions
-      const modelOptions: Omit<ModelOptions, 'systemPrompt'> = {
+      // Create modelOptions - Use full ModelOptions type
+      const modelOptions: ModelOptions = {
         model: modelName,
         maxTokens,
         debug: options?.debug,
         tokenCount: options?.tokenCount,
+        tokenUsageCallback,
+        systemPrompt: '', // Placeholder, will be overwritten in analyzeRepository call
       };
 
       const response = await analyzeRepository(
@@ -224,6 +231,27 @@ export class RepoCommand implements Command {
         },
         modelOptions
       );
+
+      // Track token usage after successful analysis
+      if (usage) {
+        trackEvent(
+          'token_usage',
+          {
+            command: 'repo',
+            status: 'in_progress',
+            provider: provider,
+            model: modelName,
+            input_tokens: usage.inputTokens,
+            output_tokens: usage.outputTokens,
+            total_tokens: usage.totalTokens,
+            repo_context_tokens: options?.tokenCount,
+          },
+          options?.debug
+        ).catch((e) => {
+          if (options?.debug) console.error('Telemetry error for token_usage:', e);
+        });
+      }
+
       yield response;
     } catch (error) {
       throw new ProviderError(
@@ -237,7 +265,7 @@ export class RepoCommand implements Command {
 async function analyzeRepository(
   provider: BaseModelProvider,
   props: { query: string; repoContext: string; cursorRules: string },
-  options: Omit<ModelOptions, 'systemPrompt'>
+  options: ModelOptions
 ): Promise<string> {
   return provider.executePrompt(`${props.cursorRules}\n\n${props.repoContext}\n\n${props.query}`, {
     ...options,

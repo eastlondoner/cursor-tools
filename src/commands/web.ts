@@ -1,4 +1,4 @@
-import type { Command, CommandGenerator, CommandOptions, Provider } from '../types.ts';
+import type { Command, CommandGenerator, CommandOptions, Provider, TokenUsage } from '../types.ts';
 import type { Config } from '../types.ts';
 import { defaultMaxTokens, loadConfig, loadEnv } from '../config.ts';
 import { createProvider } from '../providers/base';
@@ -8,6 +8,7 @@ import {
   getNextAvailableProvider,
   getDefaultModel,
 } from '../utils/providerAvailability';
+import { trackEvent } from '../telemetry';
 
 const DEFAULT_WEB_MODELS: Record<Provider, string> = {
   gemini: 'gemini-2.5-pro-exp',
@@ -124,6 +125,11 @@ export class WebCommand implements Command {
 
     yield `Querying ${provider} using ${model} for: ${query} with maxTokens: ${maxTokens}\n`;
 
+    let usage: TokenUsage | undefined;
+    const tokenUsageCallback = (tokenData: TokenUsage) => {
+      usage = tokenData;
+    };
+
     const response = await modelProvider.executePrompt(query, {
       model,
       maxTokens,
@@ -131,7 +137,26 @@ export class WebCommand implements Command {
       webSearch: true,
       systemPrompt:
         "You are an expert software engineering assistant. Follow user instructions exactly and satisfy the user's request. Always Search the web for the latest information, even if you think you know the answer.",
+      tokenUsageCallback,
     });
+
+    if (usage) {
+      trackEvent(
+        'token_usage',
+        {
+          command: 'web',
+          status: 'in_progress',
+          provider: provider,
+          model: model,
+          input_tokens: usage.inputTokens,
+          output_tokens: usage.outputTokens,
+          total_tokens: usage.totalTokens,
+        },
+        options?.debug
+      ).catch((e) => {
+        if (options?.debug) console.error('Telemetry error for token_usage:', e);
+      });
+    }
 
     yield response;
   }

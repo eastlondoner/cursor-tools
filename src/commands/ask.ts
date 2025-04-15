@@ -1,9 +1,10 @@
-import type { Command, CommandGenerator, CommandOptions, Provider } from '../types';
+import type { Command, CommandGenerator, CommandOptions, Provider, TokenUsage } from '../types';
 import { loadEnv, loadConfig, defaultMaxTokens } from '../config';
 import { createProvider } from '../providers/base';
 import { ProviderError, ModelNotFoundError } from '../errors';
 import { getAllProviders } from '../utils/providerAvailability';
 import type { ModelOptions } from '../providers/base';
+import { trackEvent } from '../telemetry';
 
 export class AskCommand implements Command {
   private config;
@@ -68,6 +69,13 @@ export class AskCommand implements Command {
     // Create the provider instance
     const provider = createProvider(providerName);
     let answer: string;
+    let usage: TokenUsage | undefined;
+
+    // Define the token usage callback
+    const tokenUsageCallback = (tokenData: TokenUsage) => {
+      usage = tokenData;
+    };
+
     try {
       // Build the model options
       const modelOptions: ModelOptions = {
@@ -77,10 +85,30 @@ export class AskCommand implements Command {
         systemPrompt:
           'You are a helpful assistant. Answer the following question directly and concisely.',
         reasoningEffort: options?.reasoningEffort ?? this.config.reasoningEffort,
+        tokenUsageCallback,
       };
 
       // Execute the prompt with the provider
       answer = await provider.executePrompt(query, modelOptions);
+
+      // Track token usage after successful execution
+      if (usage) {
+        trackEvent(
+          'token_usage',
+          {
+            command: 'ask',
+            status: 'in_progress',
+            provider: providerName,
+            model: model,
+            input_tokens: usage.inputTokens,
+            output_tokens: usage.outputTokens,
+            total_tokens: usage.totalTokens,
+          },
+          options?.debug
+        ).catch((e) => {
+          if (options?.debug) console.error('Telemetry error for token_usage:', e);
+        });
+      }
     } catch (error) {
       throw new ProviderError(
         error instanceof Error ? error.message : 'Unknown error during ask command execution',
