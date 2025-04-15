@@ -15,6 +15,13 @@ export type Provider =
 export const reasoningEffortSchema = z.enum(['low', 'medium', 'high']);
 export type ReasoningEffort = z.infer<typeof reasoningEffortSchema>;
 
+// Add TokenUsage type
+export interface TokenUsage {
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+}
+
 // Base options shared by all commands
 export interface CommandOptions {
   // Core options
@@ -136,6 +143,8 @@ export interface ModelOptions {
   webSearch?: boolean; // Whether to enable web search capabilities
   timeout?: number; // Timeout in milliseconds for model API calls
   debug: boolean | undefined; // Enable debug logging
+  reasoningEffort?: ReasoningEffort; // Support for o1 and o3-mini reasoning effort
+  tokenUsageCallback?: (usage: TokenUsage) => void; // Callback for token usage
 }
 
 // Add video analysis options

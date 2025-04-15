@@ -475,45 +475,31 @@ async function main() {
 
     // Track successful execution
     const durationMs = Date.now() - startTime;
-    const flagsUsed = Object.entries(options)
-      .filter(([key, value]) => value !== undefined && value !== false)
-      .map(([key]) => toKebabCase(key));
+    // Collect flags and their values
+    const commandFlags = Object.entries(options)
+      .filter(
+        ([key, value]) =>
+          value !== undefined && value !== false && OPTION_KEYS[normalizeArgKey(key)]
+      ) // Ensure it's a valid option
+      .reduce(
+        (acc, [key, value]) => {
+          acc[toKebabCase(key)] = value;
+          return acc;
+        },
+        {} as Record<string, any>
+      );
 
     const telemetryProps: Record<string, any> = {
       command: commandName,
       duration_ms: durationMs,
       status: 'success',
-      flags_used: flagsUsed,
+      command_flags: commandFlags, // Use command_flags object
       provider_used: commandOptions.provider,
       model_used: commandOptions.model,
     };
     if (subCommandName) {
       telemetryProps.subcommand = subCommandName;
     }
-
-    // Track notable feature usage (fire and forget)
-    const trackFeature = (feature: string) => {
-      trackEvent(
-        'feature_used',
-        {
-          feature,
-          command: commandName,
-          subcommand: subCommandName,
-        },
-        options.debug
-      ).catch((telemetryError) => {
-        if (options.debug) {
-          console.error(`Telemetry error during feature_used (${feature}):`, telemetryError);
-        }
-      });
-    };
-
-    if (options.saveTo) trackFeature('save_to');
-    if (options.fromGithub) trackFeature('from_github');
-    if (options.debug) trackFeature('debug');
-    if (commandName === 'browser' && options.video) trackFeature('browser_video');
-    if (commandName === 'browser' && options.connectTo) trackFeature('browser_connect_to');
-    if (options.reasoningEffort) trackFeature(`reasoning_effort_${options.reasoningEffort}`);
 
     // Await the telemetry event but catch errors so they don't crash the process
     try {
@@ -541,9 +527,19 @@ async function main() {
 
     // Track command error
     const durationMs = Date.now() - startTime;
-    const flagsUsed = Object.entries(options)
-      .filter(([key, value]) => value !== undefined && value !== false)
-      .map(([key]) => toKebabCase(key));
+    // Collect flags and their values for errors
+    const errorCommandFlags = Object.entries(options)
+      .filter(
+        ([key, value]) =>
+          value !== undefined && value !== false && OPTION_KEYS[normalizeArgKey(key)]
+      ) // Ensure it's a valid option
+      .reduce(
+        (acc, [key, value]) => {
+          acc[toKebabCase(key)] = value;
+          return acc;
+        },
+        {} as Record<string, any>
+      );
 
     const errorType = error instanceof Error ? error.constructor.name : 'UnknownError';
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -554,7 +550,7 @@ async function main() {
       status: 'error',
       error_type: errorType,
       error_message: errorMessage.substring(0, 256), // Truncate long messages
-      flags_used: flagsUsed,
+      command_flags: errorCommandFlags, // Use command_flags object for errors
       provider_used: options.provider,
       model_used: options.model,
     };

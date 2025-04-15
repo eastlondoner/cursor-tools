@@ -1,4 +1,4 @@
-import type { Command, CommandGenerator, CommandOptions, Config } from '../types';
+import type { Command, CommandGenerator, CommandOptions, Config, TokenUsage } from '../types';
 import { defaultMaxTokens, loadConfig, loadEnv } from '../config';
 import { pack } from 'repomix';
 import { readFileSync } from 'node:fs';
@@ -6,6 +6,7 @@ import type { ModelOptions, BaseModelProvider } from '../providers/base';
 import { createProvider } from '../providers/base';
 import { FileError, ProviderError } from '../errors';
 import { loadFileConfigWithOverrides } from '../repomix/repomixConfig';
+import { trackEvent } from '../telemetry';
 
 type FileProvider = 'gemini' | 'openai' | 'openrouter' | 'perplexity' | 'modelbox' | 'anthropic';
 type ThinkingProvider =
@@ -221,7 +222,13 @@ export class PlanCommand implements Command {
 
       // Get relevant files
       let filePaths: string[];
+      let fileUsage: TokenUsage | undefined;
+      const fileTokenUsageCallback = (tokenData: TokenUsage) => {
+        fileUsage = tokenData;
+      };
+
       try {
+        const fileStartTime = Date.now(); // Start timer for file identification
         const maxTokens =
           options?.maxTokens ||
           this.config.plan?.fileMaxTokens ||
@@ -240,7 +247,30 @@ export class PlanCommand implements Command {
           model: fileModel,
           maxTokens,
           debug: options?.debug,
+          tokenUsageCallback: fileTokenUsageCallback,
         });
+
+        // Track file identification token usage
+        if (fileUsage) {
+          const fileDurationMs = Date.now() - fileStartTime; // Calculate duration
+          trackEvent(
+            'token_usage',
+            {
+              command: 'plan',
+              phase: 'file_identification',
+              status: 'in_progress',
+              duration_ms: fileDurationMs, // Add duration
+              provider: fileProviderName,
+              model: fileModel,
+              input_tokens: fileUsage.inputTokens,
+              output_tokens: fileUsage.outputTokens,
+              total_tokens: fileUsage.totalTokens,
+            },
+            options?.debug
+          ).catch((e) => {
+            if (options?.debug) console.error('Telemetry error for token_usage (file):', e);
+          });
+        }
 
         if (options?.debug) {
           yield 'AI response received.\n';
@@ -287,25 +317,57 @@ export class PlanCommand implements Command {
         throw new FileError('Failed to extract content', error);
       }
 
-      const maxTokens =
-        options?.maxTokens ||
-        this.config.plan?.thinkingMaxTokens ||
-        (this.config as Record<string, any>)[thinkingProviderName]?.maxTokens ||
-        defaultMaxTokens;
-      yield `Generating implementation plan using ${thinkingProviderName} with max tokens: ${maxTokens}...\n`;
-      let plan: string;
+      const repoContext = filteredContent;
+
+      // Generate plan
       try {
-        plan = await generatePlan(thinkingProvider, query, filteredContent, {
+        const planStartTime = Date.now(); // Start timer for plan generation
+        const maxTokens =
+          options?.maxTokens ||
+          this.config.plan?.thinkingMaxTokens ||
+          (this.config as Record<string, any>)[thinkingProviderName]?.maxTokens ||
+          defaultMaxTokens;
+        yield `Asking ${thinkingProviderName} to generate the plan using model: ${thinkingModel} with max tokens: ${maxTokens}...\n`;
+
+        let planUsage: TokenUsage | undefined;
+        const planTokenUsageCallback = (tokenData: TokenUsage) => {
+          planUsage = tokenData;
+        };
+
+        const plan = await generatePlan(thinkingProvider, query, repoContext, {
           model: thinkingModel,
-          maxTokens: maxTokens,
+          maxTokens,
           debug: options?.debug,
+          tokenUsageCallback: planTokenUsageCallback,
         });
+
+        // Track plan generation token usage
+        if (planUsage) {
+          const planDurationMs = Date.now() - planStartTime; // Calculate duration
+          trackEvent(
+            'token_usage',
+            {
+              command: 'plan',
+              phase: 'plan_generation',
+              status: 'in_progress',
+              duration_ms: planDurationMs, // Add duration
+              provider: thinkingProviderName,
+              model: thinkingModel,
+              input_tokens: planUsage.inputTokens,
+              output_tokens: planUsage.outputTokens,
+              total_tokens: planUsage.totalTokens,
+            },
+            options?.debug
+          ).catch((e) => {
+            if (options?.debug) console.error('Telemetry error for token_usage (plan):', e);
+          });
+        }
+
+        yield plan;
       } catch (error) {
         console.error('Error in generatePlan', error);
         throw new ProviderError('Failed to generate implementation plan', error);
       }
-
-      yield plan;
     } catch (error) {
       // console.error errors and then throw
       if (error instanceof FileError || error instanceof ProviderError) {
