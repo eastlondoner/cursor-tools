@@ -11,6 +11,8 @@ import {
   VIBE_HOME_ENV_PATH,
   VIBE_HOME_CONFIG_PATH,
   CLAUDE_HOME_DIR,
+  CODEX_GLOBAL_INSTRUCTIONS_PATH,
+  CODEX_LOCAL_INSTRUCTIONS_FILENAME,
   LOCAL_ENV_PATH,
   LOCAL_CONFIG_PATH,
   updateRulesSection,
@@ -227,6 +229,7 @@ export class InstallCommand implements Command {
         options: [
           { value: 'cursor', label: 'Cursor', hint: 'recommended' },
           { value: 'claude-code', label: 'Claude Code' },
+          { value: 'codex', label: 'Codex' },
           { value: 'windsurf', label: 'Windsurf' },
           { value: 'cline', label: 'Cline' },
           { value: 'roo', label: 'Roo' },
@@ -387,73 +390,72 @@ export class InstallCommand implements Command {
       // Create config file and get its location preference
       const { isLocalConfig } = await this.createConfig(config);
 
-      // Handle IDE-specific rules setup
-      // For cursor, create the new directory structure
-      if (selectedIde === 'cursor') {
-        // Create necessary directories
-        const rulesDir = join(absolutePath, '.cursor', 'rules');
-        ensureDirectoryExists(rulesDir);
+      // Handle IDE-specific rules setup using switch-case
+      // Declare variables outside switch to avoid lexical declaration errors
+      let rulesPath: string;
+      let rulesTemplate: string;
+      let cursorRulesPath: string;
+      let cursorRuleFilePath: string;
+      let rulesDir: string;
+      let cursorPath: string;
 
-        // Write the rules file directly to the new location
-        const rulesPath = join(rulesDir, 'vibe-tools.mdc');
-        try {
-          writeFileSync(rulesPath, generateRules('cursor', true));
-          consola.success(`Rules written to ${colors.cyan(rulesPath)}`);
-        } catch (error) {
-          consola.error(`${colors.red('Error writing rules for cursor:')}`, error);
-          return;
-        }
-      } else {
-        // For other IDEs, add the rules template to the respective file
-        let rulesPath: string;
-        let rulesTemplate: string;
+      switch (selectedIde) {
+        case 'cursor':
+          // Create necessary directories
+          rulesDir = join(absolutePath, '.cursor', 'rules');
+          ensureDirectoryExists(rulesDir);
 
-        switch (selectedIde) {
-          case 'claude-code': {
-            rulesTemplate = generateRules('claude-code');
+          // Write the rules file directly to the new location
+          cursorPath = join(rulesDir, 'vibe-tools.mdc');
+          try {
+            writeFileSync(cursorPath, generateRules('cursor', true));
+            consola.success(`Rules written to ${colors.cyan(cursorPath)}`);
+          } catch (error) {
+            consola.error(`${colors.red('Error writing rules for cursor:')}`, error);
+            return;
+          }
 
-            // Handle both global and local Claude.md files
-            if (isLocalConfig) {
-              // Local Claude.md
-              rulesPath = join(absolutePath, 'CLAUDE.md');
-              ensureDirectoryExists(join(rulesPath, '..'));
-              updateRulesSection(rulesPath, rulesTemplate);
-              consola.success(`Updated local Claude.md rules at ${rulesPath}`);
-            } else {
-              // Global Claude.md
-              ensureDirectoryExists(CLAUDE_HOME_DIR);
-              rulesPath = join(CLAUDE_HOME_DIR, 'CLAUDE.md');
-              updateRulesSection(rulesPath, rulesTemplate);
-              consola.success(`Updated global Claude.md rules at ${rulesPath}`);
-            }
-            break;
-          }
-          case 'windsurf': {
-            rulesPath = join(absolutePath, '.windsurfrules');
-            rulesTemplate = generateRules('windsurf');
-            ensureDirectoryExists(join(rulesPath, '..'));
-            updateRulesSection(rulesPath, rulesTemplate);
-            consola.success(`Updated .windsurfrules at ${rulesPath}`);
-            break;
-          }
-          case 'cline': {
-            await setupClinerules(absolutePath, 'cline', generateRules);
-            break;
-          }
-          case 'roo': {
-            // Roo uses the same .clinerules directory/file as cline
-            await setupClinerules(absolutePath, 'roo', generateRules);
-            break;
-          }
-          default: {
-            rulesPath = join(absolutePath, '.cursor', 'rules', 'vibe-tools.mdc');
-            rulesTemplate = generateRules('cursor', true);
-            ensureDirectoryExists(join(rulesPath, '..'));
-            writeFileSync(rulesPath, rulesTemplate.trim());
-            consola.success(`Rules written to ${rulesPath}`);
-            break;
-          }
-        }
+          // Also create/update the new .cursorrules/vibe-tools.mdc location for compatibility
+          rulesTemplate = generateRules('cursor');
+          cursorRulesPath = join(absolutePath, '.cursorrules');
+          ensureDirectoryExists(cursorRulesPath);
+          cursorRuleFilePath = join(cursorRulesPath, 'vibe-tools.mdc');
+          updateRulesSection(cursorRuleFilePath, rulesTemplate);
+          consola.success(`Cursor rules also updated in ${colors.cyan(cursorRuleFilePath)}`);
+          break;
+
+        case 'claude-code':
+          rulesTemplate = generateRules('claude-code');
+          rulesPath = isLocalConfig
+            ? join(absolutePath, 'CLAUDE.md')
+            : join(CLAUDE_HOME_DIR, 'CLAUDE.md');
+          ensureDirectoryExists(join(rulesPath, '..'));
+          updateRulesSection(rulesPath, rulesTemplate);
+          consola.success(`Claude Code rules updated in ${colors.cyan(rulesPath)}`);
+          break;
+
+        case 'codex':
+          rulesTemplate = generateRules('codex');
+          rulesPath = isLocalConfig
+            ? join(absolutePath, CODEX_LOCAL_INSTRUCTIONS_FILENAME)
+            : CODEX_GLOBAL_INSTRUCTIONS_PATH;
+          ensureDirectoryExists(join(rulesPath, '..'));
+          updateRulesSection(rulesPath, rulesTemplate);
+          consola.success(`Codex instructions updated in ${colors.cyan(rulesPath)}`);
+          break;
+
+        case 'windsurf':
+          rulesPath = join(absolutePath, '.windsurfrules');
+          rulesTemplate = generateRules('windsurf');
+          ensureDirectoryExists(join(rulesPath, '..'));
+          updateRulesSection(rulesPath, rulesTemplate);
+          consola.success(`Updated .windsurfrules at ${colors.cyan(rulesPath)}`);
+          break;
+
+        case 'cline':
+        case 'roo':
+          await setupClinerules(absolutePath, selectedIde, generateRules);
+          break;
       }
 
       // Installation completed
@@ -477,6 +479,9 @@ export class InstallCommand implements Command {
           `  ${colors.green('vibe-tools plan')} ${colors.white('"Create implementation plan"')}`,
         ].join('\n'),
       });
+
+      consola.success('✨ All done! Vibe-Tools is ready to rock. ✨');
+      consola.info(`\n${colors.cyan('Tip:')} Run 'vibe-tools --help' to see available commands.\n`);
     } catch (error) {
       consola.box({
         title: '❌ Installation Failed',

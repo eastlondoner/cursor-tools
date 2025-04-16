@@ -198,6 +198,7 @@ export function generateRules(ide: string, includeCursorMetadata: boolean = fals
       return `${includeCursorMetadata ? CURSOR_METADATA + '\n' : ''}${CURSOR_INTRO_TEXT}\n\n<vibe-tools Integration>\n${VIBE_TOOLS_CORE_CONTENT}\n</vibe-tools Integration>`;
 
     case 'claude-code':
+    case 'codex':
     case 'windsurf':
     case 'cline':
     case 'roo':

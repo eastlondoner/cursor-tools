@@ -10,6 +10,8 @@ import {
   VIBE_HOME_ENV_PATH,
   VIBE_HOME_CONFIG_PATH,
   CLAUDE_HOME_DIR,
+  CODEX_GLOBAL_INSTRUCTIONS_PATH,
+  CODEX_LOCAL_INSTRUCTIONS_FILENAME,
   LOCAL_ENV_PATH,
   LOCAL_CONFIG_PATH,
   VALID_PROVIDERS,
@@ -30,7 +32,7 @@ function parseJsonConfig(
 ): Record<string, { provider: Provider; model: string }> & { ide?: string } {
   try {
     const parsedConfig = JSON.parse(jsonString);
-    const validIdes = ['cursor', 'claude-code', 'windsurf', 'cline', 'roo'];
+    const validIdes = ['cursor', 'claude-code', 'codex', 'windsurf', 'cline', 'roo'];
     let configToUse = parsedConfig;
 
     // Check if there's an "agents" wrapper and use it if present
@@ -358,6 +360,27 @@ export class JsonInstallCommand implements Command {
               rulesPath = join(CLAUDE_HOME_DIR, 'CLAUDE.md');
               updateRulesSection(rulesPath, rulesTemplate);
               consola.success(`Updated global Claude.md rules at ${rulesPath}`);
+            }
+            break;
+          }
+          case 'codex': {
+            rulesTemplate = generateRules('codex');
+
+            // Handle both global and local codex.md files
+            if (isLocalConfig) {
+              // Local codex.md
+              rulesPath = join(absolutePath, CODEX_LOCAL_INSTRUCTIONS_FILENAME);
+              ensureDirectoryExists(join(rulesPath, '..'));
+              updateRulesSection(rulesPath, rulesTemplate);
+              consola.success(
+                `Updated local ${CODEX_LOCAL_INSTRUCTIONS_FILENAME} rules at ${rulesPath}`
+              );
+            } else {
+              // Global ~/.codex/instructions.md
+              ensureDirectoryExists(join(CODEX_GLOBAL_INSTRUCTIONS_PATH, '..'));
+              rulesPath = CODEX_GLOBAL_INSTRUCTIONS_PATH;
+              updateRulesSection(rulesPath, rulesTemplate);
+              consola.success(`Updated global ${CODEX_GLOBAL_INSTRUCTIONS_PATH} rules`);
             }
             break;
           }

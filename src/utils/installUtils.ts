@@ -23,6 +23,9 @@ export const VIBE_HOME_DIR = join(homedir(), '.vibe-tools');
 export const VIBE_HOME_ENV_PATH = join(VIBE_HOME_DIR, '.env');
 export const VIBE_HOME_CONFIG_PATH = join(VIBE_HOME_DIR, 'config.json');
 export const CLAUDE_HOME_DIR = join(homedir(), '.claude'); // Global Claude directory
+export const CODEX_HOME_DIR = join(homedir(), '.codex'); // Global Codex directory
+export const CODEX_GLOBAL_INSTRUCTIONS_PATH = join(CODEX_HOME_DIR, 'instructions.md'); // Global Codex instructions file
+export const CODEX_LOCAL_INSTRUCTIONS_FILENAME = 'codex.md'; // Local Codex instructions filename
 export const LOCAL_ENV_PATH = join(process.cwd(), '.vibe-tools.env'); // Keep local path definition separate
 export const LOCAL_CONFIG_PATH = join(process.cwd(), 'vibe-tools.config.json'); // Keep local path definition separate
 
