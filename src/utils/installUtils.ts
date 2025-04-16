@@ -335,6 +335,21 @@ export async function* handleLegacyMigration(): CommandGenerator {
         }
 
         yield 'Migration completed successfully.';
+
+        // Ask if user wants to delete the old directory
+        const shouldDeleteOld = await consola.prompt(
+          'Do you want to delete the old .cursor-tools directory? (recommended)',
+          { type: 'confirm' }
+        );
+
+        if (shouldDeleteOld) {
+          try {
+            rmSync(legacyHomeDir, { recursive: true, force: true });
+            consola.success('Deleted legacy .cursor-tools directory');
+          } catch (error) {
+            consola.error(`Error deleting legacy directory: ${error}`);
+          }
+        }
       } else {
         yield 'Skipping migration.';
       }

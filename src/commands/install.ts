@@ -1,5 +1,5 @@
 import type { Command, CommandGenerator, CommandOptions, Provider, Config } from '../types';
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { loadEnv } from '../config';
 import { generateRules } from '../vibe-rules';
@@ -98,6 +98,19 @@ export class InstallCommand implements Command {
     }
   }
 
+  private async checkExistingGlobalConfig(): Promise<Config | null> {
+    const globalConfigPath = VIBE_HOME_CONFIG_PATH;
+    if (existsSync(globalConfigPath)) {
+      try {
+        const configContent = readFileSync(globalConfigPath, 'utf-8');
+        return JSON.parse(configContent) as Config;
+      } catch (error) {
+        consola.error(`Error reading global config: ${error}`);
+      }
+    }
+    return null;
+  }
+
   private async createConfig(config: {
     ide?: string;
     coding?: { provider: Provider; model: string };
@@ -124,7 +137,7 @@ export class InstallCommand implements Command {
       finalConfig.ide = config.ide.toLowerCase();
     }
 
-    // Map the config to the actual config structure
+    // Map the config from the selections (or potentially pre-filled from existing global)
     if (config.coding) {
       finalConfig.repo = {
         provider: config.coding.provider,
@@ -158,18 +171,48 @@ export class InstallCommand implements Command {
     // Ensure the VIBE_HOME_DIR exists
     ensureDirectoryExists(VIBE_HOME_DIR);
 
+    // Prepare message about IDE rules location
+    let rulesLocationMessage = '';
+    if (config.ide === 'codex' || config.ide === 'claude-code') {
+      rulesLocationMessage =
+        config.ide === 'codex'
+          ? `\nNote: For Codex, choosing 'Global' will save rules to ${CODEX_GLOBAL_INSTRUCTIONS_PATH}, and 'Local' will save to ./${CODEX_LOCAL_INSTRUCTIONS_FILENAME}`
+          : `\nNote: For Claude Code, choosing 'Global' will save rules to ${CLAUDE_HOME_DIR}/CLAUDE.md, and 'Local' will save to ./CLAUDE.md`;
+    }
+
     // Ask user where to save the config
     consola.info('');
-    const answer = await consola.prompt('Where would you like to save the configuration?', {
-      type: 'select',
-      options: [
-        { value: 'global', label: `Global config (${VIBE_HOME_CONFIG_PATH})` },
-        { value: 'local', label: `Local config (${LOCAL_CONFIG_PATH})` },
-      ],
-    });
+    const answer = await consola.prompt(
+      `Where would you like to save the configuration?${rulesLocationMessage}`,
+      {
+        type: 'select',
+        options: [
+          { value: 'global', label: `Global config (${VIBE_HOME_CONFIG_PATH})` },
+          { value: 'local', label: `Local config (${LOCAL_CONFIG_PATH})` },
+        ],
+      }
+    );
 
     const isLocalConfig = answer === 'local';
     const configPath = isLocalConfig ? LOCAL_CONFIG_PATH : VIBE_HOME_CONFIG_PATH;
+
+    // Ensure all provider names are lowercase before writing
+    if (finalConfig.repo?.provider) {
+      finalConfig.repo.provider = finalConfig.repo.provider.toLowerCase() as Provider;
+    }
+    if (finalConfig.plan?.fileProvider) {
+      finalConfig.plan.fileProvider = finalConfig.plan.fileProvider.toLowerCase() as Provider;
+    }
+    if (finalConfig.plan?.thinkingProvider) {
+      finalConfig.plan.thinkingProvider =
+        finalConfig.plan.thinkingProvider.toLowerCase() as Provider;
+    }
+    if (finalConfig.web?.provider) {
+      finalConfig.web.provider = finalConfig.web.provider.toLowerCase() as Provider;
+    }
+    if (finalConfig.doc?.provider) {
+      finalConfig.doc.provider = finalConfig.doc.provider.toLowerCase() as Provider;
+    }
 
     try {
       writeFileSync(configPath, JSON.stringify(finalConfig, null, 2));
@@ -223,6 +266,17 @@ export class InstallCommand implements Command {
       // Handle legacy migration *before* asking for new setup
       yield* handleLegacyMigration();
 
+      // Check for existing global config before asking for preferences
+      const existingGlobalConfig = await this.checkExistingGlobalConfig();
+      let useExistingGlobal = false;
+
+      if (existingGlobalConfig) {
+        useExistingGlobal = await consola.prompt(
+          'Found existing global configuration. Would you like to use it?',
+          { type: 'confirm' }
+        );
+      }
+
       // Ask for IDE preference
       const selectedIde = await consola.prompt('Which IDE will you be using with vibe-tools?', {
         type: 'select',
@@ -234,90 +288,65 @@ export class InstallCommand implements Command {
           { value: 'cline', label: 'Cline' },
           { value: 'roo', label: 'Roo' },
         ],
-        initial: 'cursor',
+        initial:
+          useExistingGlobal && existingGlobalConfig?.ide ? existingGlobalConfig.ide : 'cursor',
       });
 
-      // Ask for model preferences
-      consola.info('\nSelect your preferred models for different tasks:');
+      // Create initial config with defaults
+      let config: {
+        ide?: string;
+        coding?: { provider: Provider; model: string };
+        websearch?: { provider: Provider; model: string };
+        tooling?: { provider: Provider; model: string };
+        largecontext?: { provider: Provider; model: string };
+      } = {
+        ide: selectedIde,
+      };
 
-      // Coding (repo command)
-      const coding = await consola.prompt('Coding Agent - Code Crafter & Bug Blaster:', {
-        type: 'select',
-        options: [
-          {
-            value: 'gemini:gemini-2.5-pro-exp-03-25',
-            label: 'Gemini Pro 2.5',
-            hint: 'recommended',
-          },
-          { value: 'anthropic:claude-3-7-sonnet', label: 'Claude 3.7 Sonnet', hint: 'recommended' },
-          { value: 'perplexity:sonar', label: 'Perplexity Sonar' },
-          { value: 'openai:gpt-4o', label: 'GPT-4o' },
-          {
-            value: 'openrouter:anthropic/claude-3.7-sonnet',
-            label: 'OpenRouter - Claude 3.7 Sonnet',
-          },
-          {
-            value: 'openrouter:x-ai/grok-3-beta',
-            label: 'OpenRouter - Grok 3',
-          },
-          {
-            value: 'openrouter:x-ai/grok-3-mini-beta',
-            label: 'OpenRouter - Grok 3 Mini',
-          },
-        ],
-        initial: 'gemini:gemini-2.5-pro-exp-03-25',
-      });
+      // If using existing global config, use those values as defaults
+      if (useExistingGlobal && existingGlobalConfig) {
+        config = {
+          ide: selectedIde,
+          coding: existingGlobalConfig.repo
+            ? {
+                provider: existingGlobalConfig.repo.provider as Provider,
+                model: existingGlobalConfig.repo.model || '',
+              }
+            : undefined,
+          websearch:
+            existingGlobalConfig.web && existingGlobalConfig.web.provider
+              ? {
+                  provider: existingGlobalConfig.web.provider as Provider,
+                  model: existingGlobalConfig.web.model || '',
+                }
+              : undefined,
+          tooling:
+            existingGlobalConfig.plan && existingGlobalConfig.plan.thinkingProvider
+              ? {
+                  provider: existingGlobalConfig.plan.thinkingProvider as Provider,
+                  model: existingGlobalConfig.plan.thinkingModel || '',
+                }
+              : undefined,
+          largecontext:
+            existingGlobalConfig.doc && existingGlobalConfig.doc.provider
+              ? {
+                  provider: existingGlobalConfig.doc.provider as Provider,
+                  model: existingGlobalConfig.doc.model || '',
+                }
+              : undefined,
+        };
 
-      // Web search (web command)
-      const websearch = await consola.prompt('Web Search Agent - Deep Researcher & Web Wanderer:', {
-        type: 'select',
-        options: [
-          { value: 'perplexity:sonar-pro', label: 'Perplexity Sonar Pro', hint: 'recommended' },
-          { value: 'perplexity:sonar', label: 'Perplexity Sonar', hint: 'recommended' },
-          { value: 'gemini:gemini-2.0-flash', label: 'Gemini Flash 2.0' },
-          {
-            value: 'openrouter:perplexity/sonar-pro',
-            label: 'OpenRouter - Perplexity Sonar Pro',
-          },
-        ],
-        initial: 'perplexity:sonar-pro',
-      });
+        consola.success('Using existing configuration values as defaults');
+      } else {
+        // Ask for model preferences only if not using existing config
+        consola.info('\nSelect your preferred models for different tasks:');
 
-      // Tooling (plan command)
-      const tooling = await consola.prompt('Tooling Agent - Gear Turner & MCP Master:', {
-        type: 'select',
-        options: [
-          { value: 'anthropic:claude-3-7-sonnet', label: 'Claude 3.7 Sonnet', hint: 'recommended' },
-          {
-            value: 'gemini:gemini-2.5-pro-exp-03-25',
-            label: 'Gemini Pro 2.5',
-            hint: 'recommended',
-          },
-          { value: 'openai:gpt-4o', label: 'GPT-4o' },
-          {
-            value: 'openrouter:anthropic/claude-3.7-sonnet',
-            label: 'OpenRouter - Claude 3.7 Sonnet',
-          },
-          {
-            value: 'openrouter:x-ai/grok-3-beta',
-            label: 'OpenRouter - Grok 3',
-          },
-          {
-            value: 'openrouter:x-ai/grok-3-mini-beta',
-            label: 'OpenRouter - Grok 3 Mini',
-          },
-        ],
-        initial: 'anthropic:claude-3-7-sonnet',
-      });
-
-      // Large context (doc command)
-      const largecontext = await consola.prompt(
-        'Large Context Agent - Systems Thinker & Expert Planner:',
-        {
+        // Coding (repo command)
+        const coding = await consola.prompt('Coding Agent - Code Crafter & Bug Blaster:', {
           type: 'select',
           options: [
             {
-              value: 'gemini:gemini-2.5-pro-exp-03-25',
+              value: 'gemini:gemini-2.5-pro-preview-03-25',
               label: 'Gemini Pro 2.5',
               hint: 'recommended',
             },
@@ -326,30 +355,114 @@ export class InstallCommand implements Command {
               label: 'Claude 3.7 Sonnet',
               hint: 'recommended',
             },
-            {
-              value: 'gemini:gemini-1.5-pro',
-              label: 'Gemini 2.0 Pro',
-              hint: 'recommended',
-            },
             { value: 'perplexity:sonar', label: 'Perplexity Sonar' },
             { value: 'openai:gpt-4o', label: 'GPT-4o' },
+            {
+              value: 'openrouter:anthropic/claude-3.7-sonnet',
+              label: 'OpenRouter - Claude 3.7 Sonnet',
+            },
             {
               value: 'openrouter:x-ai/grok-3-beta',
               label: 'OpenRouter - Grok 3',
             },
+            {
+              value: 'openrouter:x-ai/grok-3-mini-beta',
+              label: 'OpenRouter - Grok 3 Mini',
+            },
           ],
-          initial: 'gemini:gemini-2.5-pro-exp-03-25',
-        }
-      );
+          initial: 'gemini:gemini-2.5-pro-preview-03-25',
+        });
 
-      // Collect all selected options into a config object
-      const config = {
-        ide: selectedIde,
-        coding: parseProviderModel(coding as string),
-        websearch: parseProviderModel(websearch as string),
-        tooling: parseProviderModel(tooling as string),
-        largecontext: parseProviderModel(largecontext as string),
-      };
+        // Web search (web command)
+        const websearch = await consola.prompt(
+          'Web Search Agent - Deep Researcher & Web Wanderer:',
+          {
+            type: 'select',
+            options: [
+              { value: 'perplexity:sonar-pro', label: 'Perplexity Sonar Pro', hint: 'recommended' },
+              { value: 'perplexity:sonar', label: 'Perplexity Sonar', hint: 'recommended' },
+              { value: 'gemini:gemini-2.0-flash', label: 'Gemini Flash 2.0' },
+              {
+                value: 'openrouter:perplexity/sonar-pro',
+                label: 'OpenRouter - Perplexity Sonar Pro',
+              },
+            ],
+            initial: 'perplexity:sonar-pro',
+          }
+        );
+
+        // Tooling (plan command)
+        const tooling = await consola.prompt('Tooling Agent - Gear Turner & MCP Master:', {
+          type: 'select',
+          options: [
+            {
+              value: 'anthropic:claude-3-7-sonnet',
+              label: 'Claude 3.7 Sonnet',
+              hint: 'recommended',
+            },
+            {
+              value: 'gemini:gemini-2.5-pro-preview-03-25',
+              label: 'Gemini Pro 2.5',
+              hint: 'recommended',
+            },
+            { value: 'openai:gpt-4o', label: 'GPT-4o' },
+            {
+              value: 'openrouter:anthropic/claude-3.7-sonnet',
+              label: 'OpenRouter - Claude 3.7 Sonnet',
+            },
+            {
+              value: 'openrouter:x-ai/grok-3-beta',
+              label: 'OpenRouter - Grok 3',
+            },
+            {
+              value: 'openrouter:x-ai/grok-3-mini-beta',
+              label: 'OpenRouter - Grok 3 Mini',
+            },
+          ],
+          initial: 'anthropic:claude-3-7-sonnet',
+        });
+
+        // Large context (doc command)
+        const largecontext = await consola.prompt(
+          'Large Context Agent - Systems Thinker & Expert Planner:',
+          {
+            type: 'select',
+            options: [
+              {
+                value: 'gemini:gemini-2.5-pro-preview-03-25',
+                label: 'Gemini Pro 2.5',
+                hint: 'recommended',
+              },
+              {
+                value: 'anthropic:claude-3-7-sonnet',
+                label: 'Claude 3.7 Sonnet',
+                hint: 'recommended',
+              },
+              {
+                value: 'gemini:gemini-1.5-pro',
+                label: 'Gemini 2.0 Pro',
+                hint: 'recommended',
+              },
+              { value: 'perplexity:sonar', label: 'Perplexity Sonar' },
+              { value: 'openai:gpt-4o', label: 'GPT-4o' },
+              {
+                value: 'openrouter:x-ai/grok-3-beta',
+                label: 'OpenRouter - Grok 3',
+              },
+            ],
+            initial: 'gemini:gemini-2.5-pro-preview-03-25',
+          }
+        );
+
+        // Collect all selected options into a config object
+        config = {
+          ide: selectedIde,
+          coding: parseProviderModel(coding as string),
+          websearch: parseProviderModel(websearch as string),
+          tooling: parseProviderModel(tooling as string),
+          largecontext: parseProviderModel(largecontext as string),
+        };
+      }
 
       // Create a more compact and readable display of the configuration
       const formatProviderInfo = (provider: string, model: string) => {
@@ -361,11 +474,13 @@ export class InstallCommand implements Command {
       const configDisplay = Object.entries(config)
         .map(([key, value]) => {
           if (key === 'ide') return `IDE: ${colors.magenta(String(value))}`;
+          if (!value) return null; // Skip undefined values
           const configVal = value as { provider: string; model: string };
           // Format key as "Coding:" instead of "coding:"
           const formattedKey = key.charAt(0).toUpperCase() + key.slice(1);
           return `${colors.yellow(formattedKey)}: ${formatProviderInfo(configVal.provider, configVal.model)}`;
         })
+        .filter(Boolean) // Remove null entries
         .join('\n  • ');
 
       consola.box({
