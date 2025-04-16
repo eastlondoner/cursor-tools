@@ -509,13 +509,12 @@ export class InstallCommand implements Command {
       // Declare variables outside switch to avoid lexical declaration errors
       let rulesPath: string;
       let rulesTemplate: string;
-      let cursorRulesPath: string;
-      let cursorRuleFilePath: string;
       let rulesDir: string;
       let cursorPath: string;
 
       switch (selectedIde) {
         case 'cursor':
+          // For cursor, create the new directory structure
           // Create necessary directories
           rulesDir = join(absolutePath, '.cursor', 'rules');
           ensureDirectoryExists(rulesDir);
@@ -529,14 +528,6 @@ export class InstallCommand implements Command {
             consola.error(`${colors.red('Error writing rules for cursor:')}`, error);
             return;
           }
-
-          // Also create/update the new .cursorrules/vibe-tools.mdc location for compatibility
-          rulesTemplate = generateRules('cursor');
-          cursorRulesPath = join(absolutePath, '.cursorrules');
-          ensureDirectoryExists(cursorRulesPath);
-          cursorRuleFilePath = join(cursorRulesPath, 'vibe-tools.mdc');
-          updateRulesSection(cursorRuleFilePath, rulesTemplate);
-          consola.success(`Cursor rules also updated in ${colors.cyan(cursorRuleFilePath)}`);
           break;
 
         case 'claude-code':
