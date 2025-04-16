@@ -280,6 +280,17 @@ export class InstallCommand implements Command {
       // Handle legacy migration *before* asking for new setup
       yield* handleLegacyMigration();
 
+      // Check for existing global config before asking for preferences
+      const existingGlobalConfig = await this.checkExistingGlobalConfig();
+      let useExistingGlobal = false;
+
+      if (existingGlobalConfig) {
+        useExistingGlobal = await consola.prompt(
+          'Found existing global configuration. Would you like to use it?',
+          { type: 'confirm' }
+        );
+      }
+
       // --- Telemetry Opt-in Check & Prompt ---
       const currentTelemetryStatus = isTelemetryEnabled();
 
@@ -332,17 +343,6 @@ export class InstallCommand implements Command {
       }
       // --- End Telemetry Opt-in ---
 
-      // Check for existing global config before asking for preferences
-      const existingGlobalConfig = await this.checkExistingGlobalConfig();
-      let useExistingGlobal = false;
-
-      if (existingGlobalConfig) {
-        useExistingGlobal = await consola.prompt(
-          'Found existing global configuration. Would you like to use it?',
-          { type: 'confirm' }
-        );
-      }
-
       // Ask for IDE preference
       selectedIde = await consola.prompt('Which IDE will you be using with vibe-tools?', {
         type: 'select',
@@ -358,20 +358,9 @@ export class InstallCommand implements Command {
           useExistingGlobal && existingGlobalConfig?.ide ? existingGlobalConfig.ide : 'cursor',
       });
 
-      // Create initial config with defaults
-      let config: {
-        ide?: string;
-        coding?: { provider: Provider; model: string };
-        websearch?: { provider: Provider; model: string };
-        tooling?: { provider: Provider; model: string };
-        largecontext?: { provider: Provider; model: string };
-      } = {
-        ide: selectedIde,
-      };
-
       // If using existing global config, use those values as defaults
       if (useExistingGlobal && existingGlobalConfig) {
-        config = {
+        userConfig = {
           ide: selectedIde,
           coding: existingGlobalConfig.repo
             ? {
@@ -521,7 +510,7 @@ export class InstallCommand implements Command {
         );
 
         // Collect all selected options into a config object
-        config = {
+        userConfig = {
           ide: selectedIde,
           coding: parseProviderModel(coding as string),
           websearch: parseProviderModel(websearch as string),
@@ -669,6 +658,9 @@ export class InstallCommand implements Command {
           console.error('Telemetry error during install_completed:', telemetryError);
         });
       }
+
+      consola.success('✨ All done! Vibe-Tools is ready to rock. ✨');
+      consola.info(`\n${colors.cyan('Tip:')} Run 'vibe-tools --help' to see available commands.\n`);
     } catch (error) {
       consola.box({
         title: '❌ Installation Failed',
