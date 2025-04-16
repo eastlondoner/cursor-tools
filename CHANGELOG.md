@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.60.4] - 2025-04-16
+
+### Added
+
+- **Codex Support**: Added support for OpenAI Codex instructions similar to Claude code instructions, providing a consistent experience across different AI models.
+  - Support for both local `codex.md` at repository root and global `~/.codex/instructions.md`
+
+### Improved
+
+- **Installation Process**:
+  - Added support for copying existing global config during installation
+  - Fixed incorrect provider naming bug
+  - Fixed Gemini 2.5 Pro correct naming
+  - Added suggestion to delete old cursor-tools folder if it exists
+  - Enhanced UX for Claude code and Codex instructions setup
+
 ## [0.60.3] - 2025-04-10
 
 ### Added

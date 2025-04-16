@@ -142,16 +142,19 @@ Here are two examples:
 
 ## What is vibe-tools
 
-`vibe-tools` provides a CLI that your **AI agent can use** to expand its capabilities. `vibe-tools` is designed to be installed globally, providing system-wide access to its powerful features. When you run `vibe-tools install` we automatically add a prompt section to your Cursor project rules. During installation, you can choose between:
+`vibe-tools` provides a CLI that your **AI agent can use** to expand its capabilities. `vibe-tools` is designed to be installed globally, providing system-wide access to its powerful features. When you run `vibe-tools install`, it configures instruction files tailored to your chosen development environment:
 
-- The new `.cursor/rules/vibe-tools.mdc` file (recommended)
-- The legacy `.cursorrules` file (for backward compatibility)
+- **Supported IDEs/Environments**: Cursor, Claude Code, Codex, Windsurf, Cline, Roo.
+- **Instruction File Setup**: The installer automatically creates or updates relevant configuration files:
+  - For **Cursor**: `.cursorrules` or `.cursor/rules/vibe-tools.mdc`.
+  - For **Claude Code**: `CLAUDE.md` (local or global `~/.claude/CLAUDE.md`).
+  - For **Codex**: `codex.md` (local or global `~/.codex/instructions.md`).
+  - For **Windsurf**: `.windsurfrules`.
+  - For **Cline/Roo**: `.clinerules` directory (with `vibe-tools.md`) or legacy file.
 
-You can also control this using the `USE_LEGACY_CURSORRULES` environment variable:
+`vibe-tools` supports multiple AI instruction sources including Claude code, Codex, and IDE-specific rules, ensuring compatibility across various AI-powered development setups.
 
-- `USE_LEGACY_CURSORRULES=true` - Use legacy `.cursorrules` file
-- `USE_LEGACY_CURSORRULES=false` - Use new `.cursor/rules/vibe-tools.mdc` file
-- If not set, defaults to legacy mode for backward compatibility
+`vibe-tools` integrates with multiple AI providers including OpenAI, Anthropic, Gemini, Perplexity, OpenRouter, ModelBox, and xAI (Grok).
 
 `vibe-tools` requires a Perplexity API key and a Google AI API key.
 
@@ -173,8 +176,8 @@ vibe-tools install .
 
 This command will:
 
-1. Guide you through API key configuration
-2. Update your Cursor project rules for Cursor integration (using `.cursor/rules/vibe-tools.mdc` or existing `.cursorrules`)
+1.  Guide you through API key configuration for the AI providers you choose.
+2.  Create or update AI instruction files based on your selected IDE (e.g., setting up `.cursorrules` for Cursor, `CLAUDE.md` for Claude Code, `.windsurfrules` for Windsurf, etc.).
 
 ## Requirements
 

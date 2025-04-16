@@ -1,5 +1,5 @@
 import type { Command, CommandGenerator, CommandOptions, Provider, Config } from '../types';
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { loadEnv } from '../config';
 import { generateRules } from '../vibe-rules';
@@ -10,6 +10,8 @@ import {
   VIBE_HOME_ENV_PATH,
   VIBE_HOME_CONFIG_PATH,
   CLAUDE_HOME_DIR,
+  CODEX_GLOBAL_INSTRUCTIONS_PATH,
+  CODEX_LOCAL_INSTRUCTIONS_FILENAME,
   LOCAL_ENV_PATH,
   LOCAL_CONFIG_PATH,
   VALID_PROVIDERS,
@@ -30,7 +32,7 @@ function parseJsonConfig(
 ): Record<string, { provider: Provider; model: string }> & { ide?: string } {
   try {
     const parsedConfig = JSON.parse(jsonString);
-    const validIdes = ['cursor', 'claude-code', 'windsurf', 'cline', 'roo'];
+    const validIdes = ['cursor', 'claude-code', 'codex', 'windsurf', 'cline', 'roo'];
     let configToUse = parsedConfig;
 
     // Check if there's an "agents" wrapper and use it if present
@@ -159,6 +161,19 @@ export class JsonInstallCommand implements Command {
     }
   }
 
+  private async checkExistingGlobalConfig(): Promise<Config | null> {
+    const globalConfigPath = VIBE_HOME_CONFIG_PATH;
+    if (existsSync(globalConfigPath)) {
+      try {
+        const configContent = readFileSync(globalConfigPath, 'utf-8');
+        return JSON.parse(configContent) as Config;
+      } catch (error) {
+        consola.error(`Error reading global config: ${error}`);
+      }
+    }
+    return null;
+  }
+
   private async createConfig(
     jsonConfig: Record<string, { provider: Provider; model: string }> & { ide?: string }
   ): Promise<{ isLocalConfig: boolean }> {
@@ -221,18 +236,47 @@ export class JsonInstallCommand implements Command {
     // Ensure the VIBE_HOME_DIR exists
     ensureDirectoryExists(VIBE_HOME_DIR);
 
+    // Prepare message about IDE rules location
+    let rulesLocationMessage = '';
+    if (jsonConfig.ide === 'codex' || jsonConfig.ide === 'claude-code') {
+      rulesLocationMessage =
+        jsonConfig.ide === 'codex'
+          ? `\nNote: For Codex, choosing 'Global' will save rules to ${CODEX_GLOBAL_INSTRUCTIONS_PATH}, and 'Local' will save to ./${CODEX_LOCAL_INSTRUCTIONS_FILENAME}`
+          : `\nNote: For Claude Code, choosing 'Global' will save rules to ${CLAUDE_HOME_DIR}/CLAUDE.md, and 'Local' will save to ./CLAUDE.md`;
+    }
+
     // Ask user where to save the config
     consola.info('');
-    const answer = await consola.prompt('Where would you like to save the configuration?', {
-      type: 'select',
-      options: [
-        { value: 'global', label: `Global config (${VIBE_HOME_CONFIG_PATH})` },
-        { value: 'local', label: `Local config (${LOCAL_CONFIG_PATH})` },
-      ],
-    });
+    const answer = await consola.prompt(
+      `Where would you like to save the configuration?${rulesLocationMessage}`,
+      {
+        type: 'select',
+        options: [
+          { value: 'global', label: `Global config (${VIBE_HOME_CONFIG_PATH})` },
+          { value: 'local', label: `Local config (${LOCAL_CONFIG_PATH})` },
+        ],
+      }
+    );
 
     const isLocalConfig = answer === 'local';
     const configPath = isLocalConfig ? LOCAL_CONFIG_PATH : VIBE_HOME_CONFIG_PATH;
+
+    // Ensure all provider names are lowercase before writing
+    if (config.repo?.provider) {
+      config.repo.provider = config.repo.provider.toLowerCase() as Provider;
+    }
+    if (config.plan?.fileProvider) {
+      config.plan.fileProvider = config.plan.fileProvider.toLowerCase() as Provider;
+    }
+    if (config.plan?.thinkingProvider) {
+      config.plan.thinkingProvider = config.plan.thinkingProvider.toLowerCase() as Provider;
+    }
+    if (config.web?.provider) {
+      config.web.provider = config.web.provider.toLowerCase() as Provider;
+    }
+    if (config.doc?.provider) {
+      config.doc.provider = config.doc.provider.toLowerCase() as Provider;
+    }
 
     try {
       writeFileSync(configPath, JSON.stringify(config, null, 2));
@@ -278,6 +322,26 @@ export class JsonInstallCommand implements Command {
 
       // Parse JSON configuration
       const jsonConfig = parseJsonConfig(options.json);
+
+      // Check if the Gemini 2.5 Pro model name needs to be updated (for backward compatibility)
+      for (const [key, value] of Object.entries(jsonConfig)) {
+        if (
+          key !== 'ide' &&
+          value &&
+          typeof value === 'object' &&
+          'provider' in value &&
+          'model' in value
+        ) {
+          const configVal = value as { provider: string; model: string };
+          // If provider is gemini and model is the old name, update it
+          if (
+            configVal.provider.toLowerCase() === 'gemini' &&
+            configVal.model === 'gemini-2.5-pro-exp-03-25'
+          ) {
+            configVal.model = 'gemini-2.5-pro-preview-03-25';
+          }
+        }
+      }
 
       // Create a more compact and readable display of the configuration
       const formatProviderInfo = (provider: string, model: string) => {
@@ -358,6 +422,27 @@ export class JsonInstallCommand implements Command {
               rulesPath = join(CLAUDE_HOME_DIR, 'CLAUDE.md');
               updateRulesSection(rulesPath, rulesTemplate);
               consola.success(`Updated global Claude.md rules at ${rulesPath}`);
+            }
+            break;
+          }
+          case 'codex': {
+            rulesTemplate = generateRules('codex');
+
+            // Handle both global and local codex.md files
+            if (isLocalConfig) {
+              // Local codex.md
+              rulesPath = join(absolutePath, CODEX_LOCAL_INSTRUCTIONS_FILENAME);
+              ensureDirectoryExists(join(rulesPath, '..'));
+              updateRulesSection(rulesPath, rulesTemplate);
+              consola.success(
+                `Updated local ${CODEX_LOCAL_INSTRUCTIONS_FILENAME} rules at ${rulesPath}`
+              );
+            } else {
+              // Global ~/.codex/instructions.md
+              ensureDirectoryExists(join(CODEX_GLOBAL_INSTRUCTIONS_PATH, '..'));
+              rulesPath = CODEX_GLOBAL_INSTRUCTIONS_PATH;
+              updateRulesSection(rulesPath, rulesTemplate);
+              consola.success(`Updated global ${CODEX_GLOBAL_INSTRUCTIONS_PATH} rules`);
             }
             break;
           }

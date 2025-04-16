@@ -1,5 +1,5 @@
 import type { Command, CommandGenerator, CommandOptions, Provider, Config } from '../types';
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { loadEnv } from '../config';
 import { generateRules } from '../vibe-rules';
@@ -11,6 +11,8 @@ import {
   VIBE_HOME_ENV_PATH,
   VIBE_HOME_CONFIG_PATH,
   CLAUDE_HOME_DIR,
+  CODEX_GLOBAL_INSTRUCTIONS_PATH,
+  CODEX_LOCAL_INSTRUCTIONS_FILENAME,
   LOCAL_ENV_PATH,
   LOCAL_CONFIG_PATH,
   updateRulesSection,
@@ -110,6 +112,19 @@ export class InstallCommand implements Command {
     }
   }
 
+  private async checkExistingGlobalConfig(): Promise<Config | null> {
+    const globalConfigPath = VIBE_HOME_CONFIG_PATH;
+    if (existsSync(globalConfigPath)) {
+      try {
+        const configContent = readFileSync(globalConfigPath, 'utf-8');
+        return JSON.parse(configContent) as Config;
+      } catch (error) {
+        consola.error(`Error reading global config: ${error}`);
+      }
+    }
+    return null;
+  }
+
   private async createConfig(
     config: Omit<UserConfig, 'telemetryOptIn'>
   ): Promise<{ isLocalConfig: boolean }> {
@@ -132,7 +147,7 @@ export class InstallCommand implements Command {
       finalConfig.ide = config.ide.toLowerCase();
     }
 
-    // Map the config to the actual config structure
+    // Map the config from the selections (or potentially pre-filled from existing global)
     if (config.coding) {
       finalConfig.repo = {
         provider: config.coding.provider,
@@ -166,18 +181,48 @@ export class InstallCommand implements Command {
     // Ensure the VIBE_HOME_DIR exists
     ensureDirectoryExists(VIBE_HOME_DIR);
 
+    // Prepare message about IDE rules location
+    let rulesLocationMessage = '';
+    if (config.ide === 'codex' || config.ide === 'claude-code') {
+      rulesLocationMessage =
+        config.ide === 'codex'
+          ? `\nNote: For Codex, choosing 'Global' will save rules to ${CODEX_GLOBAL_INSTRUCTIONS_PATH}, and 'Local' will save to ./${CODEX_LOCAL_INSTRUCTIONS_FILENAME}`
+          : `\nNote: For Claude Code, choosing 'Global' will save rules to ${CLAUDE_HOME_DIR}/CLAUDE.md, and 'Local' will save to ./CLAUDE.md`;
+    }
+
     // Ask user where to save the config
     consola.info('');
-    const answer = await consola.prompt('Where would you like to save the configuration?', {
-      type: 'select',
-      options: [
-        { value: 'global', label: `Global config (${VIBE_HOME_CONFIG_PATH})` },
-        { value: 'local', label: `Local config (${LOCAL_CONFIG_PATH})` },
-      ],
-    });
+    const answer = await consola.prompt(
+      `Where would you like to save the configuration?${rulesLocationMessage}`,
+      {
+        type: 'select',
+        options: [
+          { value: 'global', label: `Global config (${VIBE_HOME_CONFIG_PATH})` },
+          { value: 'local', label: `Local config (${LOCAL_CONFIG_PATH})` },
+        ],
+      }
+    );
 
     const isLocalConfig = answer === 'local';
     const configPath = isLocalConfig ? LOCAL_CONFIG_PATH : VIBE_HOME_CONFIG_PATH;
+
+    // Ensure all provider names are lowercase before writing
+    if (finalConfig.repo?.provider) {
+      finalConfig.repo.provider = finalConfig.repo.provider.toLowerCase() as Provider;
+    }
+    if (finalConfig.plan?.fileProvider) {
+      finalConfig.plan.fileProvider = finalConfig.plan.fileProvider.toLowerCase() as Provider;
+    }
+    if (finalConfig.plan?.thinkingProvider) {
+      finalConfig.plan.thinkingProvider =
+        finalConfig.plan.thinkingProvider.toLowerCase() as Provider;
+    }
+    if (finalConfig.web?.provider) {
+      finalConfig.web.provider = finalConfig.web.provider.toLowerCase() as Provider;
+    }
+    if (finalConfig.doc?.provider) {
+      finalConfig.doc.provider = finalConfig.doc.provider.toLowerCase() as Provider;
+    }
 
     try {
       writeFileSync(configPath, JSON.stringify(finalConfig, null, 2));
@@ -234,6 +279,17 @@ export class InstallCommand implements Command {
 
       // Handle legacy migration *before* asking for new setup
       yield* handleLegacyMigration();
+
+      // Check for existing global config before asking for preferences
+      const existingGlobalConfig = await this.checkExistingGlobalConfig();
+      let useExistingGlobal = false;
+
+      if (existingGlobalConfig) {
+        useExistingGlobal = await consola.prompt(
+          'Found existing global configuration. Would you like to use it?',
+          { type: 'confirm' }
+        );
+      }
 
       // --- Telemetry Opt-in Check & Prompt ---
       const currentTelemetryStatus = isTelemetryEnabled();
@@ -293,94 +349,59 @@ export class InstallCommand implements Command {
         options: [
           { value: 'cursor', label: 'Cursor', hint: 'recommended' },
           { value: 'claude-code', label: 'Claude Code' },
+          { value: 'codex', label: 'Codex' },
           { value: 'windsurf', label: 'Windsurf' },
           { value: 'cline', label: 'Cline' },
           { value: 'roo', label: 'Roo' },
         ],
-        initial: 'cursor',
+        initial:
+          useExistingGlobal && existingGlobalConfig?.ide ? existingGlobalConfig.ide : 'cursor',
       });
 
-      // Ask for model preferences
-      consola.info('\nSelect your preferred models for different tasks:');
+      // If using existing global config, use those values as defaults
+      if (useExistingGlobal && existingGlobalConfig) {
+        userConfig = {
+          ide: selectedIde,
+          coding: existingGlobalConfig.repo
+            ? {
+                provider: existingGlobalConfig.repo.provider as Provider,
+                model: existingGlobalConfig.repo.model || '',
+              }
+            : undefined,
+          websearch:
+            existingGlobalConfig.web && existingGlobalConfig.web.provider
+              ? {
+                  provider: existingGlobalConfig.web.provider as Provider,
+                  model: existingGlobalConfig.web.model || '',
+                }
+              : undefined,
+          tooling:
+            existingGlobalConfig.plan && existingGlobalConfig.plan.thinkingProvider
+              ? {
+                  provider: existingGlobalConfig.plan.thinkingProvider as Provider,
+                  model: existingGlobalConfig.plan.thinkingModel || '',
+                }
+              : undefined,
+          largecontext:
+            existingGlobalConfig.doc && existingGlobalConfig.doc.provider
+              ? {
+                  provider: existingGlobalConfig.doc.provider as Provider,
+                  model: existingGlobalConfig.doc.model || '',
+                }
+              : undefined,
+        };
 
-      // Coding (repo command)
-      const coding = await consola.prompt('Coding Agent - Code Crafter & Bug Blaster:', {
-        type: 'select',
-        options: [
-          {
-            value: 'gemini:gemini-2.5-pro-exp-03-25',
-            label: 'Gemini Pro 2.5',
-            hint: 'recommended',
-          },
-          { value: 'anthropic:claude-3-7-sonnet', label: 'Claude 3.7 Sonnet', hint: 'recommended' },
-          { value: 'perplexity:sonar', label: 'Perplexity Sonar' },
-          { value: 'openai:gpt-4o', label: 'GPT-4o' },
-          {
-            value: 'openrouter:anthropic/claude-3.7-sonnet',
-            label: 'OpenRouter - Claude 3.7 Sonnet',
-          },
-          {
-            value: 'openrouter:x-ai/grok-3-beta',
-            label: 'OpenRouter - Grok 3',
-          },
-          {
-            value: 'openrouter:x-ai/grok-3-mini-beta',
-            label: 'OpenRouter - Grok 3 Mini',
-          },
-        ],
-        initial: 'gemini:gemini-2.5-pro-exp-03-25',
-      });
+        consola.success('Using existing configuration values as defaults');
+      } else {
+        // Ask for model preferences only if not using existing config
+        consola.info('\nSelect your preferred models for different tasks:');
 
-      // Web search (web command)
-      const websearch = await consola.prompt('Web Search Agent - Deep Researcher & Web Wanderer:', {
-        type: 'select',
-        options: [
-          { value: 'perplexity:sonar-pro', label: 'Perplexity Sonar Pro', hint: 'recommended' },
-          { value: 'perplexity:sonar', label: 'Perplexity Sonar', hint: 'recommended' },
-          { value: 'gemini:gemini-2.0-flash', label: 'Gemini Flash 2.0' },
-          {
-            value: 'openrouter:perplexity/sonar-pro',
-            label: 'OpenRouter - Perplexity Sonar Pro',
-          },
-        ],
-        initial: 'perplexity:sonar-pro',
-      });
-
-      // Tooling (plan command)
-      const tooling = await consola.prompt('Tooling Agent - Gear Turner & MCP Master:', {
-        type: 'select',
-        options: [
-          { value: 'anthropic:claude-3-7-sonnet', label: 'Claude 3.7 Sonnet', hint: 'recommended' },
-          {
-            value: 'gemini:gemini-2.5-pro-exp-03-25',
-            label: 'Gemini Pro 2.5',
-            hint: 'recommended',
-          },
-          { value: 'openai:gpt-4o', label: 'GPT-4o' },
-          {
-            value: 'openrouter:anthropic/claude-3.7-sonnet',
-            label: 'OpenRouter - Claude 3.7 Sonnet',
-          },
-          {
-            value: 'openrouter:x-ai/grok-3-beta',
-            label: 'OpenRouter - Grok 3',
-          },
-          {
-            value: 'openrouter:x-ai/grok-3-mini-beta',
-            label: 'OpenRouter - Grok 3 Mini',
-          },
-        ],
-        initial: 'anthropic:claude-3-7-sonnet',
-      });
-
-      // Large context (doc command)
-      const largecontext = await consola.prompt(
-        'Large Context Agent - Systems Thinker & Expert Planner:',
-        {
+        // Coding (repo command)
+        const coding = await consola.prompt('Coding Agent - Code Crafter & Bug Blaster:', {
           type: 'select',
           options: [
             {
-              value: 'gemini:gemini-2.5-pro-exp-03-25',
+              value: 'gemini:gemini-2.5-pro-preview-03-25',
               label: 'Gemini Pro 2.5',
               hint: 'recommended',
             },
@@ -389,30 +410,114 @@ export class InstallCommand implements Command {
               label: 'Claude 3.7 Sonnet',
               hint: 'recommended',
             },
-            {
-              value: 'gemini:gemini-1.5-pro',
-              label: 'Gemini 2.0 Pro',
-              hint: 'recommended',
-            },
             { value: 'perplexity:sonar', label: 'Perplexity Sonar' },
             { value: 'openai:gpt-4o', label: 'GPT-4o' },
+            {
+              value: 'openrouter:anthropic/claude-3.7-sonnet',
+              label: 'OpenRouter - Claude 3.7 Sonnet',
+            },
             {
               value: 'openrouter:x-ai/grok-3-beta',
               label: 'OpenRouter - Grok 3',
             },
+            {
+              value: 'openrouter:x-ai/grok-3-mini-beta',
+              label: 'OpenRouter - Grok 3 Mini',
+            },
           ],
-          initial: 'gemini:gemini-2.5-pro-exp-03-25',
-        }
-      );
+          initial: 'gemini:gemini-2.5-pro-preview-03-25',
+        });
 
-      // Collect all selected options into a config object
-      userConfig = {
-        ide: selectedIde,
-        coding: parseProviderModel(coding as string),
-        websearch: parseProviderModel(websearch as string),
-        tooling: parseProviderModel(tooling as string),
-        largecontext: parseProviderModel(largecontext as string),
-      };
+        // Web search (web command)
+        const websearch = await consola.prompt(
+          'Web Search Agent - Deep Researcher & Web Wanderer:',
+          {
+            type: 'select',
+            options: [
+              { value: 'perplexity:sonar-pro', label: 'Perplexity Sonar Pro', hint: 'recommended' },
+              { value: 'perplexity:sonar', label: 'Perplexity Sonar', hint: 'recommended' },
+              { value: 'gemini:gemini-2.0-flash', label: 'Gemini Flash 2.0' },
+              {
+                value: 'openrouter:perplexity/sonar-pro',
+                label: 'OpenRouter - Perplexity Sonar Pro',
+              },
+            ],
+            initial: 'perplexity:sonar-pro',
+          }
+        );
+
+        // Tooling (plan command)
+        const tooling = await consola.prompt('Tooling Agent - Gear Turner & MCP Master:', {
+          type: 'select',
+          options: [
+            {
+              value: 'anthropic:claude-3-7-sonnet',
+              label: 'Claude 3.7 Sonnet',
+              hint: 'recommended',
+            },
+            {
+              value: 'gemini:gemini-2.5-pro-preview-03-25',
+              label: 'Gemini Pro 2.5',
+              hint: 'recommended',
+            },
+            { value: 'openai:gpt-4o', label: 'GPT-4o' },
+            {
+              value: 'openrouter:anthropic/claude-3.7-sonnet',
+              label: 'OpenRouter - Claude 3.7 Sonnet',
+            },
+            {
+              value: 'openrouter:x-ai/grok-3-beta',
+              label: 'OpenRouter - Grok 3',
+            },
+            {
+              value: 'openrouter:x-ai/grok-3-mini-beta',
+              label: 'OpenRouter - Grok 3 Mini',
+            },
+          ],
+          initial: 'anthropic:claude-3-7-sonnet',
+        });
+
+        // Large context (doc command)
+        const largecontext = await consola.prompt(
+          'Large Context Agent - Systems Thinker & Expert Planner:',
+          {
+            type: 'select',
+            options: [
+              {
+                value: 'gemini:gemini-2.5-pro-preview-03-25',
+                label: 'Gemini Pro 2.5',
+                hint: 'recommended',
+              },
+              {
+                value: 'anthropic:claude-3-7-sonnet',
+                label: 'Claude 3.7 Sonnet',
+                hint: 'recommended',
+              },
+              {
+                value: 'gemini:gemini-1.5-pro',
+                label: 'Gemini 2.0 Pro',
+                hint: 'recommended',
+              },
+              { value: 'perplexity:sonar', label: 'Perplexity Sonar' },
+              { value: 'openai:gpt-4o', label: 'GPT-4o' },
+              {
+                value: 'openrouter:x-ai/grok-3-beta',
+                label: 'OpenRouter - Grok 3',
+              },
+            ],
+            initial: 'gemini:gemini-2.5-pro-preview-03-25',
+          }
+        );
+
+        // Collect all selected options into a config object
+        userConfig = {
+          ide: selectedIde,
+          coding: parseProviderModel(coding as string),
+          websearch: parseProviderModel(websearch as string),
+          tooling: parseProviderModel(tooling as string),
+          largecontext: parseProviderModel(largecontext as string),
+        };
+      }
 
       // Create a more compact and readable display of the configuration
       const formatProviderInfo = (provider: string, model: string) => {
@@ -424,11 +529,13 @@ export class InstallCommand implements Command {
       const configDisplay = Object.entries(userConfig)
         .map(([key, value]) => {
           if (key === 'ide') return `IDE: ${colors.magenta(String(value))}`;
+          if (!value) return null; // Skip undefined values
           const configVal = value as { provider: string; model: string };
           // Format key as "Coding:" instead of "coding:"
           const formattedKey = key.charAt(0).toUpperCase() + key.slice(1);
           return `${colors.yellow(formattedKey)}: ${formatProviderInfo(configVal.provider, configVal.model)}`;
         })
+        .filter(Boolean) // Remove null entries
         .join('\n  • ');
 
       consola.box({
@@ -454,73 +561,63 @@ export class InstallCommand implements Command {
       const { isLocalConfig: configLocation } = await this.createConfig(userConfig);
       isLocalConfig = configLocation;
 
-      // Handle IDE-specific rules setup
-      // For cursor, create the new directory structure
-      if (selectedIde === 'cursor') {
-        // Create necessary directories
-        const rulesDir = join(absolutePath, '.cursor', 'rules');
-        ensureDirectoryExists(rulesDir);
+      // Handle IDE-specific rules setup using switch-case
+      // Declare variables outside switch to avoid lexical declaration errors
+      let rulesPath: string;
+      let rulesTemplate: string;
+      let rulesDir: string;
+      let cursorPath: string;
 
-        // Write the rules file directly to the new location
-        const rulesPath = join(rulesDir, 'vibe-tools.mdc');
-        try {
-          writeFileSync(rulesPath, generateRules('cursor', true));
-          consola.success(`Rules written to ${colors.cyan(rulesPath)}`);
-        } catch (error) {
-          consola.error(`${colors.red('Error writing rules for cursor:')}`, error);
-          return;
-        }
-      } else {
-        // For other IDEs, add the rules template to the respective file
-        let rulesPath: string;
-        let rulesTemplate: string;
+      switch (selectedIde) {
+        case 'cursor':
+          // For cursor, create the new directory structure
+          // Create necessary directories
+          rulesDir = join(absolutePath, '.cursor', 'rules');
+          ensureDirectoryExists(rulesDir);
 
-        switch (selectedIde) {
-          case 'claude-code': {
-            rulesTemplate = generateRules('claude-code');
+          // Write the rules file directly to the new location
+          cursorPath = join(rulesDir, 'vibe-tools.mdc');
+          try {
+            writeFileSync(cursorPath, generateRules('cursor', true));
+            consola.success(`Rules written to ${colors.cyan(cursorPath)}`);
+          } catch (error) {
+            consola.error(`${colors.red('Error writing rules for cursor:')}`, error);
+            return;
+          }
+          break;
 
-            // Handle both global and local Claude.md files
-            if (isLocalConfig) {
-              // Local Claude.md
-              rulesPath = join(absolutePath, 'CLAUDE.md');
-              ensureDirectoryExists(join(rulesPath, '..'));
-              updateRulesSection(rulesPath, rulesTemplate);
-              consola.success(`Updated local Claude.md rules at ${rulesPath}`);
-            } else {
-              // Global Claude.md
-              ensureDirectoryExists(CLAUDE_HOME_DIR);
-              rulesPath = join(CLAUDE_HOME_DIR, 'CLAUDE.md');
-              updateRulesSection(rulesPath, rulesTemplate);
-              consola.success(`Updated global Claude.md rules at ${rulesPath}`);
-            }
-            break;
-          }
-          case 'windsurf': {
-            rulesPath = join(absolutePath, '.windsurfrules');
-            rulesTemplate = generateRules('windsurf');
-            ensureDirectoryExists(join(rulesPath, '..'));
-            updateRulesSection(rulesPath, rulesTemplate);
-            consola.success(`Updated .windsurfrules at ${rulesPath}`);
-            break;
-          }
-          case 'cline': {
-            await setupClinerules(absolutePath, 'cline', generateRules);
-            break;
-          }
-          case 'roo': {
-            // Roo uses the same .clinerules directory/file as cline
-            await setupClinerules(absolutePath, 'roo', generateRules);
-            break;
-          }
-          default: {
-            rulesPath = join(absolutePath, '.cursor', 'rules', 'vibe-tools.mdc');
-            rulesTemplate = generateRules('cursor', true);
-            ensureDirectoryExists(join(rulesPath, '..'));
-            writeFileSync(rulesPath, rulesTemplate.trim());
-            consola.success(`Rules written to ${rulesPath}`);
-            break;
-          }
-        }
+        case 'claude-code':
+          rulesTemplate = generateRules('claude-code');
+          rulesPath = isLocalConfig
+            ? join(absolutePath, 'CLAUDE.md')
+            : join(CLAUDE_HOME_DIR, 'CLAUDE.md');
+          ensureDirectoryExists(join(rulesPath, '..'));
+          updateRulesSection(rulesPath, rulesTemplate);
+          consola.success(`Claude Code rules updated in ${colors.cyan(rulesPath)}`);
+          break;
+
+        case 'codex':
+          rulesTemplate = generateRules('codex');
+          rulesPath = isLocalConfig
+            ? join(absolutePath, CODEX_LOCAL_INSTRUCTIONS_FILENAME)
+            : CODEX_GLOBAL_INSTRUCTIONS_PATH;
+          ensureDirectoryExists(join(rulesPath, '..'));
+          updateRulesSection(rulesPath, rulesTemplate);
+          consola.success(`Codex instructions updated in ${colors.cyan(rulesPath)}`);
+          break;
+
+        case 'windsurf':
+          rulesPath = join(absolutePath, '.windsurfrules');
+          rulesTemplate = generateRules('windsurf');
+          ensureDirectoryExists(join(rulesPath, '..'));
+          updateRulesSection(rulesPath, rulesTemplate);
+          consola.success(`Updated .windsurfrules at ${colors.cyan(rulesPath)}`);
+          break;
+
+        case 'cline':
+        case 'roo':
+          await setupClinerules(absolutePath, selectedIde, generateRules);
+          break;
       }
 
       // Installation completed
@@ -558,6 +655,9 @@ export class InstallCommand implements Command {
           console.error('Telemetry error during install_completed:', telemetryError);
         });
       }
+
+      consola.success('✨ All done! Vibe-Tools is ready to rock. ✨');
+      consola.info(`\n${colors.cyan('Tip:')} Run 'vibe-tools --help' to see available commands.\n`);
     } catch (error) {
       consola.box({
         title: '❌ Installation Failed',
