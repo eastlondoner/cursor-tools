@@ -585,7 +585,6 @@ export class InstallCommand implements Command {
             return;
           }
           break;
-
         case 'claude-code':
           rulesTemplate = generateRules('claude-code');
           rulesPath = isLocalConfig
