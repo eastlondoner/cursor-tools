@@ -5,14 +5,17 @@ import { homedir } from 'node:os';
 import fetch from 'node-fetch';
 import { version } from '../package.json';
 
-const TELEMETRY_ENDPOINT = 'https://vibe-tools-telemetry.flowisgreat.workers.dev/api/pipeline';
+const TELEMETRY_ENDPOINT = 'https://my-cloudflare-app3.flowisgreat.workers.dev/api/pipeline';
 const CONFIG_DIR = join(homedir(), '.vibe-tools');
-const USER_ID_PATH = join(CONFIG_DIR, 'user_id');
-const TELEMETRY_STATUS_PATH = join(CONFIG_DIR, 'telemetry_status');
+const DIAGNOSTICS_PATH = join(CONFIG_DIR, 'diagnostics.json');
 const SESSION_ID = randomUUID();
 
-let userId: string | null = null;
-let telemetryStatus: boolean | null = null;
+interface DiagnosticsData {
+  userId?: string;
+  telemetryEnabled?: boolean;
+}
+
+let diagnosticsData: DiagnosticsData | null = null;
 
 export const TELEMETRY_DATA_DESCRIPTION = `
 Vibe-Tools collects anonymous usage data to improve the tool.
@@ -30,42 +33,57 @@ We DO NOT track:
 This helps us fix bugs and prioritize features. Telemetry can be disabled via the VIBE_TOOLS_NO_TELEMETRY=1 environment variable.
 `;
 
-function getTelemetryStatusFromFile(): boolean | null {
-  if (telemetryStatus !== null) {
-    return telemetryStatus;
+function readDiagnosticsFile(): DiagnosticsData {
+  if (diagnosticsData) {
+    return diagnosticsData;
   }
   try {
-    if (existsSync(TELEMETRY_STATUS_PATH)) {
-      const content = readFileSync(TELEMETRY_STATUS_PATH, 'utf-8').trim().toLowerCase();
-      if (content === 'true') {
-        telemetryStatus = true;
-        return true;
-      }
-      if (content === 'false') {
-        telemetryStatus = false;
-        return false;
-      }
+    if (existsSync(DIAGNOSTICS_PATH)) {
+      const content = readFileSync(DIAGNOSTICS_PATH, 'utf-8');
+      diagnosticsData = JSON.parse(content);
+      return diagnosticsData!;
     }
   } catch (error) {
-    console.error('Error reading telemetry status file:', error);
+    console.error('Error reading diagnostics file:', error);
+    // If reading fails, proceed as if the file doesn't exist
   }
-  telemetryStatus = null;
-  return null;
+  diagnosticsData = {};
+  return diagnosticsData;
 }
 
-export function setTelemetryStatus(enabled: boolean): void {
+function writeDiagnosticsFile(data: DiagnosticsData): void {
   try {
     if (!existsSync(CONFIG_DIR)) {
       mkdirSync(CONFIG_DIR, { recursive: true });
     }
-    writeFileSync(TELEMETRY_STATUS_PATH, String(enabled), 'utf-8');
-    telemetryStatus = enabled;
-    if (enabled === false && userId && !userId.startsWith('anonymous_')) {
-      userId = 'anonymous_opt_out';
-    }
+    writeFileSync(DIAGNOSTICS_PATH, JSON.stringify(data, null, 2), 'utf-8');
+    diagnosticsData = data; // Update in-memory cache
   } catch (error) {
-    console.error('Error writing telemetry status file:', error);
+    console.error('Error writing diagnostics file:', error);
   }
+}
+
+function getTelemetryStatusFromDiagnostics(): boolean | null {
+  const data = readDiagnosticsFile();
+  if (typeof data.telemetryEnabled === 'boolean') {
+    return data.telemetryEnabled;
+  }
+  return null; // Return null if not explicitly set
+}
+
+export function setTelemetryStatus(enabled: boolean): void {
+  const data = readDiagnosticsFile();
+  const updatedData = { ...data, telemetryEnabled: enabled };
+
+  // Handle userId logic when opting out
+  if (enabled === false && data.userId && !data.userId.startsWith('anonymous_')) {
+    updatedData.userId = 'anonymous_opt_out';
+  } else if (enabled === true && (!data.userId || data.userId.startsWith('anonymous_'))) {
+    // Assign a new ID if enabling and current ID is anonymous or missing
+    updatedData.userId = randomUUID();
+  }
+
+  writeDiagnosticsFile(updatedData);
 }
 
 export function isTelemetryEnabled(): boolean | null {
@@ -76,39 +94,38 @@ export function isTelemetryEnabled(): boolean | null {
     return false;
   }
 
-  return getTelemetryStatusFromFile();
+  return getTelemetryStatusFromDiagnostics();
 }
 
-function getUserId(): string {
-  if (userId) {
-    return userId;
+function getUserIdFromDiagnostics(): string {
+  const data = readDiagnosticsFile();
+  const enabledStatus = isTelemetryEnabled(); // Use the unified check
+
+  if (enabledStatus === false) {
+    return data.userId && data.userId.startsWith('anonymous_opt_out')
+      ? data.userId
+      : 'anonymous_opt_out';
+  }
+  if (enabledStatus === null) {
+    return 'anonymous_pending_prompt';
   }
 
-  const enabledStatus = isTelemetryEnabled();
-
-  if (enabledStatus === false || enabledStatus === null) {
-    userId = enabledStatus === false ? 'anonymous_opt_out' : 'anonymous_pending_prompt';
-    return userId;
+  // Telemetry is enabled (true)
+  if (data.userId && !data.userId.startsWith('anonymous_')) {
+    return data.userId; // Return existing valid ID
+  } else {
+    // Generate and save a new ID if missing or anonymous while enabled
+    const newUserId = randomUUID();
+    const updatedData = { ...data, userId: newUserId, telemetryEnabled: true }; // Ensure status is also true
+    writeDiagnosticsFile(updatedData);
+    return newUserId;
   }
-
-  try {
-    if (existsSync(USER_ID_PATH)) {
-      userId = readFileSync(USER_ID_PATH, 'utf-8').trim();
-    } else {
-      userId = randomUUID();
-      if (!existsSync(CONFIG_DIR)) {
-        mkdirSync(CONFIG_DIR, { recursive: true });
-      }
-      writeFileSync(USER_ID_PATH, userId, 'utf-8');
-    }
-  } catch (error) {
-    console.error('Error handling persistent user ID:', error);
-    userId = 'anonymous_error';
-  }
-  return userId!;
+  // Fallback in case of unexpected issues, although write should handle errors
+  // return 'anonymous_error'; // Removed redundant error handling covered by writeDiagnosticsFile
 }
 
-getUserId();
+// Initialize diagnostics on load - reads the file once if needed
+readDiagnosticsFile();
 
 export async function trackEvent(
   eventName: string,
@@ -124,7 +141,7 @@ export async function trackEvent(
     return;
   }
 
-  const currentUserId = getUserId();
+  const currentUserId = getUserIdFromDiagnostics();
   if (currentUserId.startsWith('anonymous_')) {
     if (debug) {
       console.log(

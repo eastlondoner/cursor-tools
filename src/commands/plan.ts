@@ -110,6 +110,7 @@ export class PlanCommand implements Command {
   }
 
   async *execute(query: string, options: PlanCommandOptions): CommandGenerator {
+    const commandStartTime = Date.now(); // Record start time for overall duration
     try {
       // Check for conflicting model options
       if (options?.model && options?.thinkingModel) {
@@ -250,16 +251,17 @@ export class PlanCommand implements Command {
           tokenUsageCallback: fileTokenUsageCallback,
         });
 
-        // Track file identification token usage
+        const fileEndTime = Date.now(); // End timer for file identification
+        const fileDurationMs = fileEndTime - fileStartTime;
+
         if (fileUsage) {
-          const fileDurationMs = Date.now() - fileStartTime; // Calculate duration
           trackEvent(
-            'token_usage',
+            'command_loop',
             {
               command: 'plan',
               phase: 'file_identification',
-              status: 'in_progress',
-              duration_ms: fileDurationMs, // Add duration
+              status: 'in_progress', // Still in progress as part of the overall plan
+              duration_ms: fileDurationMs,
               provider: fileProviderName,
               model: fileModel,
               input_tokens: fileUsage.inputTokens,
@@ -268,7 +270,9 @@ export class PlanCommand implements Command {
             },
             options?.debug
           ).catch((e) => {
-            if (options?.debug) console.error('Telemetry error for token_usage (file):', e);
+            if (options?.debug) {
+              console.log('Telemetry error:', e);
+            }
           });
         }
 
@@ -296,6 +300,7 @@ export class PlanCommand implements Command {
 
       yield 'Extracting content from relevant files...\n';
       let filteredContent: string;
+      let numFilesRead = 0; // Initialize counter for files read
       try {
         const tempFile = '.repomix-plan-filtered.txt';
         const repomixDirectory = process.cwd();
@@ -306,6 +311,7 @@ export class PlanCommand implements Command {
           include: filePaths,
         });
         const filteredResult = await pack([repomixDirectory], repomixConfig);
+        numFilesRead = filteredResult.totalFiles; // Store the number of files read
 
         if (options?.debug) {
           yield 'Content extraction completed.\n';
@@ -320,6 +326,11 @@ export class PlanCommand implements Command {
       const repoContext = filteredContent;
 
       // Generate plan
+      let planUsage: TokenUsage | undefined;
+      const planTokenUsageCallback = (tokenData: TokenUsage) => {
+        planUsage = tokenData;
+      };
+
       try {
         const planStartTime = Date.now(); // Start timer for plan generation
         const maxTokens =
@@ -329,11 +340,6 @@ export class PlanCommand implements Command {
           defaultMaxTokens;
         yield `Asking ${thinkingProviderName} to generate the plan using model: ${thinkingModel} with max tokens: ${maxTokens}...\n`;
 
-        let planUsage: TokenUsage | undefined;
-        const planTokenUsageCallback = (tokenData: TokenUsage) => {
-          planUsage = tokenData;
-        };
-
         const plan = await generatePlan(thinkingProvider, query, repoContext, {
           model: thinkingModel,
           maxTokens,
@@ -341,16 +347,17 @@ export class PlanCommand implements Command {
           tokenUsageCallback: planTokenUsageCallback,
         });
 
-        // Track plan generation token usage
+        const planEndTime = Date.now(); // End timer for plan generation
+        const planDurationMs = planEndTime - planStartTime;
+
         if (planUsage) {
-          const planDurationMs = Date.now() - planStartTime; // Calculate duration
           trackEvent(
-            'token_usage',
+            'command_loop',
             {
               command: 'plan',
               phase: 'plan_generation',
-              status: 'in_progress',
-              duration_ms: planDurationMs, // Add duration
+              status: 'in_progress', // Still in progress as part of the overall plan
+              duration_ms: planDurationMs,
               provider: thinkingProviderName,
               model: thinkingModel,
               input_tokens: planUsage.inputTokens,
@@ -359,11 +366,33 @@ export class PlanCommand implements Command {
             },
             options?.debug
           ).catch((e) => {
-            if (options?.debug) console.error('Telemetry error for token_usage (plan):', e);
+            if (options?.debug) {
+              console.log('Telemetry error:', e);
+            }
           });
         }
 
         yield plan;
+
+        // Track final completion event
+        await trackEvent(
+          'plan_completed',
+          {
+            status: 'success',
+            provider: thinkingProviderName,
+            model: thinkingModel,
+            file_provider: fileProviderName,
+            file_model: fileModel,
+            duration_ms: Date.now() - commandStartTime,
+            // Add flags or other relevant final info here if needed
+            num_files_identified: filePaths.length,
+            num_files_read: numFilesRead, // Use the stored count
+            save_to: !!options?.saveTo,
+            debug: !!options?.debug,
+            // Token usage is now tracked in command_loop events
+          },
+          options?.debug
+        );
       } catch (error) {
         console.error('Error in generatePlan', error);
         throw new ProviderError('Failed to generate implementation plan', error);
