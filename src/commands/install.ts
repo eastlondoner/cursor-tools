@@ -1,5 +1,6 @@
 import type { Command, CommandGenerator, CommandOptions, Provider, Config } from '../types';
 import { writeFileSync, readFileSync, existsSync } from 'node:fs';
+import { writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { loadEnv } from '../config';
 import { generateRules } from '../vibe-rules';
@@ -147,6 +148,7 @@ export class InstallCommand implements Command {
       finalConfig.ide = config.ide.toLowerCase();
     }
 
+    // Map the config from the selections (or potentially pre-filled from existing global)
     // Map the config from the selections (or potentially pre-filled from existing global)
     if (config.coding) {
       finalConfig.repo = {
@@ -575,6 +577,16 @@ export class InstallCommand implements Command {
           rulesDir = join(absolutePath, '.cursor', 'rules');
           ensureDirectoryExists(rulesDir);
 
+          // Write the rules file directly to the new location
+          cursorPath = join(rulesDir, 'vibe-tools.mdc');
+          try {
+            writeFileSync(cursorPath, generateRules('cursor', true));
+            consola.success(`Rules written to ${colors.cyan(cursorPath)}`);
+          } catch (error) {
+            consola.error(`${colors.red('Error writing rules for cursor:')}`, error);
+            return;
+          }
+          break;
           // Write the rules file directly to the new location
           cursorPath = join(rulesDir, 'vibe-tools.mdc');
           try {
