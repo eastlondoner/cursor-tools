@@ -574,5 +574,3 @@ async function main() {
 
 // Use void to explicitly ignore the unhandled promise from main()
 void main();
-// Use void to explicitly ignore the unhandled promise from main()
-void main();

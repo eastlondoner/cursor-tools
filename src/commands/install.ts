@@ -525,17 +525,17 @@ export class InstallCommand implements Command {
           return `${colors.cyan(provider.charAt(0).toUpperCase() + provider.slice(1))} ${colors.gray('→')} ${colors.green(modelDisplay || model)}`;
         };
 
-      const configDisplay = Object.entries(userConfig)
-        .map(([key, value]) => {
-          if (key === 'ide') return `IDE: ${colors.magenta(String(value))}`;
-          if (!value) return null; // Skip undefined values
-          const configVal = value as { provider: string; model: string };
-          // Format key as "Coding:" instead of "coding:"
-          const formattedKey = key.charAt(0).toUpperCase() + key.slice(1);
-          return `${colors.yellow(formattedKey)}: ${formatProviderInfo(configVal.provider, configVal.model)}`;
-        })
-        .filter(Boolean) // Remove null entries
-        .join('\n  • ');
+        const configDisplay = Object.entries(userConfig)
+          .map(([key, value]) => {
+            if (key === 'ide') return `IDE: ${colors.magenta(String(value))}`;
+            if (!value) return null; // Skip undefined values
+            const configVal = value as { provider: string; model: string };
+            // Format key as "Coding:" instead of "coding:"
+            const formattedKey = key.charAt(0).toUpperCase() + key.slice(1);
+            return `${colors.yellow(formattedKey)}: ${formatProviderInfo(configVal.provider, configVal.model)}`;
+          })
+          .filter(Boolean) // Remove null entries
+          .join('\n  • ');
 
         consola.box({
           title: '📋 Your Configuration',
