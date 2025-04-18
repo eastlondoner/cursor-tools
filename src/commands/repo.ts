@@ -1,13 +1,14 @@
 import type { Command, CommandGenerator, CommandOptions, Provider } from '../types';
 import type { Config } from '../types';
 import type { AsyncReturnType } from '../utils/AsyncReturnType';
+import type { ModelOptions } from '../providers/base';
 
 import { defaultMaxTokens, loadConfig, loadEnv } from '../config';
 import { pack } from 'repomix';
 import { readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { FileError, ProviderError } from '../errors';
-import type { ModelOptions, BaseModelProvider } from '../providers/base';
+import type { BaseModelProvider } from '../providers/base';
 import { createProvider } from '../providers/base';
 import { loadFileConfigWithOverrides } from '../repomix/repomixConfig';
 import {
@@ -16,6 +17,7 @@ import {
   getDefaultModel,
 } from '../utils/providerAvailability';
 import { getGithubRepoContext, looksLikeGithubRepo } from '../utils/githubRepo';
+import { fetchDocContent } from '../utils/fetch-doc.ts';
 
 export class RepoCommand implements Command {
   private config: Config;
@@ -25,7 +27,7 @@ export class RepoCommand implements Command {
     this.config = loadConfig();
   }
 
-  async *execute(query: string, options: CommandOptions & Partial<ModelOptions>): CommandGenerator {
+  async *execute(query: string, options: CommandOptions): CommandGenerator {
     try {
       // Handle query as GitHub repo if it looks like one and --from-github is not set
       if (query && !options?.fromGithub && looksLikeGithubRepo(query)) {
@@ -110,6 +112,24 @@ export class RepoCommand implements Command {
         }
       }
 
+      // Fetch document content if the flag is provided
+      let docContent = '';
+      if (options?.withDoc) {
+        if (typeof options.withDoc !== 'string') {
+          // Should theoretically not happen due to yargs validation, but keep as a safeguard
+          throw new Error('Invalid value provided for --with-doc. Must be a URL string.');
+        }
+        try {
+          yield `Fetching document content from ${options.withDoc}...\n`;
+          docContent = await fetchDocContent(options.withDoc, options.debug ?? false);
+          yield `Successfully fetched document content.\n`;
+        } catch (error) {
+          console.error('Error fetching document content:', error);
+          // Let the user know fetching failed but continue without it
+          yield `Warning: Failed to fetch document content from ${options.withDoc}. Continuing analysis without it. Error: ${error instanceof Error ? error.message : String(error)}\n`;
+        }
+      }
+
       if (tokenCount > 200_000) {
         options.tokenCount = tokenCount;
       }
@@ -145,7 +165,8 @@ export class RepoCommand implements Command {
           query,
           repoContext,
           cursorRules,
-          options
+          options,
+          docContent
         );
         return;
       }
@@ -154,7 +175,14 @@ export class RepoCommand implements Command {
       let currentProvider = getNextAvailableProvider('repo');
       while (currentProvider) {
         try {
-          yield* this.tryProvider(currentProvider, query, repoContext, cursorRules, options);
+          yield* this.tryProvider(
+            currentProvider,
+            query,
+            repoContext,
+            cursorRules,
+            options,
+            docContent
+          );
           return; // If successful, we're done
         } catch (error) {
           console.error(
@@ -186,7 +214,8 @@ export class RepoCommand implements Command {
     query: string,
     repoContext: string,
     cursorRules: string,
-    options: CommandOptions & Partial<ModelOptions>
+    options: CommandOptions,
+    docContent: string
   ): CommandGenerator {
     const modelProvider = createProvider(provider);
     const modelName =
@@ -207,12 +236,16 @@ export class RepoCommand implements Command {
         (this.config as Record<string, any>)[provider]?.maxTokens ||
         defaultMaxTokens;
 
-      // Create modelOptions
-      const modelOptions: Omit<ModelOptions, 'systemPrompt'> = {
+      // Simplify modelOptions creation - pass only relevant options
+      // The analyzeRepository function will construct the full ModelOptions internally
+      const modelOptsForAnalysis: Partial<ModelOptions> & { model: string } = {
         model: modelName,
         maxTokens,
-        debug: options?.debug,
-        tokenCount: options?.tokenCount,
+        debug: options.debug,
+        tokenCount: options.tokenCount,
+        webSearch: options.webSearch,
+        timeout: options.timeout,
+        reasoningEffort: options.reasoningEffort,
       };
 
       const response = await analyzeRepository(
@@ -221,8 +254,9 @@ export class RepoCommand implements Command {
           query,
           repoContext,
           cursorRules,
+          docContent,
         },
-        modelOptions
+        modelOptsForAnalysis // Pass the simplified options
       );
       yield response;
     } catch (error) {
@@ -236,12 +270,35 @@ export class RepoCommand implements Command {
 
 async function analyzeRepository(
   provider: BaseModelProvider,
-  props: { query: string; repoContext: string; cursorRules: string },
-  options: Omit<ModelOptions, 'systemPrompt'>
+  props: { query: string; repoContext: string; cursorRules: string; docContent: string },
+  options: Partial<ModelOptions> & { model: string } // Expect partial options + model
 ): Promise<string> {
-  return provider.executePrompt(`${props.cursorRules}\n\n${props.repoContext}\n\n${props.query}`, {
-    ...options,
+  const { query, repoContext, cursorRules, docContent } = props;
+  const { model, maxTokens, webSearch, tokenCount, timeout, debug } = options;
+
+  // Construct the full prompt
+  let fullPrompt = query;
+
+  if (docContent) {
+    fullPrompt = `CONTEXT DOCUMENT:\n${docContent}\n\nUSER QUERY:\n${query}`;
+  }
+
+  // Construct the final prompt
+  const finalPrompt = `${cursorRules}\n\n${repoContext}\n\n${fullPrompt}`;
+
+  // Construct the full ModelOptions here
+  const finalModelOptions: ModelOptions = {
+    model: model, // Use required model name
+    maxTokens: maxTokens ?? defaultMaxTokens, // Use provided or default maxTokens
     systemPrompt:
-      "You are an expert software developer analyzing a repository. You should provide a comprehensive response to the user's request. In your response inclulde a list of all the files that were relevant to answering the user's request. Follow user instructions exactly and satisfy the user's request.",
-  });
+      "You are an expert software developer analyzing a repository and potentially a document. Provide a comprehensive response to the user's request, considering both the code context and any provided document content. Include a list of relevant files. Follow user instructions exactly.",
+    // Pass through optional values
+    debug: debug,
+    tokenCount: tokenCount,
+    webSearch: webSearch,
+    timeout: timeout,
+    reasoningEffort: options.reasoningEffort,
+  };
+
+  return provider.executePrompt(finalPrompt, finalModelOptions);
 }
