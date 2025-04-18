@@ -241,8 +241,11 @@ export class RepoCommand implements Command {
       const modelOptsForAnalysis: Partial<ModelOptions> & { model: string } = {
         model: modelName,
         maxTokens,
-        debug: options?.debug,
-        tokenCount: options?.tokenCount,
+        debug: options.debug,
+        tokenCount: options.tokenCount,
+        webSearch: options.webSearch,
+        timeout: options.timeout,
+        reasoningEffort: options.reasoningEffort,
       };
 
       const response = await analyzeRepository(
