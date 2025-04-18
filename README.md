@@ -246,6 +246,8 @@ Note: in most cases you can say "ask Perplexity" instead of "use vibe-tools web"
 
 "Use vibe-tools repo to analyze how authentication is implemented in the Next.js repository. Use --from-github=vercel/next.js."
 
+"Use vibe-tools repo to explain this React component with documentation from the official React docs. Use --with-doc=https://react.dev/reference/react/useState"
+
 Note: in most cases you can say "ask Gemini" instead of "use vibe-tools repo" and it will work the same.
 
 ### Use doc generation
@@ -378,6 +380,7 @@ The plan command uses multiple AI models to:
 - `--fileMaxTokens=<number>`: Maximum tokens for file identification
 - `--thinkingMaxTokens=<number>`: Maximum tokens for plan generation
 - `--debug`: Show detailed error information
+- `--with-doc=<doc_url>`: Fetch content from a web URL and include it as context during plan generation
 
 Repository context is created using Repomix. See repomix configuration section below for details on how to change repomix behaviour.
 
@@ -687,6 +690,12 @@ vibe-tools doc --from-github=https://github.com/username/repo-name@branch
 # This is really useful to generate local documentation for libraries and dependencies
 vibe-tools doc --from-github=eastlondoner/cursor-tools --save-to=docs/MY_DOCS.md
 vibe-tools doc --from-github=eastlondoner/cursor-tools --save-to=docs/MY_DOCS.md --hint="only information about the doc command"
+
+# Document dependencies
+vibe-tools doc --from-github=expressjs/express --save-to=docs/EXPRESS.md --quiet
+
+# Document with additional web documentation as context
+vibe-tools doc --from-github=reactjs/react-redux --with-doc=https://redux.js.org/tutorials/fundamentals/part-5-ui-and-react --save-to=docs/REACT_REDUX.md
 ```
 
 ## Configuration
@@ -913,11 +922,13 @@ Documentation command specific options:
 
 - `--from-github`: Generate documentation for a remote GitHub repository (supports @branch syntax)
 - `--hint`: Provide additional context or focus for documentation generation
+- `--with-doc=<doc_url>`: Fetch content from a web URL and include it as additional context for documentation generation
 
 Repository command specific options:
 
 - `--from-github=<GitHub username>/<repository name>[@<branch>]`: Analyze a remote GitHub repository without cloning it locally
 - `--subdir=<path>`: Analyze a specific subdirectory instead of the entire repository
+- `--with-doc=<doc_url>`: Fetch content from a web URL and include it as context with your query
 
 Plan command specific options:
 
@@ -928,6 +939,7 @@ Plan command specific options:
 - `--fileMaxTokens`: Maximum tokens for file identification
 - `--thinkingMaxTokens`: Maximum tokens for plan generation
 - `--debug`: Show detailed error information
+- `--with-doc=<doc_url>`: Fetch content from a web URL and include it as context during plan generation
 
 GitHub command specific options:
 
@@ -1059,6 +1071,9 @@ vibe-tools repo "Explain the architecture" --from-github=username/repo-name
 
 # Deep analysis with enhanced reasoning
 vibe-tools repo "Analyze the security implications of our authentication implementation" --reasoning-effort high
+
+# Include web documentation as context
+vibe-tools repo "Help me implement useState in my component" --with-doc=https://react.dev/reference/react/useState
 ```
 
 #### Direct Model Query Examples
@@ -1085,6 +1100,9 @@ vibe-tools doc --save-to=docs/architecture.md --quiet --hint="Focus on system ar
 
 # Document dependencies
 vibe-tools doc --from-github=expressjs/express --save-to=docs/EXPRESS.md --quiet
+
+# Document with additional web documentation as context
+vibe-tools doc --from-github=reactjs/react-redux --with-doc=https://redux.js.org/tutorials/fundamentals/part-5-ui-and-react --save-to=docs/REACT_REDUX.md
 ```
 
 #### GitHub Integration Examples
