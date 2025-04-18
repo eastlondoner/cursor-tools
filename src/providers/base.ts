@@ -1,4 +1,4 @@
-import type { Config } from '../types';
+import type { Config, TokenUsage } from '../types';
 import type { VideoAnalysisOptions } from '../types';
 import { loadConfig, loadEnv } from '../config';
 import OpenAI, { BadRequestError } from 'openai';
@@ -13,6 +13,7 @@ import { execSync } from 'child_process';
 import { once } from '../utils/once';
 import { getAllProviders } from '../utils/providerAvailability';
 import { isModelNotFoundError } from './notFoundErrors';
+import { trackEvent } from '../telemetry';
 
 const TEN_MINUTES = 600000;
 // Interfaces for Gemini response types
@@ -64,6 +65,7 @@ export interface ModelOptions {
   timeout?: number; // Timeout in milliseconds for model API calls
   debug: boolean | undefined; // Enable debug logging
   reasoningEffort?: 'low' | 'medium' | 'high'; // Support for o1 and o3-mini reasoning effort
+  tokenUsageCallback?: (usage: TokenUsage) => void; // Callback for token usage
 }
 
 // Provider configuration in Config
@@ -80,7 +82,7 @@ export interface ProviderConfig {
 
 // Base provider interface that all specific provider interfaces will extend
 export interface BaseModelProvider {
-  executePrompt(prompt: string, options?: ModelOptions): Promise<string>;
+  executePrompt(prompt: string, options: ModelOptions): Promise<string>;
   supportsWebSearch(
     modelName: string
   ): Promise<{ supported: boolean; model?: string; error?: string }>;
@@ -537,9 +539,41 @@ abstract class OpenAIBase extends BaseProvider {
         throw new ProviderError(`${this.constructor.name} returned an empty response`);
       }
 
+      // Extract token usage from the response and invoke the callback if provided
+      const usageData = response.usage;
+      if (usageData && options.tokenUsageCallback) {
+        // Map provider-specific fields to TokenUsage interface
+        const mappedUsage: TokenUsage = {
+          inputTokens: usageData.prompt_tokens ?? 0,
+          outputTokens: usageData.completion_tokens ?? 0,
+          totalTokens: usageData.total_tokens ?? 0,
+        };
+        options.tokenUsageCallback(mappedUsage);
+      }
+
       return content;
     } catch (error) {
       this.debugLog(options, `Error in ${this.constructor.name} executePrompt:`, error);
+
+      // Track provider API error
+      const errorType = error instanceof Error ? error.constructor.name : 'UnknownError';
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const telemetryProps = {
+        provider: this.constructor.name,
+        model: options.model,
+        error_type: errorType,
+        error_message: errorMessage.substring(0, 256), // Truncate
+        is_timeout:
+          error instanceof Error &&
+          (error.name === 'TimeoutError' || error.message.toLowerCase().includes('timeout')),
+      };
+      // Don't await this, let it run in the background
+      trackEvent('provider_api_error', telemetryProps).catch((telemetryError) => {
+        if (options.debug) {
+          console.error('Telemetry error during provider_api_error:', telemetryError);
+        }
+      });
+
       // Always log the full error details for better debugging
       console.error(
         'Full error details:',
@@ -787,6 +821,18 @@ export class GoogleVertexAIProvider extends BaseProvider {
 
           if (!formattedContent) {
             throw new ProviderError('Google Vertex AI returned an empty response');
+          }
+
+          // Extract token usage from the response and invoke the callback if provided
+          const usageData = data.usageMetadata; // Use usageMetadata for Google
+          if (usageData && options.tokenUsageCallback) {
+            // Map Google Vertex AI-specific fields to TokenUsage interface
+            const mappedUsage: TokenUsage = {
+              inputTokens: usageData.promptTokenCount ?? 0,
+              outputTokens: usageData.candidatesTokenCount ?? 0,
+              totalTokens: usageData.totalTokenCount ?? 0,
+            };
+            options.tokenUsageCallback(mappedUsage);
           }
 
           return formattedContent;
@@ -1218,6 +1264,18 @@ export class GoogleGenerativeLanguageProvider extends BaseProvider {
             throw new ProviderError('Google Generative Language returned an empty response');
           }
 
+          // Extract token usage from the response and invoke the callback if provided
+          const usageData = data.usageMetadata; // Use usageMetadata for Google
+          if (usageData && options.tokenUsageCallback) {
+            // Map Google Generative Language-specific fields to TokenUsage interface
+            const mappedUsage: TokenUsage = {
+              inputTokens: usageData.promptTokenCount ?? 0,
+              outputTokens: usageData.candidatesTokenCount ?? 0,
+              totalTokens: usageData.totalTokenCount ?? 0,
+            };
+            options.tokenUsageCallback(mappedUsage);
+          }
+
           return formattedContent;
         } catch (error) {
           if (error instanceof ProviderError || error instanceof NetworkError) {
@@ -1383,7 +1441,79 @@ export class GoogleGenerativeLanguageProvider extends BaseProvider {
           }
 
           const content = data.candidates[0]?.content?.parts[0]?.text || '';
-          return content;
+          const grounding = data.candidates[0]?.groundingMetadata as GeminiGroundingMetadata;
+          const webSearchQueries = grounding?.webSearchQueries;
+
+          let webSearchText = '';
+          if (webSearchQueries && webSearchQueries.length > 0) {
+            webSearchText = '\nWeb search queries:\n';
+            for (const query of webSearchQueries) {
+              webSearchText += `- ${query}\n`;
+            }
+            webSearchText += '\n';
+          }
+
+          // Format response with citations if grounding metadata exists
+          let formattedContent = content;
+          if (grounding?.groundingSupports?.length > 0 && grounding?.groundingChunks?.length > 0) {
+            const citationSources = new Map<number, { uri: string; title?: string }>();
+
+            // Build citation sources from groundingChunks
+            grounding.groundingChunks.forEach((chunk: GeminiGroundingChunk, idx: number) => {
+              if (chunk.web) {
+                citationSources.set(idx, {
+                  uri: chunk.web.uri,
+                  title: chunk.web.title,
+                });
+              }
+            });
+
+            // Format text with citations
+            let formattedText = '';
+            grounding.groundingSupports.forEach((support: GeminiGroundingSupport) => {
+              const segment = support.segment;
+              const citations = support.groundingChunkIndices
+                .map((idx: number) => {
+                  const source = citationSources.get(idx);
+                  return source ? `[${idx + 1}]` : '';
+                })
+                .filter(Boolean)
+                .join('');
+
+              formattedText += segment.text + (citations ? ` ${citations}` : '') + ' ';
+            });
+
+            // Add citations list
+            if (citationSources.size > 0) {
+              let citationsText = '\nCitations:\n';
+              citationSources.forEach((source, idx) => {
+                citationsText += `[${idx + 1}]: ${source.uri}${source.title ? ` ${source.title}` : ''}\n`;
+              });
+              formattedText = citationsText + '\n' + webSearchText + formattedText;
+            } else {
+              formattedText = webSearchText + formattedText;
+            }
+            // replace the original content with the formatted text
+            formattedContent = formattedText.trim();
+          }
+
+          if (!formattedContent) {
+            throw new ProviderError('Google Generative Language returned an empty response');
+          }
+
+          // Extract token usage from the response and invoke the callback if provided
+          const usageData = data.usageMetadata; // Use usageMetadata for Google
+          if (usageData && options.tokenUsageCallback) {
+            // Map Google Generative Language-specific fields to TokenUsage interface
+            const mappedUsage: TokenUsage = {
+              inputTokens: usageData.promptTokenCount ?? 0,
+              outputTokens: usageData.candidatesTokenCount ?? 0,
+              totalTokens: usageData.totalTokenCount ?? 0,
+            };
+            options.tokenUsageCallback(mappedUsage);
+          }
+
+          return formattedContent;
         } catch (error) {
           if (error instanceof NetworkError) {
             throw error;
@@ -1509,6 +1639,18 @@ export class OpenAIProvider extends OpenAIBase {
           combinedResponseContent += content + '\n'; // Append chunk response
         } else {
           console.warn(`${this.constructor.name} returned an empty response chunk.`);
+        }
+
+        // Extract token usage from the response and invoke the callback if provided
+        const usageData = response.usage;
+        if (usageData && options.tokenUsageCallback) {
+          // Map provider-specific fields to TokenUsage interface
+          const mappedUsage: TokenUsage = {
+            inputTokens: usageData.prompt_tokens ?? 0,
+            outputTokens: usageData.completion_tokens ?? 0,
+            totalTokens: usageData.total_tokens ?? 0,
+          };
+          options.tokenUsageCallback(mappedUsage);
         }
       } catch (error) {
         this.debugLog(options, `Error in ${this.constructor.name} executePrompt chunk`, error);
@@ -1668,6 +1810,19 @@ export class OpenRouterProvider extends OpenAIBase {
       if (!content) {
         throw new ProviderError(`${this.constructor.name} returned an empty response`);
       }
+
+      // Extract token usage from the response and invoke the callback if provided
+      const usageData = response.usage;
+      if (usageData && options.tokenUsageCallback) {
+        // Map provider-specific fields to TokenUsage interface
+        const mappedUsage: TokenUsage = {
+          inputTokens: usageData.prompt_tokens ?? 0,
+          outputTokens: usageData.completion_tokens ?? 0,
+          totalTokens: usageData.total_tokens ?? 0,
+        };
+        options.tokenUsageCallback(mappedUsage);
+      }
+
       return content;
     } catch (error) {
       this.debugLog(options, 'OpenRouter Provider: Error during API call:', error);
@@ -1774,6 +1929,18 @@ export class PerplexityProvider extends BaseProvider {
 
           if (!content) {
             throw new ProviderError('Perplexity returned an empty response');
+          }
+
+          // Extract token usage from the response and invoke the callback if provided
+          const usageData = data.usage;
+          if (usageData && options.tokenUsageCallback) {
+            // Map Perplexity-specific fields to TokenUsage interface
+            const mappedUsage: TokenUsage = {
+              inputTokens: usageData.prompt_tokens ?? 0,
+              outputTokens: usageData.completion_tokens ?? 0,
+              totalTokens: usageData.total_tokens ?? 0,
+            };
+            options.tokenUsageCallback(mappedUsage);
           }
 
           return content;
@@ -2002,6 +2169,19 @@ export class ModelBoxProvider extends OpenAIBase {
       if (!content) {
         throw new ProviderError(`${this.constructor.name} returned an empty response`);
       }
+
+      // Extract token usage from the response and invoke the callback if provided
+      const usageData = response.usage;
+      if (usageData && options.tokenUsageCallback) {
+        // Map provider-specific fields to TokenUsage interface
+        const mappedUsage: TokenUsage = {
+          inputTokens: usageData.prompt_tokens ?? 0,
+          outputTokens: usageData.completion_tokens ?? 0,
+          totalTokens: usageData.total_tokens ?? 0,
+        };
+        options.tokenUsageCallback(mappedUsage);
+      }
+
       return content;
     } catch (error) {
       this.debugLog(options, 'ModelBox Provider: Error during API call:', error);
@@ -2167,6 +2347,18 @@ export class AnthropicProvider extends BaseProvider {
           throw new ProviderError('Anthropic returned an invalid response');
         }
 
+        // Extract token usage from the response and invoke the callback if provided
+        const usageData = response.usage;
+        if (usageData && options.tokenUsageCallback) {
+          // Map Anthropic-specific fields to TokenUsage interface
+          const mappedUsage: TokenUsage = {
+            inputTokens: usageData.input_tokens ?? 0,
+            outputTokens: usageData.output_tokens ?? 0,
+            totalTokens: (usageData.input_tokens ?? 0) + (usageData.output_tokens ?? 0),
+          };
+          options.tokenUsageCallback(mappedUsage);
+        }
+
         return content;
       } else {
         // No thinking requested or model doesn't support it
@@ -2192,6 +2384,18 @@ export class AnthropicProvider extends BaseProvider {
         if (!content || content.type !== 'text') {
           console.error('Anthropic returned an invalid response:', response);
           throw new ProviderError('Anthropic returned an invalid response');
+        }
+
+        // Extract token usage from the response and invoke the callback if provided
+        const usageData = response.usage;
+        if (usageData && options.tokenUsageCallback) {
+          // Map Anthropic-specific fields to TokenUsage interface
+          const mappedUsage: TokenUsage = {
+            inputTokens: usageData.input_tokens ?? 0,
+            outputTokens: usageData.output_tokens ?? 0,
+            totalTokens: (usageData.input_tokens ?? 0) + (usageData.output_tokens ?? 0),
+          };
+          options.tokenUsageCallback(mappedUsage);
         }
 
         return content.text;

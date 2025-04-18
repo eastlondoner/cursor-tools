@@ -6,6 +6,7 @@ import { checkCursorRules } from './cursorrules.ts';
 import type { CommandOptions, Provider } from './types';
 import { reasoningEffortSchema } from './types';
 import { promises as fsPromises } from 'node:fs';
+import { trackEvent } from './telemetry';
 // Get the directory name of the current module
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -193,6 +194,7 @@ const BOOLEAN_OPTIONS = new Set<CLIBooleanOption>([
 const NUMERIC_OPTIONS = new Set<CLINumberOption>(['maxTokens', 'timeout', 'connectTo', 'parallel']);
 
 async function main() {
+  const startTime = Date.now(); // Start timer
   const [, , command, ...args] = process.argv;
 
   // Handle version command
@@ -245,6 +247,9 @@ async function main() {
     reasoningEffort: undefined,
   };
   const queryArgs: string[] = [];
+
+  let commandName: string | undefined = undefined;
+  let subCommandName: string | undefined = undefined;
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -392,6 +397,8 @@ async function main() {
     }
   }
 
+  commandName = command; // Assign commandName here
+
   try {
     // If saveTo is specified, ensure the directory exists and clear any existing file
     if (options.saveTo) {
@@ -465,7 +472,47 @@ async function main() {
     if (options.saveTo) {
       console.log(`Output saved to: ${options.saveTo}`);
     }
-  } catch (error) {
+
+    // Track successful execution
+    const durationMs = Date.now() - startTime;
+    // Collect flags and their values
+    const commandFlags = Object.entries(options)
+      .filter(
+        ([key, value]) =>
+          value !== undefined && value !== false && OPTION_KEYS[normalizeArgKey(key)]
+      ) // Ensure it's a valid option
+      .reduce(
+        (acc, [key, value]) => {
+          acc[toKebabCase(key)] = value;
+          return acc;
+        },
+        {} as Record<string, any>
+      );
+
+    const telemetryProps: Record<string, any> = {
+      command: commandName,
+      duration_ms: durationMs,
+      status: 'success',
+      command_flags: commandFlags, // Use command_flags object
+      provider_used: commandOptions.provider,
+      model_used: commandOptions.model,
+    };
+    if (subCommandName) {
+      telemetryProps.subcommand = subCommandName;
+    }
+
+    // Await the telemetry event but catch errors so they don't crash the process
+    try {
+      await trackEvent('command_executed', telemetryProps, options.debug);
+    } catch (telemetryError) {
+      // Log telemetry errors only if debug flag is enabled
+      if (options.debug) {
+        console.error('Telemetry error during command_executed:', telemetryError);
+      }
+    }
+
+    process.exit(0);
+  } catch (error: any) {
     // Use the formatUserMessage method for CursorToolsError instances to display provider errors
     if (
       error &&
@@ -477,13 +524,53 @@ async function main() {
     } else {
       console.error('Error:', error instanceof Error ? error.message : 'Unknown error');
     }
+
+    // Track command error
+    const durationMs = Date.now() - startTime;
+    // Collect flags and their values for errors
+    const errorCommandFlags = Object.entries(options)
+      .filter(
+        ([key, value]) =>
+          value !== undefined && value !== false && OPTION_KEYS[normalizeArgKey(key)]
+      ) // Ensure it's a valid option
+      .reduce(
+        (acc, [key, value]) => {
+          acc[toKebabCase(key)] = value;
+          return acc;
+        },
+        {} as Record<string, any>
+      );
+
+    const errorType = error instanceof Error ? error.constructor.name : 'UnknownError';
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    const errorTelemetryProps: Record<string, any> = {
+      command: commandName || 'unknown',
+      duration_ms: durationMs,
+      status: 'error',
+      error_type: errorType,
+      error_message: errorMessage.substring(0, 256), // Truncate long messages
+      command_flags: errorCommandFlags, // Use command_flags object for errors
+      provider_used: options.provider,
+      model_used: options.model,
+    };
+    if (subCommandName) {
+      errorTelemetryProps.subcommand = subCommandName;
+    }
+
+    // Await the telemetry event but catch errors so they don't crash the process
+    try {
+      await trackEvent('command_error', errorTelemetryProps, options.debug);
+    } catch (telemetryError) {
+      // Log telemetry errors only if debug flag is enabled
+      if (options.debug) {
+        console.error('Telemetry error during command_error:', telemetryError);
+      }
+    }
+
     process.exit(1);
   }
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch((error) => {
-    console.error('Fatal error:', error);
-    process.exit(1);
-  });
+// Use void to explicitly ignore the unhandled promise from main()
+void main();

@@ -1,4 +1,4 @@
-import type { Command, CommandGenerator, CommandOptions, Provider } from '../types';
+import type { Command, CommandGenerator, CommandOptions, Provider, TokenUsage } from '../types';
 import type { Config } from '../types';
 import type { AsyncReturnType } from '../utils/AsyncReturnType';
 
@@ -16,6 +16,7 @@ import {
   getDefaultModel,
 } from '../utils/providerAvailability';
 import { getGithubRepoContext, looksLikeGithubRepo } from '../utils/githubRepo';
+import { trackEvent } from '../telemetry';
 
 export class RepoCommand implements Command {
   private config: Config;
@@ -188,48 +189,101 @@ export class RepoCommand implements Command {
     cursorRules: string,
     options: CommandOptions & Partial<ModelOptions>
   ): CommandGenerator {
-    const modelProvider = createProvider(provider);
-    const modelName =
-      options?.model ||
-      this.config.repo?.model ||
-      (this.config as Record<string, any>)[provider]?.model ||
-      getDefaultModel(provider);
+    const commandStartTime = Date.now(); // Record start time
+    let usage: TokenUsage | undefined;
+    let finalStatus: 'success' | 'failure' = 'failure'; // Assume failure initially
+    let errorDetails: Record<string, any> | undefined = undefined;
+    let modelName: string | undefined = undefined;
 
-    if (!modelName) {
-      throw new ProviderError(`No model specified for ${provider}`);
-    }
-
-    yield `Analyzing repository using ${modelName}...\n`;
     try {
-      const maxTokens =
-        options?.maxTokens ||
-        this.config.repo?.maxTokens ||
-        (this.config as Record<string, any>)[provider]?.maxTokens ||
-        defaultMaxTokens;
+      const modelProvider = createProvider(provider);
+      modelName =
+        options?.model ||
+        this.config.repo?.model ||
+        (this.config as Record<string, any>)[provider]?.model ||
+        getDefaultModel(provider);
 
-      // Create modelOptions
-      const modelOptions: Omit<ModelOptions, 'systemPrompt'> = {
-        model: modelName,
-        maxTokens,
-        debug: options?.debug,
-        tokenCount: options?.tokenCount,
+      if (!modelName) {
+        throw new ProviderError(`No model specified or found for ${provider}`);
+      }
+
+      yield `Analyzing repository using ${modelName}...\n`;
+
+      const tokenUsageCallback = (tokenData: TokenUsage) => {
+        usage = tokenData;
       };
 
-      const response = await analyzeRepository(
-        modelProvider,
-        {
-          query,
-          repoContext,
-          cursorRules,
-        },
-        modelOptions
-      );
-      yield response;
-    } catch (error) {
-      throw new ProviderError(
-        error instanceof Error ? error.message : 'Unknown error during analysis',
-        error
-      );
+      try {
+        const maxTokens =
+          options?.maxTokens ||
+          this.config.repo?.maxTokens ||
+          (this.config as Record<string, any>)[provider]?.maxTokens ||
+          defaultMaxTokens;
+
+        // Create modelOptions
+        const modelOptions: ModelOptions = {
+          model: modelName, // modelName is guaranteed string here
+          maxTokens,
+          debug: options?.debug,
+          tokenCount: options?.tokenCount,
+          tokenUsageCallback,
+          systemPrompt: '', // Placeholder, will be overwritten in analyzeRepository call
+        };
+
+        const response = await analyzeRepository(
+          modelProvider,
+          {
+            query,
+            repoContext,
+            cursorRules,
+          },
+          modelOptions
+        );
+
+        // NO separate token_usage event
+        finalStatus = 'success';
+        yield response;
+      } catch (error) {
+        finalStatus = 'failure';
+        errorDetails = {
+          error_message: error instanceof Error ? error.message : String(error),
+          error_stack: error instanceof Error ? error.stack : undefined,
+          provider: provider,
+          model: modelName, // Capture model used during failure
+          repo_context_tokens: options?.tokenCount,
+        };
+        // Re-throw the error to be caught by the main execute loop
+        throw error;
+      }
+    } finally {
+      // Always track the completion event for this provider attempt
+      const durationMs = Date.now() - commandStartTime;
+
+      const properties: Record<string, any> = {
+        command: 'repo', // Explicitly state command for clarity
+        status: finalStatus,
+        provider: provider,
+        model: modelName!, // Assert non-null (set above or error thrown)
+        duration_ms: durationMs,
+        input_tokens: usage?.inputTokens,
+        output_tokens: usage?.outputTokens,
+        total_tokens: usage?.totalTokens,
+        repo_context_tokens: options?.tokenCount,
+        from_github: !!options?.fromGithub,
+        subdir: options?.subdir ? options.subdir.length > 0 : false,
+        save_to: !!options?.saveTo,
+        debug: !!options?.debug,
+      };
+
+      if (errorDetails) {
+        properties.error = errorDetails;
+      }
+
+      // Use a specific event name indicating a provider attempt
+      await trackEvent('repo_provider_attempt_completed', properties, options?.debug).catch((e) => {
+        if (options?.debug)
+          console.error('Telemetry error for repo_provider_attempt_completed:', e);
+      });
     }
   }
 }
@@ -237,7 +291,7 @@ export class RepoCommand implements Command {
 async function analyzeRepository(
   provider: BaseModelProvider,
   props: { query: string; repoContext: string; cursorRules: string },
-  options: Omit<ModelOptions, 'systemPrompt'>
+  options: ModelOptions
 ): Promise<string> {
   return provider.executePrompt(`${props.cursorRules}\n\n${props.repoContext}\n\n${props.query}`, {
     ...options,

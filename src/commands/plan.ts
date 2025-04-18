@@ -1,4 +1,4 @@
-import type { Command, CommandGenerator, CommandOptions, Config } from '../types';
+import type { Command, CommandGenerator, CommandOptions, Config, TokenUsage } from '../types';
 import { defaultMaxTokens, loadConfig, loadEnv } from '../config';
 import { pack } from 'repomix';
 import { readFileSync } from 'node:fs';
@@ -6,6 +6,7 @@ import type { ModelOptions, BaseModelProvider } from '../providers/base';
 import { createProvider } from '../providers/base';
 import { FileError, ProviderError } from '../errors';
 import { loadFileConfigWithOverrides } from '../repomix/repomixConfig';
+import { trackEvent } from '../telemetry';
 
 type FileProvider = 'gemini' | 'openai' | 'openrouter' | 'perplexity' | 'modelbox' | 'anthropic';
 type ThinkingProvider =
@@ -109,6 +110,7 @@ export class PlanCommand implements Command {
   }
 
   async *execute(query: string, options: PlanCommandOptions): CommandGenerator {
+    const commandStartTime = Date.now(); // Record start time for overall duration
     try {
       // Check for conflicting model options
       if (options?.model && options?.thinkingModel) {
@@ -221,7 +223,13 @@ export class PlanCommand implements Command {
 
       // Get relevant files
       let filePaths: string[];
+      let fileUsage: TokenUsage | undefined;
+      const fileTokenUsageCallback = (tokenData: TokenUsage) => {
+        fileUsage = tokenData;
+      };
+
       try {
+        const fileStartTime = Date.now(); // Start timer for file identification
         const maxTokens =
           options?.maxTokens ||
           this.config.plan?.fileMaxTokens ||
@@ -240,7 +248,33 @@ export class PlanCommand implements Command {
           model: fileModel,
           maxTokens,
           debug: options?.debug,
+          tokenUsageCallback: fileTokenUsageCallback,
         });
+
+        const fileEndTime = Date.now(); // End timer for file identification
+        const fileDurationMs = fileEndTime - fileStartTime;
+
+        if (fileUsage) {
+          trackEvent(
+            'command_loop',
+            {
+              command: 'plan',
+              phase: 'file_identification',
+              status: 'in_progress', // Still in progress as part of the overall plan
+              duration_ms: fileDurationMs,
+              provider: fileProviderName,
+              model: fileModel,
+              input_tokens: fileUsage.inputTokens,
+              output_tokens: fileUsage.outputTokens,
+              total_tokens: fileUsage.totalTokens,
+            },
+            options?.debug
+          ).catch((e) => {
+            if (options?.debug) {
+              console.log('Telemetry error:', e);
+            }
+          });
+        }
 
         if (options?.debug) {
           yield 'AI response received.\n';
@@ -266,6 +300,7 @@ export class PlanCommand implements Command {
 
       yield 'Extracting content from relevant files...\n';
       let filteredContent: string;
+      let numFilesRead = 0; // Initialize counter for files read
       try {
         const tempFile = '.repomix-plan-filtered.txt';
         const repomixDirectory = process.cwd();
@@ -276,6 +311,7 @@ export class PlanCommand implements Command {
           include: filePaths,
         });
         const filteredResult = await pack([repomixDirectory], repomixConfig);
+        numFilesRead = filteredResult.totalFiles; // Store the number of files read
 
         if (options?.debug) {
           yield 'Content extraction completed.\n';
@@ -287,25 +323,80 @@ export class PlanCommand implements Command {
         throw new FileError('Failed to extract content', error);
       }
 
-      const maxTokens =
-        options?.maxTokens ||
-        this.config.plan?.thinkingMaxTokens ||
-        (this.config as Record<string, any>)[thinkingProviderName]?.maxTokens ||
-        defaultMaxTokens;
-      yield `Generating implementation plan using ${thinkingProviderName} with max tokens: ${maxTokens}...\n`;
-      let plan: string;
+      const repoContext = filteredContent;
+
+      // Generate plan
+      let planUsage: TokenUsage | undefined;
+      const planTokenUsageCallback = (tokenData: TokenUsage) => {
+        planUsage = tokenData;
+      };
+
       try {
-        plan = await generatePlan(thinkingProvider, query, filteredContent, {
+        const planStartTime = Date.now(); // Start timer for plan generation
+        const maxTokens =
+          options?.maxTokens ||
+          this.config.plan?.thinkingMaxTokens ||
+          (this.config as Record<string, any>)[thinkingProviderName]?.maxTokens ||
+          defaultMaxTokens;
+        yield `Asking ${thinkingProviderName} to generate the plan using model: ${thinkingModel} with max tokens: ${maxTokens}...\n`;
+
+        const plan = await generatePlan(thinkingProvider, query, repoContext, {
           model: thinkingModel,
-          maxTokens: maxTokens,
+          maxTokens,
           debug: options?.debug,
+          tokenUsageCallback: planTokenUsageCallback,
         });
+
+        const planEndTime = Date.now(); // End timer for plan generation
+        const planDurationMs = planEndTime - planStartTime;
+
+        if (planUsage) {
+          trackEvent(
+            'command_loop',
+            {
+              command: 'plan',
+              phase: 'plan_generation',
+              status: 'in_progress', // Still in progress as part of the overall plan
+              duration_ms: planDurationMs,
+              provider: thinkingProviderName,
+              model: thinkingModel,
+              input_tokens: planUsage.inputTokens,
+              output_tokens: planUsage.outputTokens,
+              total_tokens: planUsage.totalTokens,
+            },
+            options?.debug
+          ).catch((e) => {
+            if (options?.debug) {
+              console.log('Telemetry error:', e);
+            }
+          });
+        }
+
+        yield plan;
+
+        // Track final completion event
+        await trackEvent(
+          'plan_completed',
+          {
+            status: 'success',
+            provider: thinkingProviderName,
+            model: thinkingModel,
+            file_provider: fileProviderName,
+            file_model: fileModel,
+            duration_ms: Date.now() - commandStartTime,
+            // Add flags or other relevant final info here if needed
+            num_files_identified: filePaths.length,
+            num_files_read: numFilesRead, // Use the stored count
+            save_to: !!options?.saveTo,
+            debug: !!options?.debug,
+            // Token usage is now tracked in command_loop events
+          },
+          options?.debug
+        );
       } catch (error) {
         console.error('Error in generatePlan', error);
         throw new ProviderError('Failed to generate implementation plan', error);
       }
-
-      yield plan;
     } catch (error) {
       // console.error errors and then throw
       if (error instanceof FileError || error instanceof ProviderError) {
