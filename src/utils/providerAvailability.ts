@@ -72,6 +72,18 @@ export function getAllProviders(): ProviderInfo[] {
   ];
 }
 
+export function getProviderInfo(provider: string): ProviderInfo | undefined {
+  return getAllProviders().find((p) => p.provider === provider);
+}
+
+export function isProviderAvailable(provider: string): boolean {
+  return !!getProviderInfo(provider)?.available;
+}
+
+export function getAvailableProviders(): ProviderInfo[] {
+  return getAllProviders().filter((p) => p.available);
+}
+
 export function getNextAvailableProvider(
   commandType: keyof typeof PROVIDER_PREFERENCE,
   currentProvider?: Provider
