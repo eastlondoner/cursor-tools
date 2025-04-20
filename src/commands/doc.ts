@@ -119,8 +119,8 @@ export class DocCommand implements Command {
       }
 
       const availableProvidersList = getAvailableProviders()
-            .map((p) => p.provider)
-            .join(', ');
+        .map((p) => p.provider)
+        .join(', ');
 
       // If provider is explicitly specified, try only that provider
       if (options?.provider) {

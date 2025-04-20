@@ -121,9 +121,8 @@ export class RepoCommand implements Command {
 
       const providerName = options?.provider || this.config.repo?.provider || 'gemini';
       const availableProvidersList = getAvailableProviders()
-            .map((p) => p.provider)
-            .join(', ');
-
+        .map((p) => p.provider)
+        .join(', ');
 
       if (!getProviderInfo(providerName)) {
         throw new ProviderError(
