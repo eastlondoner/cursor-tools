@@ -127,7 +127,7 @@ export class DocCommand implements Command {
         const providerInfo = getProviderInfo(options.provider);
         if (!providerInfo) {
           throw new ProviderError(
-            `Provider ${options.provider} is not available. Please check your API key configuration.`,
+            `Unrecognized provider: ${options.provider}.`,
             `Try one of ${availableProvidersList}`
           );
         }

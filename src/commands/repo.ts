@@ -127,7 +127,8 @@ export class RepoCommand implements Command {
 
       if (!getProviderInfo(providerName)) {
         throw new ProviderError(
-          `Unrecognized provider: ${providerName}. Try one of ${availableProvidersList}`
+          `Unrecognized provider: ${providerName}.`,
+          `Try one of ${availableProvidersList}`
         );
       }
 
