@@ -130,8 +130,7 @@ export class DocCommand implements Command {
             `Unrecognized provider: ${options.provider}.`,
             `Try one of ${availableProvidersList}`
           );
-        }
-        if (!providerInfo.available) {
+        } else if (!providerInfo.available) {
           throw new ApiKeyMissingError(options.provider);
         }
         yield* this.tryProvider(options.provider, query, repoContext, options);
