@@ -238,11 +238,14 @@ export class RepoCommand implements Command {
 
       // Simplify modelOptions creation - pass only relevant options
       // The analyzeRepository function will construct the full ModelOptions internally
-      const modelOptsForAnalysis: Partial<ModelOptions> & { model: string } = {
+      const modelOptsForAnalysis: Omit<ModelOptions, 'systemPrompt'> & { model: string } = {
         model: modelName,
         maxTokens,
         debug: options?.debug,
         tokenCount: options?.tokenCount,
+        webSearch: options?.webSearch,
+        timeout: options?.timeout,
+        reasoningEffort: options?.reasoningEffort,
       };
 
       const response = await analyzeRepository(
