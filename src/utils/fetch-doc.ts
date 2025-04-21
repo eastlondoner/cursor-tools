@@ -41,12 +41,6 @@ export async function fetchDocContent(url: string, debug: boolean): Promise<stri
       for await (const output of generator) {
         if (typeof output === 'string') {
           htmlContent += output;
-        } else if (typeof output === 'object' && output !== null && 'html' in output) {
-          // Handle the case where HTML might be nested in an object (as seen in some browser command outputs)
-          const outputAsAny = output as any; // Cast for safety, though 'html' check helps
-          if (typeof outputAsAny.html === 'string') {
-            htmlContent += outputAsAny.html;
-          }
         }
       }
 
