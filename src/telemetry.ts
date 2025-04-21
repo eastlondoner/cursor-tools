@@ -5,7 +5,7 @@ import { homedir } from 'node:os';
 import fetch from 'node-fetch';
 import { version } from '../package.json';
 
-const TELEMETRY_ENDPOINT = 'https://my-cloudflare-app3.flowisgreat.workers.dev/api/pipeline';
+const TELEMETRY_ENDPOINT = 'https://vibe-tools-infra.flowisgreat.workers.dev/api/pipeline';
 const CONFIG_DIR = join(homedir(), '.vibe-tools');
 const DIAGNOSTICS_PATH = join(CONFIG_DIR, 'diagnostics.json');
 const SESSION_ID = randomUUID();
