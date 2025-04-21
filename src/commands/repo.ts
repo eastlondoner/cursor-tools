@@ -280,10 +280,7 @@ export class RepoCommand implements Command {
       }
 
       // Use a specific event name indicating a provider attempt
-      await trackEvent('repo_provider_attempt_completed', properties, options?.debug).catch((e) => {
-        if (options?.debug)
-          console.error('Telemetry error for repo_provider_attempt_completed:', e);
-      });
+      await trackEvent('repo_provider_attempt_completed', properties, options?.debug);
     }
   }
 }

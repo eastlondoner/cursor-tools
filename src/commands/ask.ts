@@ -138,9 +138,7 @@ export class AskCommand implements Command {
         'ask_completed',
         properties, // Pass the constructed properties object
         options?.debug
-      ).catch((e) => {
-        if (options?.debug) console.error('Telemetry error for ask_completed:', e);
-      });
+      );
     }
   }
 }

@@ -132,59 +132,64 @@ export async function trackEvent(
   properties: Record<string, any>,
   debug?: boolean
 ): Promise<void> {
-  const enabledStatus = isTelemetryEnabled();
-
-  if (enabledStatus !== true) {
-    if (debug) {
-      console.log(`[Telemetry] Telemetry is disabled, not sending event: ${eventName}`);
-    }
-    return;
-  }
-
-  const currentUserId = getUserIdFromDiagnostics();
-  if (currentUserId.startsWith('anonymous_')) {
-    if (debug) {
-      console.log(
-        '[Telemetry] Error: Attempted to track event with anonymous ID while telemetry is enabled.'
-      );
-    }
-    return;
-  }
-
-  const payload = {
-    data: {
-      eventName,
-      userId: currentUserId,
-      sessionId: SESSION_ID,
-      timestamp: new Date().toISOString(),
-      toolVersion: version,
-      ...properties,
-    },
-  };
-
-  if (debug) {
-    console.log(`[Telemetry] Sending event: ${eventName}`, JSON.stringify(payload));
-  }
-
   try {
-    const response = await fetch(TELEMETRY_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(5000),
-    });
-    if (!response.ok) {
+    const enabledStatus = isTelemetryEnabled();
+    if (enabledStatus !== true) {
       if (debug) {
-        console.log(`Telemetry fetch failed: ${response.status} ${response.statusText}`);
+        console.log(`[Telemetry] Telemetry is disabled, not sending event: ${eventName}`);
       }
-    } else if (debug) {
-      console.log(`[Telemetry] Event sent successfully: ${eventName}`);
+      return;
+    }
+
+    const currentUserId = getUserIdFromDiagnostics();
+    if (currentUserId.startsWith('anonymous_')) {
+      if (debug) {
+        console.log(
+          '[Telemetry] Error: Attempted to track event with anonymous ID while telemetry is enabled.'
+        );
+      }
+      return;
+    }
+
+    const payload = {
+      data: {
+        eventName,
+        userId: currentUserId,
+        sessionId: SESSION_ID,
+        timestamp: new Date().toISOString(),
+        toolVersion: version,
+        ...properties,
+      },
+    };
+
+    if (debug) {
+      console.log(`[Telemetry] Sending event: ${eventName}`, JSON.stringify(payload));
+    }
+
+    try {
+      const response = await fetch(TELEMETRY_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!response.ok) {
+        if (debug) {
+          console.log(`Telemetry fetch failed: ${response.status} ${response.statusText}`);
+        }
+      } else if (debug) {
+        console.log(`[Telemetry] Event sent successfully: ${eventName}`);
+      }
+    } catch (error) {
+      if (debug) {
+        console.log('Telemetry error during fetch:', error);
+      }
     }
   } catch (error) {
     if (debug) {
-      console.log('Telemetry error during fetch:', error);
+      console.log(`Telemetry error during event processing for ${eventName}:`, error);
     }
   }
 }

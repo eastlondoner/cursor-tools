@@ -255,7 +255,7 @@ export class PlanCommand implements Command {
         const fileDurationMs = fileEndTime - fileStartTime;
 
         if (fileUsage) {
-          trackEvent(
+          void trackEvent(
             'command_loop',
             {
               command: 'plan',
@@ -269,11 +269,7 @@ export class PlanCommand implements Command {
               total_tokens: fileUsage.totalTokens,
             },
             options?.debug
-          ).catch((e) => {
-            if (options?.debug) {
-              console.log('Telemetry error:', e);
-            }
-          });
+          );
         }
 
         if (options?.debug) {
@@ -351,7 +347,7 @@ export class PlanCommand implements Command {
         const planDurationMs = planEndTime - planStartTime;
 
         if (planUsage) {
-          trackEvent(
+          void trackEvent(
             'command_loop',
             {
               command: 'plan',
@@ -365,17 +361,13 @@ export class PlanCommand implements Command {
               total_tokens: planUsage.totalTokens,
             },
             options?.debug
-          ).catch((e) => {
-            if (options?.debug) {
-              console.log('Telemetry error:', e);
-            }
-          });
+          );
         }
 
         yield plan;
 
         // Track final completion event
-        await trackEvent(
+        void trackEvent(
           'plan_completed',
           {
             status: 'success',

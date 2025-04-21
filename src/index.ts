@@ -193,7 +193,7 @@ const BOOLEAN_OPTIONS = new Set<CLIBooleanOption>([
 // Set of option keys that require numeric values
 const NUMERIC_OPTIONS = new Set<CLINumberOption>(['maxTokens', 'timeout', 'connectTo', 'parallel']);
 
-async function main() {
+async function main(): Promise<void> {
   const startTime = Date.now(); // Start timer
   const [, , command, ...args] = process.argv;
 
@@ -502,14 +502,7 @@ async function main() {
     }
 
     // Await the telemetry event but catch errors so they don't crash the process
-    try {
-      await trackEvent('command_executed', telemetryProps, options.debug);
-    } catch (telemetryError) {
-      // Log telemetry errors only if debug flag is enabled
-      if (options.debug) {
-        console.error('Telemetry error during command_executed:', telemetryError);
-      }
-    }
+    await trackEvent('command_executed', telemetryProps, options.debug);
 
     process.exit(0);
   } catch (error: any) {
@@ -559,18 +552,18 @@ async function main() {
     }
 
     // Await the telemetry event but catch errors so they don't crash the process
-    try {
-      await trackEvent('command_error', errorTelemetryProps, options.debug);
-    } catch (telemetryError) {
-      // Log telemetry errors only if debug flag is enabled
-      if (options.debug) {
-        console.error('Telemetry error during command_error:', telemetryError);
-      }
-    }
+    await trackEvent('command_error', errorTelemetryProps, options.debug);
 
     process.exit(1);
   }
 }
 
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error('Fatal error:', error);
+    process.exit(1);
+  });
+
 // Use void to explicitly ignore the unhandled promise from main()
-void main();
+// void main();

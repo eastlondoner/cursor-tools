@@ -192,9 +192,7 @@ export class WebCommand implements Command {
       }
 
       // Use a specific event name indicating a provider attempt
-      await trackEvent('web_provider_attempt_completed', properties, options?.debug).catch((e) => {
-        if (options?.debug) console.error('Telemetry error for web_provider_attempt_completed:', e);
-      });
+      await trackEvent('web_provider_attempt_completed', properties, options?.debug);
     }
   }
 }

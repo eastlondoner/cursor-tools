@@ -646,15 +646,13 @@ export class InstallCommand implements Command {
 
       // Track successful installation (re-check status now)
       if (isTelemetryEnabled() === true) {
-        trackEvent('install_completed', {
+        void trackEvent('install_completed', {
           ide: selectedIde,
           config_location: isLocalConfig ? 'local' : 'global',
           coding_provider: userConfig.coding?.provider,
           websearch_provider: userConfig.websearch?.provider,
           tooling_provider: userConfig.tooling?.provider,
           largecontext_provider: userConfig.largecontext?.provider,
-        }).catch((telemetryError) => {
-          console.error('Telemetry error during install_completed:', telemetryError);
         });
       }
 

@@ -568,11 +568,7 @@ abstract class OpenAIBase extends BaseProvider {
           (error.name === 'TimeoutError' || error.message.toLowerCase().includes('timeout')),
       };
       // Don't await this, let it run in the background
-      trackEvent('provider_api_error', telemetryProps).catch((telemetryError) => {
-        if (options.debug) {
-          console.error('Telemetry error during provider_api_error:', telemetryError);
-        }
-      });
+      void trackEvent('provider_api_error', telemetryProps);
 
       // Always log the full error details for better debugging
       console.error(
@@ -772,8 +768,8 @@ export class GoogleVertexAIProvider extends BaseProvider {
             for (const query of webSearchQueries) {
               webSearchText += `- ${query}\n`;
             }
-            webSearchText += '\n';
           }
+          webSearchText += '\n';
 
           // Format response with citations if grounding metadata exists
           let formattedContent = content;
