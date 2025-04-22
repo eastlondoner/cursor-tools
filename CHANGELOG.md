@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.6.0-alpha.12] - 2025-04-22
+
 ### Added
 - **Subdirectory Analysis for Repo Command**: Added `--subdir` parameter to the repo command, allowing users to analyze a specific subdirectory instead of the entire repository. This makes the repo command more efficient when working with large codebases by focusing only on relevant subdirectories (e.g., `cursor-tools repo "explain the code" --subdir=src/commands`).
 - **New 'browser agent' Subcommand**: Added a new `browser agent` subcommand to leverage Stagehand's `agent()` method with execute(). Nickname is "Operator"

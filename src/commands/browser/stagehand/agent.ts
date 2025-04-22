@@ -51,19 +51,20 @@ export class AgentCommand implements Command {
     try {
       // Determine the provider and model based on config and options
       const provider = options?.provider || stagehandConfig.provider || 'openai';
-      const model = options?.model || 
-                   (provider === 'openai' ? 'computer-use-preview-2025-03-11' : 
-                    'claude-3-7-sonnet-20250219');
-      
+      const model =
+        options?.model ||
+        (provider === 'openai' ? 'computer-use-preview-2025-03-11' : 'claude-3-7-sonnet-20250219');
+
       // Check for required API key based on provider
-      const apiKey = provider === 'openai' 
-                    ? process.env.OPENAI_API_KEY
-                    : process.env.ANTHROPIC_API_KEY;
-      
+      const apiKey =
+        provider === 'openai' ? process.env.OPENAI_API_KEY : process.env.ANTHROPIC_API_KEY;
+
       const requiredKeyEnvVar = provider === 'openai' ? 'OPENAI_API_KEY' : 'ANTHROPIC_API_KEY';
-                    
+
       if (!apiKey) {
-        throw new Error(`Missing API key for ${provider} provider. Please set ${requiredKeyEnvVar} environment variable in ~/.cursor-tools/.env`);
+        throw new Error(
+          `Missing API key for ${provider} provider. Please set ${requiredKeyEnvVar} environment variable in ~/.cursor-tools/.env`
+        );
       }
 
       // Initialize Stagehand config
@@ -138,10 +139,7 @@ export class AgentCommand implements Command {
           if (currentUrl !== url) {
             const gotoPromise = stagehand.page.goto(url);
             const gotoTimeoutPromise = new Promise((_, reject) =>
-              setTimeout(
-                () => reject(new Error('Navigation timeout')),
-                navigationTimeoutMs
-              )
+              setTimeout(() => reject(new Error('Navigation timeout')), navigationTimeoutMs)
             );
             await Promise.race([gotoPromise, gotoTimeoutPromise]);
           } else {
@@ -165,7 +163,7 @@ export class AgentCommand implements Command {
       const result = await this.executeAgentTask(
         stagehand,
         query,
-        provider as "openai" | "anthropic",
+        provider as 'openai' | 'anthropic',
         model,
         apiKey,
         executionTimeoutMs
@@ -200,14 +198,14 @@ export class AgentCommand implements Command {
   private async executeAgentTask(
     stagehand: Stagehand,
     instruction: string,
-    provider: "openai" | "anthropic",
+    provider: 'openai' | 'anthropic',
     model: string,
     apiKey: string,
     timeout = 120000
   ): Promise<any> {
     try {
       console.log(`Creating Stagehand agent [provider: ${provider}, model: ${model}]...`);
-      
+
       // Create the agent
       const agent = stagehand.agent({
         provider,
@@ -223,16 +221,13 @@ export class AgentCommand implements Command {
         (_, reject) =>
           (totalTimeout = setTimeout(() => reject(new Error('Agent execution timeout')), timeout))
       );
-      
-      const agentResult = await Promise.race([
-        agent.execute(instruction),
-        totalTimeoutPromise
-      ]);
-      
+
+      const agentResult = await Promise.race([agent.execute(instruction), totalTimeoutPromise]);
+
       if (totalTimeout) {
         clearTimeout(totalTimeout);
       }
-      
+
       return agentResult;
     } catch (error) {
       console.error('error in stagehand agent task', error);
@@ -245,4 +240,4 @@ export class AgentCommand implements Command {
       throw error;
     }
   }
-} 
+}
