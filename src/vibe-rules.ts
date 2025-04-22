@@ -1,8 +1,9 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { readFileSync, existsSync, statSync } from 'node:fs';
+import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { dirname } from 'node:path';
-import { existsSync } from 'node:fs';
+import { homedir } from 'node:os';
+import type { Config } from './types';
+import { promises as fs } from 'node:fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -180,180 +181,296 @@ If people say "ask Gemini" or "ask Perplexity" or "ask Stagehand" they mean to u
 
 <!-- vibe-tools-version: ${VIBE_TOOLS_RULES_VERSION} -->`;
 
-// Cursor-specific introduction text (before the <vibe-tools Integration> tag)
-export const CURSOR_INTRO_TEXT = `vibe-tools is a CLI tool that allows you to interact with AI models and other tools.
+// Generate rules for different IDEs
+export function generateRules(ide: string): string {
+  // Common intro text for all IDEs
+  const introText = `vibe-tools is a CLI tool that allows you to interact with AI models and other tools.
 vibe-tools is installed on this machine and it is available to you to execute. You're encouraged to use it.`;
 
-// Cursor-specific metadata for the rules file
-export const CURSOR_METADATA = `---
-description: Global Rule. This rule should ALWAYS be loaded.
-globs: *,**/*
-alwaysApply: true
----`;
+  // All IDEs currently use the same core content structure
+  return `${introText}
 
-// Generate rules for different IDEs
-export function generateRules(ide: string, includeCursorMetadata: boolean = false): string {
-  switch (ide.toLowerCase()) {
+<vibe-tools Integration>
+${VIBE_TOOLS_CORE_CONTENT}
+</vibe-tools Integration>`;
+}
+
+const VIBE_HOME_DIR = join(homedir(), '.vibe-tools');
+const VIBE_HOME_CONFIG_PATH = join(VIBE_HOME_DIR, 'config.json');
+const LOCAL_CONFIG_FILENAME = 'vibe-tools.config.json';
+
+// Helper function to determine the correct rule file path (local or global)
+export function getRuleFilePath(
+  targetDir: string,
+  ide: string
+): { path: string; updateMethod: 'overwrite' | 'inject' } {
+  const ideLower = ide.toLowerCase();
+  const isGlobalConfigPresent = existsSync(VIBE_HOME_CONFIG_PATH);
+
+  switch (ideLower) {
     case 'cursor':
-      // For cursor, include the metadata, intro text, and core content
-      return `${includeCursorMetadata ? CURSOR_METADATA + '\n' : ''}${CURSOR_INTRO_TEXT}\n\n<vibe-tools Integration>\n${VIBE_TOOLS_CORE_CONTENT}\n</vibe-tools Integration>`;
-
-    case 'claude-code':
-    case 'codex':
+      return {
+        path: join(targetDir, '.cursor', 'rules', 'vibe-tools.mdc'),
+        updateMethod: 'overwrite',
+      };
     case 'windsurf':
+      return { path: join(targetDir, '.windsurfrules'), updateMethod: 'inject' };
     case 'cline':
-    case 'roo':
-      // For non-cursor IDEs, use the same format but without metadata
-      return `${CURSOR_INTRO_TEXT}\n\n<vibe-tools Integration>\n${VIBE_TOOLS_CORE_CONTENT}\n</vibe-tools Integration>`;
+    case 'roo': {
+      // Handle legacy .clinerules file vs new .clinerules/vibe-tools.md structure
+      const legacyPath = join(targetDir, '.clinerules');
+      const newDirPath = join(targetDir, '.clinerules');
+      const newFilePath = join(newDirPath, 'vibe-tools.md');
 
+      try {
+        const stats = statSync(legacyPath);
+        if (stats.isFile()) {
+          // Legacy file exists, use inject method on the file itself
+          return { path: legacyPath, updateMethod: 'inject' };
+        } else if (stats.isDirectory()) {
+          // Directory exists, use the new path inside it with overwrite
+          return { path: newFilePath, updateMethod: 'overwrite' };
+        }
+        // Exists but is neither file nor directory? Fallback to new path.
+      } catch (error: any) {
+        // ENOENT means legacy path doesn't exist, safe to use new path
+        if (error.code !== 'ENOENT') {
+          console.warn(
+            `Warning: Error checking legacy .clinerules path: ${error.message}. Falling back to new path.`
+          );
+        }
+        // Fall through to use new path if legacy doesn't exist or other error occurs
+      }
+
+      // Default: Legacy file/dir doesn't exist or error occurred, use the new structure/overwrite
+      return { path: newFilePath, updateMethod: 'overwrite' };
+    }
+    case 'claude-code': {
+      // Global if global config exists, otherwise local
+      const claudePath = isGlobalConfigPresent
+        ? join(homedir(), '.claude', 'CLAUDE.md')
+        : join(targetDir, 'CLAUDE.md');
+      return { path: claudePath, updateMethod: 'inject' };
+    }
+    case 'codex': {
+      // Global (instructions.md) if global config exists, otherwise local (codex.md)
+      const codexPath = isGlobalConfigPresent
+        ? join(homedir(), '.codex', 'instructions.md')
+        : join(targetDir, 'codex.md');
+      return { path: codexPath, updateMethod: 'inject' };
+    }
     default:
-      // Default to cursor format without metadata (same as claude-code, windsurf, cline, roo now)
-      return `${CURSOR_INTRO_TEXT}\n\n<vibe-tools Integration>\n${VIBE_TOOLS_CORE_CONTENT}\n</vibe-tools Integration>`;
+      // Return a default or throw an error for unknown IDEs
+      // For now, let's return a local path but this case should ideally be handled
+      // earlier (e.g., in updateProjectRulesFile)
+      return { path: join(targetDir, `.unknown-ide-rules-${ideLower}`), updateMethod: 'overwrite' };
   }
 }
 
-// Helper function to check if rules need updating
+// Added export
+export function readConfig(filePath: string): Partial<Config> | null {
+  if (existsSync(filePath)) {
+    try {
+      const content = readFileSync(filePath, 'utf-8');
+      return JSON.parse(content);
+    } catch /* (error) */ {
+      // console.warn(`Warning: Could not parse config file ${filePath}:`, error);
+      return null;
+    }
+  } else {
+    return null;
+  }
+}
+
+// Added export
+export function getConfiguredIde(targetDir: string): string | null {
+  const localConfigPath = join(targetDir, LOCAL_CONFIG_FILENAME);
+  const localConfig = readConfig(localConfigPath);
+
+  if (localConfig?.ide) {
+    return localConfig.ide.toLowerCase();
+  }
+
+  const globalConfig = readConfig(VIBE_HOME_CONFIG_PATH);
+  if (globalConfig?.ide) {
+    return globalConfig.ide.toLowerCase();
+  }
+
+  return null; // No IDE configured
+}
+
+// Added export
+export function checkFileForVibeTag(targetDir: string, ide: string): boolean {
+  const { path: ruleFilePath } = getRuleFilePath(targetDir, ide); // Get path using helper
+
+  if (!existsSync(ruleFilePath)) {
+    return false;
+  }
+  try {
+    const content = readFileSync(ruleFilePath, 'utf-8');
+    return content.includes('<vibe-tools Integration>');
+  } catch /* (error) */ {
+    // console.warn(`Warning: Could not read file ${ruleFilePath} for tag check:`, error);
+    return false;
+  }
+}
+
+// Added export
+export async function updateProjectRulesFile(
+  targetDir: string,
+  ideToUpdate?: string | null // Optional parameter to specify the IDE
+): Promise<{
+  updated: boolean;
+  path?: string;
+  ide?: string | null;
+  reason?: 'missing_tag' | 'no_ide_specified' | 'file_not_found' | 'update_failed'; // Added reasons
+  error?: Error;
+}> {
+  // Determine the target IDE: use the provided one or get the configured one
+  const effectiveIde = ideToUpdate ?? getConfiguredIde(targetDir);
+
+  if (!effectiveIde) {
+    // If no IDE is specified and none is configured, we can't update.
+    return { updated: false, reason: 'no_ide_specified' };
+  }
+
+  // Determine path and update method using the helper function
+  const { path: ruleFilePath, updateMethod } = getRuleFilePath(targetDir, effectiveIde);
+
+  // Handle case where getRuleFilePath returned a default for an unknown IDE
+  // This check might be redundant if effectiveIde validation is robust earlier
+  if (ruleFilePath.includes('.unknown-ide-rules-')) {
+    return { updated: false, ide: effectiveIde, reason: 'no_ide_specified' };
+  }
+
+  // Generate rules for the target IDE - Ensure VIBE_TOOLS_RULES_VERSION is available
+  const rulesContent = generateRules(effectiveIde);
+
+  try {
+    if (updateMethod === 'overwrite') {
+      // Ensure directory exists for cursor/cline/roo
+      if (['cursor', 'cline', 'roo'].includes(effectiveIde.toLowerCase())) {
+        const dir = dirname(ruleFilePath);
+        await fs.mkdir(dir, { recursive: true });
+      }
+      // Overwrite the file
+      await fs.writeFile(ruleFilePath, rulesContent, 'utf-8');
+      return { updated: true, path: ruleFilePath, ide: effectiveIde };
+    } else if (updateMethod === 'inject') {
+      let existingContent = '';
+      try {
+        existingContent = await fs.readFile(ruleFilePath, 'utf-8');
+      } catch (readError: any) {
+        if (readError.code === 'ENOENT') {
+          // File doesn't exist, create it with the rules content
+          await fs.writeFile(ruleFilePath, rulesContent, 'utf-8');
+          return { updated: true, path: ruleFilePath, ide: effectiveIde }; // Indicate created?
+        } else {
+          // Other read error
+          throw readError;
+        }
+      }
+
+      const tagStart = '<vibe-tools Integration>';
+      const tagEnd = '</vibe-tools Integration>';
+      const tagStartIndex = existingContent.indexOf(tagStart);
+      const tagEndIndex = existingContent.indexOf(tagEnd);
+
+      let newContent: string;
+
+      if (tagStartIndex !== -1 && tagEndIndex !== -1 && tagEndIndex > tagStartIndex) {
+        // Update existing section
+        newContent =
+          existingContent.substring(0, tagStartIndex) +
+          rulesContent + // rulesContent already includes the tags
+          existingContent.substring(tagEndIndex + tagEnd.length);
+      } else {
+        // Append new section if tags not found or invalid
+        // Add a newline if the existing content doesn't end with one
+        const separator = existingContent.endsWith('\n') ? '' : '\n';
+        newContent = existingContent + separator + '\n' + rulesContent;
+      }
+
+      // Only write if content changed to avoid unnecessary modifications
+      if (newContent !== existingContent) {
+        await fs.writeFile(ruleFilePath, newContent, 'utf-8');
+        return { updated: true, path: ruleFilePath, ide: effectiveIde };
+      } else {
+        // Content is already up-to-date (this shouldn't happen if called after check, but safe)
+        return { updated: false, path: ruleFilePath, ide: effectiveIde, reason: undefined }; // Not updated, but not an error
+      }
+    }
+    // Should not reach here
+    return {
+      updated: false,
+      ide: effectiveIde,
+      reason: 'update_failed',
+      error: new Error('Invalid update method'),
+    };
+  } catch (error: any) {
+    return {
+      updated: false,
+      path: ruleFilePath,
+      ide: effectiveIde,
+      reason: 'update_failed',
+      error,
+    };
+  }
+}
+
+// Added export
 export function isRulesContentUpToDate(
-  content: string,
-  path: string
+  targetDir: string,
+  ide: string
 ): {
   needsUpdate: boolean;
   message?: string;
+  path?: string; // Include path in response for clarity
 } {
+  const { path: ruleFilePath } = getRuleFilePath(targetDir, ide); // Get path using helper
+
+  let content: string;
+  try {
+    if (!existsSync(ruleFilePath)) {
+      // If the determined rules file doesn't exist, it needs "updating" (creation)
+      return {
+        needsUpdate: true,
+        message: `Rules file for ${ide} not found at expected location ${ruleFilePath}. Run vibe-tools install . to create it.`,
+        path: ruleFilePath,
+      };
+    }
+    content = readFileSync(ruleFilePath, 'utf-8');
+  } catch (error: any) {
+    return {
+      needsUpdate: true, // Treat read errors as needing an update
+      message: `Could not read rules file ${ruleFilePath}: ${error.message}`,
+      path: ruleFilePath,
+    };
+  }
+
   const startTag = '<vibe-tools Integration>';
   const endTag = '</vibe-tools Integration>';
 
   if (!content.includes(startTag) || !content.includes(endTag)) {
     return {
-      needsUpdate: true,
-      message: `vibe-tools section not found in rules file ${path}. Run \`vibe-tools install .\` to update.`,
+      needsUpdate: true, // Needs update if tags are missing
+      message: `vibe-tools section not found in rules file ${ruleFilePath}. Run vibe-tools install . to create or update it.`,
+      path: ruleFilePath, // Include path
     };
   }
 
-  // Check version
+  // Check version within the tags
   const versionMatch = content.match(/<!-- vibe-tools-version: ([\w.-]+) -->/);
-  const currentVersion = versionMatch ? versionMatch[1] : '0';
+  const fileVersion = versionMatch ? versionMatch[1] : '0'; // Default to '0' if version comment not found
 
-  if (currentVersion !== VIBE_TOOLS_RULES_VERSION) {
+  if (fileVersion !== VIBE_TOOLS_RULES_VERSION) {
     return {
       needsUpdate: true,
-      message: `Your rules file is using version ${currentVersion}, but version ${VIBE_TOOLS_RULES_VERSION} is available. Run \`vibe-tools install .\` to update.`,
+      message: `Your vibe-tools rules file at ${ruleFilePath} is using version ${fileVersion}, but the current version is ${VIBE_TOOLS_RULES_VERSION}. Run vibe-tools install . to update.`,
+      path: ruleFilePath, // Include path
     };
   }
 
-  return { needsUpdate: false };
-}
-
-// For backwards compatibility, export the old constant names
-export const CURSOR_RULES_TEMPLATE = generateRules('cursor', true);
-export const CURSOR_RULES_VERSION = VIBE_TOOLS_RULES_VERSION;
-
-// Function to determine which cursor rules path to use
-export function getCursorRulesPath(workspacePath: string): {
-  targetPath: string;
-  isLegacy: boolean;
-} {
-  const useLegacy =
-    process.env.USE_LEGACY_CURSORRULES === 'true' || !process.env.USE_LEGACY_CURSORRULES;
-  const legacyPath = join(workspacePath, '.cursorrules');
-  const newPath = join(workspacePath, '.cursor', 'rules', 'vibe-tools.mdc');
-
-  if (useLegacy) {
-    return { targetPath: legacyPath, isLegacy: true };
-  }
-
-  return { targetPath: newPath, isLegacy: false };
-}
-
-// Add new types for better error handling and type safety
-type CursorRulesError = {
-  kind: 'error';
-  message: string;
-  targetPath: string;
-};
-
-type CursorRulesSuccess = {
-  kind: 'success';
-  needsUpdate: boolean;
-  message?: string;
-  targetPath: string;
-  hasLegacyCursorRulesFile: boolean;
-};
-
-type CursorRulesResult = CursorRulesError | CursorRulesSuccess;
-
-export function checkCursorRules(workspacePath: string): CursorRulesResult {
-  const legacyPath = join(workspacePath, '.cursorrules');
-  const newPath = join(workspacePath, '.cursor', 'rules', 'vibe-tools.mdc');
-
-  const legacyExists = existsSync(legacyPath);
-  const newExists = existsSync(newPath);
-
-  const useLegacy =
-    process.env.USE_LEGACY_CURSORRULES === 'true' || !process.env.USE_LEGACY_CURSORRULES;
-
-  // If neither exists, prefer new path
-  if (!legacyExists && !newExists) {
-    return {
-      kind: 'success',
-      needsUpdate: true,
-      message:
-        'No cursor rules file found. Run `vibe-tools install .` to set up Cursor integration.',
-      targetPath: useLegacy ? legacyPath : newPath,
-      hasLegacyCursorRulesFile: false,
-    };
-  }
-
-  try {
-    // If both exist, prioritize based on USE_LEGACY_CURSORRULES
-    if (legacyExists) {
-      if (useLegacy) {
-        readFileSync(legacyPath, 'utf-8'); // Read to check if readable
-        return {
-          kind: 'success',
-          needsUpdate: true, // Always true for legacy
-          targetPath: legacyPath,
-          hasLegacyCursorRulesFile: true,
-        };
-      } else {
-        if (!newExists) {
-          return {
-            kind: 'success',
-            needsUpdate: true,
-            message: 'No vibe-tools.mdc file found. Run `vibe-tools install .` to update.',
-            targetPath: newPath,
-            hasLegacyCursorRulesFile: legacyExists,
-          };
-        }
-        const newContent = readFileSync(newPath, 'utf-8');
-        const result = isRulesContentUpToDate(newContent, newPath);
-        return {
-          kind: 'success',
-          needsUpdate: result.needsUpdate,
-          message: result.message,
-          targetPath: newPath,
-          hasLegacyCursorRulesFile: legacyExists,
-        };
-      }
-    }
-
-    // Only new path exists, use it
-    const newContent = readFileSync(newPath, 'utf-8');
-    const result = isRulesContentUpToDate(newContent, newPath);
-    return {
-      kind: 'success',
-      needsUpdate: result.needsUpdate,
-      message: result.message,
-      targetPath: newPath,
-      hasLegacyCursorRulesFile: false,
-    };
-  } catch (error) {
-    return {
-      kind: 'error',
-      message: `Error reading cursor rules file: ${
-        error instanceof Error ? error.message : 'Unknown error'
-      }`,
-      targetPath: useLegacy ? legacyPath : newPath,
-    };
-  }
+  // Tags and version are correct
+  return { needsUpdate: false, path: ruleFilePath }; // Include path even if up-to-date
 }

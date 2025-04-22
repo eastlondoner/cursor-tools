@@ -394,7 +394,7 @@ export class JsonInstallCommand implements Command {
         // Write the rules file directly to the new location
         const rulesPath = join(rulesDir, 'vibe-tools.mdc');
         try {
-          writeFileSync(rulesPath, generateRules('cursor', true));
+          writeFileSync(rulesPath, generateRules('cursor'));
           consola.success(`Rules written to ${colors.cyan(rulesPath)}`);
         } catch (error) {
           consola.error(`${colors.red('Error writing rules for cursor:')}`, error);
@@ -465,7 +465,7 @@ export class JsonInstallCommand implements Command {
           }
           default: {
             rulesPath = join(absolutePath, '.cursor', 'rules', 'vibe-tools.mdc');
-            rulesTemplate = generateRules('cursor', true);
+            rulesTemplate = generateRules('cursor');
             ensureDirectoryExists(join(rulesPath, '..'));
             writeFileSync(rulesPath, rulesTemplate.trim());
             consola.success(`Rules written to ${rulesPath}`);

@@ -2,10 +2,19 @@ import { commands } from './commands/index.ts';
 import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { checkCursorRules } from './vibe-rules';
+import {
+  isRulesContentUpToDate,
+  checkFileForVibeTag,
+  updateProjectRulesFile,
+  getConfiguredIde,
+} from './vibe-rules';
+import { checkPackageVersion } from './utils/versionUtils';
 import type { CommandOptions, Provider } from './types';
 import { reasoningEffortSchema } from './types';
 import { promises as fsPromises } from 'node:fs';
+import consola from 'consola';
+import { colors } from 'consola/utils';
+import { spawn } from 'node:child_process';
 // Get the directory name of the current module
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -195,10 +204,205 @@ const BOOLEAN_OPTIONS = new Set<CLIBooleanOption>([
 // Set of option keys that require numeric values
 const NUMERIC_OPTIONS = new Set<CLINumberOption>(['maxTokens', 'timeout', 'connectTo', 'parallel']);
 
-async function main() {
-  const [, , command, ...args] = process.argv;
+// --- CORRECTED HELPER FUNCTION for Rules Check ---
+async function performRulesCheck(): Promise<{ ide: string; path: string; reason: string }[]> {
+  const targetDir = process.cwd();
+  const filesToUpdate: { ide: string; path: string; reason: string }[] = [];
 
-  // Handle version command
+  // Get the IDE configured in vibe-tools config (local or global)
+  const configuredIde = getConfiguredIde(targetDir); // <-- Get configured IDE
+
+  // Define potential IDE integrations and their properties
+  const potentialIntegrations = [
+    { ide: 'cursor', requiresTag: false },
+    { ide: 'windsurf', requiresTag: true },
+    { ide: 'cline', requiresTag: false }, // Also handles 'roo'
+    { ide: 'claude-code', requiresTag: true },
+    { ide: 'codex', requiresTag: true },
+  ];
+
+  // If no IDE is configured, we can't reliably check rules this way.
+  // The install command should handle initial setup.
+  if (!configuredIde) {
+    // consola.debug('No IDE configured in vibe-tools.config.json, skipping automatic rule check.');
+    return filesToUpdate; // Return empty list
+  }
+
+  // Find the specific integration matching the configured IDE
+  const currentIntegration = potentialIntegrations.find((int) => int.ide === configuredIde);
+
+  // If the configured IDE isn't one we know how to check, exit
+  if (!currentIntegration) {
+    // consola.debug(`Configured IDE '${configuredIde}' not recognized for rule check.`);
+    return filesToUpdate;
+  }
+
+  const { ide, requiresTag: requiresTagCheck } = currentIntegration;
+
+  try {
+    let needsUpdate = false;
+    let updateReason = '';
+    let checkedPath: string | undefined; // Store the path determined by isRulesContentUpToDate
+
+    // 1. Check if rules are up-to-date (this also handles file existence)
+    const updateCheck = isRulesContentUpToDate(targetDir, ide);
+    checkedPath = updateCheck.path; // Store the path it checked
+
+    if (updateCheck.needsUpdate) {
+      needsUpdate = true;
+      updateReason = updateCheck.message || 'outdated version or file missing';
+    } else if (requiresTagCheck) {
+      // 2. Only if up-to-date AND requires tag check, check for the tag
+      if (!checkFileForVibeTag(targetDir, ide)) {
+        needsUpdate = true;
+        // Use checkedPath for a more specific message if available
+        updateReason = `missing Vibe Tools integration tag${checkedPath ? ' in ' + checkedPath : ''}`;
+      }
+    }
+
+    // 3. If an update is needed for any reason, add to the list
+    if (needsUpdate && checkedPath) {
+      filesToUpdate.push({ ide, path: checkedPath, reason: updateReason });
+    } else if (needsUpdate && !checkedPath) {
+      // Fallback, though should ideally always have path from updateCheck
+      consola.warn(`Update needed for ${ide} but path couldn't be determined.`);
+    }
+  } catch (error: any) {
+    // Catch errors from the check functions themselves (e.g., permission issues)
+    consola.warn(`Could not perform rules check for ${ide}: ${error.message}`);
+  }
+
+  return filesToUpdate; // Return the list
+}
+
+// Function to generate the help message
+async function generateHelpMessage(showSummaryOnly = false): Promise<void> {
+  const packageJsonPath = join(__dirname, '../package.json');
+  const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
+  const version = packageJson.version;
+
+  consola.log(colors.bold(`vibe-tools version ${version}\n`));
+
+  // Concise summary
+  const summary =
+    'vibe-tools provides a CLI that your AI agent can use to expand its capabilities. It integrates with various AI providers and offers tools for repository analysis, web search, browser automation, and more.';
+  consola.log(`${summary}`);
+  consola.log(
+    colors.italic(
+      'Tip: vibe-tools is designed to be used primarily by AI agents and editors like Cursor.\n'
+    )
+  );
+
+  if (showSummaryOnly) {
+    consola.log('Usage: vibe-tools <command> [options]');
+    consola.log('Run vibe-tools --help for a list of commands and options.\n');
+    return;
+  }
+
+  consola.log(colors.underline('Usage:') + ' vibe-tools <command> "<query>" [options]\n');
+
+  consola.log(colors.underline('Available Commands:'));
+
+  const commandDescriptions: Record<string, string> = {
+    ask: 'Ask any model from any provider a direct question.',
+    browser: 'Automate browser interactions using Stagehand AI.',
+    clickup: 'Get detailed information about ClickUp tasks.',
+    doc: 'Generate comprehensive documentation for a repository.',
+    github: 'Interact with GitHub issues and pull requests.',
+    install: 'Interactive setup for API keys and IDE integration.',
+    mcp: 'Interact with Model Context Protocol (MCP) servers.',
+    plan: 'Generate a focused implementation plan using AI.',
+    repo: 'Get context-aware answers about a repository using AI.',
+    test: 'Run automated feature behavior tests using AI agents.',
+    web: 'Get answers from the web using Perplexity or Gemini.',
+    xcode: 'Automate Xcode tasks (build, run, lint).',
+    youtube: 'Analyze YouTube videos using Gemini.',
+  };
+
+  const commandNames = Object.keys(commands).sort();
+  const maxCmdLength = Math.max(...commandNames.map((cmd) => cmd.length));
+
+  commandNames.forEach((cmd) => {
+    const description = commandDescriptions[cmd] || 'No description available.';
+    consola.log(`  ${colors.cyan(cmd.padEnd(maxCmdLength))}  ${description}`);
+  });
+
+  consola.log(
+    '\nRun vibe-tools <command> --help for more command-specific options (if available).\n'
+  );
+
+  consola.log(colors.underline('General Options (Supported by most commands):'));
+
+  // Define descriptions for options
+  const optionDescriptions: Partial<Record<CLIOptionKey, string>> = {
+    model: 'Specify an alternative AI model to use.',
+    provider: 'AI provider (openai, anthropic, perplexity, gemini, openrouter, etc.).',
+    maxTokens: 'Control response length (max number of tokens).',
+    debug: 'Show detailed logs and error information.',
+    reasoningEffort: 'Control the depth of reasoning (low|medium|high).',
+    saveTo: 'Save command output to a file path.',
+    quiet: 'Suppress stdout logging output (yielded results only).',
+    json: 'Output results as JSON or provide JSON config (install).',
+    hint: 'Provide additional context/hint to the AI.',
+    fromGithub: 'Use a remote GitHub repository URL as context.',
+    subdir: 'Specify a subdirectory within the repository context.',
+    withDoc: 'URL of a documentation page for additional context.',
+    // Add descriptions for other relevant options as needed
+    url: 'URL for browser commands.',
+    connectTo: 'Connect to an existing browser debug port.',
+  };
+
+  const optionEntries = Object.entries(OPTION_KEYS)
+    .map(([_, optionKey]) => optionKey)
+    .sort(); // Sort keys alphabetically
+
+  const maxOptLength = Math.max(
+    ...optionEntries.map((optKey) => {
+      const kebabCaseKey = toKebabCase(optKey);
+      let param = '';
+      if (NUMERIC_OPTIONS.has(optKey as CLINumberOption)) param = '<number>';
+      else if (!BOOLEAN_OPTIONS.has(optKey as CLIBooleanOption)) param = '<value>';
+      return `--${kebabCaseKey}${param ? '=' + param : ''}`.length;
+    })
+  );
+
+  optionEntries.forEach((optionKey) => {
+    const kebabCaseKey = toKebabCase(optionKey);
+    let param = '';
+    if (NUMERIC_OPTIONS.has(optionKey as CLINumberOption)) {
+      param = '<number>';
+    } else if (!BOOLEAN_OPTIONS.has(optionKey as CLIBooleanOption)) {
+      param = '<value>';
+    }
+    const flag = `--${kebabCaseKey}${param ? '=' + param : ''}`;
+    const description = optionDescriptions[optionKey] || ''; // Use empty string if no description
+    consola.log(`  ${flag.padEnd(maxOptLength)}  ${description}`);
+  });
+
+  consola.log(colors.underline('\nExamples:'));
+  consola.log('  # Get help for a specific command');
+  consola.log('  vibe-tools repo --help\n');
+  consola.log('  # Ask about files related to authentication in the current repo');
+  consola.log('  vibe-tools repo "What files handle user authentication?"\n');
+  consola.log('  # Search the web for recent AI news');
+  consola.log(
+    '  vibe-tools web "Latest advancements in large language models" --provider=perplexity\n'
+  );
+  consola.log('  # Generate documentation for a remote repository');
+  consola.log('  vibe-tools doc --from-github=https://github.com/owner/repo');
+}
+
+async function main() {
+  const originalArgs = process.argv.slice(2); // Store original args
+  const [command, ...args] = originalArgs;
+
+  // Handle help command first
+  if (command === 'help' || command === '-h' || command === '--help') {
+    await generateHelpMessage(); // Call the new function
+    process.exit(0); // Exit after showing help
+  }
+
+  // Handle version command next
   if (command === 'version' || command === '-v' || command === '--version') {
     try {
       const packageJsonPath = join(__dirname, '../package.json');
@@ -362,11 +566,7 @@ async function main() {
   const query = command === 'install' && queryArgs.length === 0 ? '.' : queryArgs.join(' ');
 
   if (!command) {
-    console.error(
-      'Usage: vibe-tools <command> "<query>" [--provider=<provider>] [--model=<model>] [--save-to=<filepath>] [--from-github=<github_url>] [--quiet] [--debug] [...other command-specific parameters]\n' +
-        '       Note: Options can be specified in kebab-case (--max-tokens) or camelCase (--maxTokens)\n' +
-        '       Both --key=value and --key value formats are supported\n'
-    );
+    await generateHelpMessage(true); // Show summary and basic usage
     process.exit(1);
   }
 
@@ -374,119 +574,271 @@ async function main() {
     if (command === 'doc') {
       // no query for doc command is ok
     } else {
-      console.error(`Error: No query provided for command: ${command}`);
+      consola.error(`Error: No query provided for command: ${command}`);
       process.exit(1);
     }
   }
 
   const commandHandler = commands[command];
   if (!commandHandler) {
-    console.error(`Unknown command: ${command}`);
-    console.error(`Available commands: ${Object.keys(commands).join(', ')}`);
+    consola.error(`Unknown command: ${command}`);
+    consola.error(`Available commands: ${Object.keys(commands).join(', ')}`);
     process.exit(1);
   }
 
-  // Check .cursorrules version unless running the install command
-  if (command !== 'install') {
-    const result = checkCursorRules(process.cwd());
-    if (result.kind === 'success' && result.needsUpdate && result.message) {
-      console.error('\x1b[33m%s\x1b[0m', `Warning: ${result.message}`); // Yellow text
-    } else if (result.kind === 'error') {
-      console.error('\x1b[31m%s\x1b[0m', `Error: ${result.message}`); // Red text
-    }
-  }
+  // --- Start Update Check Block ---
+  let shouldContinueExecution = true;
 
   try {
-    // If saveTo is specified, ensure the directory exists and clear any existing file
-    if (options.saveTo) {
-      const dir = dirname(options.saveTo);
-      if (dir !== '.') {
-        try {
-          mkdirSync(dir, { recursive: true });
-        } catch (err) {
-          console.error(`Error creating directory: ${dir}`, err);
-          console.error('Output will not be saved to file.');
-          options.saveTo = undefined;
-        }
-      }
-      // Clear the file if it exists
-      if (options.saveTo) {
-        // Additional check after potential undefined assignment above
-        try {
-          writeFileSync(options.saveTo, '');
-        } catch (err) {
-          console.error(`Error clearing file: ${options.saveTo}`, err);
-          console.error('Output will not be saved to file.');
-          options.saveTo = undefined;
-        }
-      }
-    }
+    const versionInfo = await checkPackageVersion();
+    if (versionInfo.isOutdated && versionInfo.latest) {
+      const promptMessage = `A new version of vibe-tools (v${versionInfo.latest}) is available. You have v${versionInfo.current}. Update now?`;
+      const shouldUpdate = await consola.prompt(promptMessage, {
+        type: 'confirm',
+        initial: true,
+      });
 
-    // Execute the command and handle output
-    const commandOptions: CommandOptions = {
-      ...options,
-      debug: options.debug ?? false,
-      provider: options.provider as Provider,
-      fileProvider: options.fileProvider as Provider,
-      thinkingProvider: options.thinkingProvider as Provider,
-      reasoningEffort: options.reasoningEffort
-        ? reasoningEffortSchema.parse(options.reasoningEffort)
-        : undefined,
-    };
-    for await (const output of commandHandler.execute(query, commandOptions)) {
-      // Only write to stdout if not in quiet mode
-      let writePromise: Promise<void>;
-      if (!options.quiet) {
-        writePromise = new Promise<void>((resolve, reject) => {
-          const timeout = setTimeout(() => {
-            reject(new Error('Timeout writing to stdout'));
-          }, 10000);
-          process.stdout.write(output, () => {
-            clearTimeout(timeout);
-            resolve();
-          });
+      if (shouldUpdate) {
+        // Explicitly ask user for package manager
+        const selectedPackageManager = await consola.prompt('Select package manager for update:', {
+          type: 'select',
+          options: ['npm', 'bun', 'yarn', 'pnpm'],
+          initial: 'npm', // Default suggestion (BRUV)
         });
-        await writePromise;
-      } else {
-        writePromise = Promise.resolve();
-      }
 
-      if (options.saveTo) {
-        try {
-          await fsPromises.appendFile(options.saveTo, output);
-        } catch (err) {
-          console.error(`Error writing to file: ${options.saveTo}`, err);
-          // Disable file writing for subsequent outputs
-          options.saveTo = undefined;
+        let pmCommand: string;
+        let pmArgs: string[];
+
+        switch (selectedPackageManager) {
+          case 'yarn':
+            pmCommand = 'yarn';
+            pmArgs = ['global', 'add', 'vibe-tools@latest'];
+            break;
+          case 'pnpm':
+            pmCommand = 'pnpm';
+            pmArgs = ['add', '-g', 'vibe-tools@latest'];
+            break;
+          case 'bun':
+            pmCommand = 'bun';
+            // Use the corrected args from your edit
+            pmArgs = ['i', '-g', 'vibe-tools@latest'];
+            break;
+          case 'npm':
+          default:
+            pmCommand = 'npm';
+            // Use the corrected args from your edit
+            pmArgs = ['i', '-g', 'vibe-tools@latest'];
+            break;
         }
-      }
-      await writePromise;
-    }
-    // this should flush stderr and stdout and write a newline
-    console.log('');
-    console.error('');
 
-    if (options.saveTo) {
-      console.log(`Output saved to: ${options.saveTo}`);
+        consola.info(
+          `Updating vibe-tools to v${versionInfo.latest} using ${selectedPackageManager}...`
+        );
+        shouldContinueExecution = false; // Don't execute original command yet
+
+        const updateProcess = spawn(pmCommand, pmArgs, {
+          stdio: 'inherit',
+          shell: true,
+        });
+
+        updateProcess.on('close', async (code) => {
+          if (code === 0) {
+            consola.success(`Successfully updated vibe-tools to v${versionInfo.latest}.`);
+
+            // --- MOVED Rules Check / Auto Update START ---
+            // We run this *after* the update succeeds
+            const filesRequiringUpdate = await performRulesCheck();
+
+            if (filesRequiringUpdate.length > 0) {
+              consola.info(
+                `Detected ${filesRequiringUpdate.length} outdated IDE integration file(s). Attempting updates...`
+              );
+              for (const fileToUpdate of filesRequiringUpdate) {
+                try {
+                  const updateResult = await updateProjectRulesFile(
+                    process.cwd(),
+                    fileToUpdate.ide
+                  );
+                  if (updateResult.updated) {
+                    consola.success(
+                      `Successfully updated ${fileToUpdate.ide} integration file (${updateResult.path})`
+                    );
+                  } else if (updateResult.error) {
+                    consola.error(
+                      `Failed to update ${fileToUpdate.ide} integration file (${fileToUpdate.path}): ${updateResult.error.message}`
+                    );
+                  } else {
+                    // Not updated, but no error (e.g., already up-to-date, file created, etc.)
+                    consola.info(
+                      `Checked ${fileToUpdate.ide} integration file (${fileToUpdate.path}). No update applied (${updateResult.reason || 'unknown reason'}).`
+                    );
+                  }
+                } catch (error: any) {
+                  consola.error(
+                    `Error during update attempt for ${fileToUpdate.ide} (${fileToUpdate.path}): ${error.message}`
+                  );
+                }
+              }
+            }
+            // --- MOVED Rules Check / Auto Update END ---
+
+            // Special handling for 'install' command
+            if (command === 'install') {
+              // Adjusted prompt message since we removed the automatic update attempt
+              const promptText = `vibe-tools update complete. Still proceed with install (config setup, etc.)?`;
+              const proceedWithInstall = await consola.prompt(promptText, {
+                type: 'confirm',
+                initial: false, // Default to not re-running install actions
+              });
+              if (proceedWithInstall) {
+                consola.info('Proceeding with original install command...');
+                const rerunProcess = spawn('vibe-tools', originalArgs, {
+                  stdio: 'inherit',
+                  shell: true,
+                });
+                rerunProcess.on('close', (rerunCode) => process.exit(rerunCode ?? 1));
+                rerunProcess.on('error', (err) => {
+                  consola.error('Failed to re-run install command:', err);
+                  process.exit(1);
+                });
+              } else {
+                consola.info('Update done. Exiting.');
+                process.exit(0); // Exit cleanly, update was the goal
+              }
+            } else {
+              // Re-run the original command for non-install commands
+              consola.info('Re-running original command...');
+              const rerunProcess = spawn('vibe-tools', originalArgs, {
+                stdio: 'inherit',
+                shell: true,
+              });
+              rerunProcess.on('close', (rerunCode) => process.exit(rerunCode ?? 1));
+              rerunProcess.on('error', (err) => {
+                consola.error('Failed to re-run original command:', err);
+                process.exit(1);
+              });
+            }
+          } else {
+            consola.error(`Failed to update vibe-tools (exit code: ${code}).`);
+            consola.warn('Continuing with the current version...');
+            shouldContinueExecution = true; // Allow original command to run
+          }
+        });
+
+        updateProcess.on('error', (err) => {
+          consola.error('Failed to start update process:', err);
+          consola.warn('Continuing with the current version...');
+          shouldContinueExecution = true; // Allow original command to run
+        });
+      } else {
+        consola.warn('Skipping update. Proceeding with current version.');
+      }
     }
   } catch (error) {
-    // Use the formatUserMessage method for CursorToolsError instances to display provider errors
-    if (
-      error &&
-      typeof error === 'object' &&
-      'formatUserMessage' in error &&
-      typeof error.formatUserMessage === 'function'
-    ) {
-      console.error('Error:', error.formatUserMessage(options.debug));
-    } else {
-      console.error('Error:', error instanceof Error ? error.message : 'Unknown error');
+    consola.warn('Could not check for vibe-tools updates:', error);
+    // Continue execution even if update check fails
+  }
+  // --- End Update Check Block ---
+
+  // Only proceed if the update process didn't take over AND exit
+  if (shouldContinueExecution) {
+    try {
+      // If saveTo is specified, ensure the directory exists and clear any existing file
+      if (options.saveTo) {
+        const dir = dirname(options.saveTo);
+        if (dir !== '.') {
+          try {
+            mkdirSync(dir, { recursive: true });
+          } catch (err) {
+            console.error(`Error creating directory: ${dir}`, err);
+            console.error('Output will not be saved to file.');
+            options.saveTo = undefined;
+          }
+        }
+        // Clear the file if it exists
+        if (options.saveTo) {
+          // Additional check after potential undefined assignment above
+          try {
+            writeFileSync(options.saveTo, '');
+          } catch (err) {
+            console.error(`Error clearing file: ${options.saveTo}`, err);
+            console.error('Output will not be saved to file.');
+            options.saveTo = undefined;
+          }
+        }
+      }
+
+      // Execute the command and handle output
+      const commandOptions: CommandOptions = {
+        ...options,
+        debug: options.debug ?? false,
+        provider: options.provider as Provider,
+        fileProvider: options.fileProvider as Provider,
+        thinkingProvider: options.thinkingProvider as Provider,
+        reasoningEffort: options.reasoningEffort
+          ? reasoningEffortSchema.parse(options.reasoningEffort)
+          : undefined,
+      };
+      for await (const output of commandHandler.execute(query, commandOptions)) {
+        // Only write to stdout if not in quiet mode
+        let writePromise: Promise<void>;
+        if (!options.quiet) {
+          writePromise = new Promise<void>((resolve, reject) => {
+            const timeout = setTimeout(() => {
+              reject(new Error('Timeout writing to stdout'));
+            }, 10000);
+            process.stdout.write(output, () => {
+              clearTimeout(timeout);
+              resolve();
+            });
+          });
+          await writePromise;
+        } else {
+          writePromise = Promise.resolve();
+        }
+
+        if (options.saveTo) {
+          try {
+            await fsPromises.appendFile(options.saveTo, output);
+          } catch (err) {
+            console.error(`Error writing to file: ${options.saveTo}`, err);
+            // Disable file writing for subsequent outputs
+            options.saveTo = undefined;
+          }
+        }
+        await writePromise;
+      }
+      // this should flush stderr and stdout and write a newline
+      console.log('');
+      console.error('');
+
+      if (options.saveTo) {
+        console.log(`Output saved to: ${options.saveTo}`);
+      }
+    } catch (error) {
+      // Use the formatUserMessage method for CursorToolsError instances to display provider errors
+      if (
+        error &&
+        typeof error === 'object' &&
+        'formatUserMessage' in error &&
+        typeof error.formatUserMessage === 'function'
+      ) {
+        console.error('Error:', error.formatUserMessage(options.debug));
+      } else {
+        console.error('Error:', error instanceof Error ? error.message : 'Unknown error');
+      }
+      process.exit(1);
     }
-    process.exit(1);
   }
 }
 
 main()
-  .then(() => process.exit(0))
+  .then(() => {
+    // Avoid double exit if update flow handled exit already
+    // The logic inside the update flow now explicitly calls process.exit()
+    // so we might not need to exit here if shouldContinueExecution is false.
+    // However, the main command execution block might finish normally.
+  })
   .catch((error) => {
     console.error('Fatal error:', error);
     process.exit(1);

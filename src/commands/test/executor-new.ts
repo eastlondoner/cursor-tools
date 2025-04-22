@@ -14,7 +14,7 @@ import {
 } from '../../utils/tool-enabled-llm/unified-client.js';
 import { createCommandExecutionTool } from './tools';
 import { BaseModelProvider, retryWithBackoff } from '../../providers/base';
-import { CURSOR_RULES_TEMPLATE } from '../../vibe-rules';
+import { generateRules } from '../../vibe-rules';
 import { TestEnvironmentManager } from './environment';
 import { StdioServerParameters } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -234,7 +234,7 @@ Examples:
 IMPORTANT: Do NOT attempt to use this tool to access files outside the temporary test directory (your current working directory).
 </filesystem_mcp_tool>
 
-${CURSOR_RULES_TEMPLATE}
+${generateRules('cursor')}
 
 Execute the test scenario provided and report the results. If you run into problems executing the scenario, make 3 attempts to execute the scenario. If you are still run into problems after 3 attempts, report the results as FAIL.
 

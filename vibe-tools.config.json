@@ -1,0 +1,21 @@
+{
+  "web": {
+    "provider": "perplexity",
+    "model": "sonar-pro"
+  },
+  "plan": {
+    "fileProvider": "openrouter",
+    "thinkingProvider": "openrouter",
+    "fileModel": "google/gemini-2.5-flash-preview",
+    "thinkingModel": "google/gemini-2.5-flash-preview"
+  },
+  "repo": {
+    "provider": "openai",
+    "model": "gemini-2.5-flash-preview"
+  },
+  "doc": {
+    "provider": "openrouter",
+    "model": "google/gemini-2.5-flash-preview"
+  },
+  "ide": "cursor"
+}
