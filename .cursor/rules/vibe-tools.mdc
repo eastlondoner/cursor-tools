@@ -104,7 +104,6 @@ The `search` command helps you discover servers in the MCP Marketplace based on 
 --model=<model name>: Specify an alternative AI model to use. If model is not specified, the provider's default model for that task will be used.
 --max-tokens=<number>: Control response length
 --save-to=<file path>: Save command output to a file (in *addition* to displaying it)
---help: View all available options (help is not fully implemented yet)
 --debug: Show detailed logs and error information
 
 **Repository Command Options:**

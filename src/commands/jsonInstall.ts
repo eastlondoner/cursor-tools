@@ -511,7 +511,7 @@ export class JsonInstallCommand implements Command {
           `• ${colors.cyan('Check your JSON configuration format')}`,
           `• ${colors.cyan('Ensure you have appropriate permissions')}`,
           '',
-          `For help: ${colors.green('vibe-tools --help')}`,
+          `If you need assistance, reach out to the vibe-tools team or try re-running the installation.`,
         ].join('\n'),
       });
     }

@@ -916,7 +916,6 @@ All commands support these general options:
 - `--save-to`: Save command output to a file (in addition to displaying it, like tee)
 - `--quiet`: Suppress stdout output (only useful with --save-to)
 - `--debug`: Show detailed error information
-- `--help`: View all available options
 - `--provider`: AI provider to use. Valid values: openai, anthropic, perplexity, gemini, openrouter
 
 Documentation command specific options:
