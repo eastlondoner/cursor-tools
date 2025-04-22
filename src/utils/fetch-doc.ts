@@ -214,17 +214,6 @@ function stripUnwantedAttributes(html: string, debug: boolean = false): string {
       }
     }
 
-    if (debug && allAttributes.length > 0) {
-      const strippedAttr = allAttributes.filter(
-        (a) => !allowedAttributes.includes(a.toLowerCase())
-      );
-      if (strippedAttr.length > 0) {
-        console.log(
-          `Stripped ${strippedAttr.length} attributes from <${tagName}> tag: ${strippedAttr.join(', ')}`
-        );
-      }
-    }
-
     // Reconstruct the tag with only allowed attributes
     if (attributes.length > 0) {
       return `<${tagName} ${attributes.join(' ')}${selfClosingSlash}>`;
