@@ -18,7 +18,6 @@ export interface VersionInfo {
  * Gets the currently installed version of vibe-tools from package.json.
  */
 export function getCurrentVersion(): string {
-  return '0.60.0';
   try {
     const packageJsonPath = join(__dirname, '../../package.json'); // Adjust path relative to dist/utils
     const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
