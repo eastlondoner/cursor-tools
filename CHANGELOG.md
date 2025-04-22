@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.60.6] - 2025-04-22
+
+### Added
+
+- **Document Web Url Integration**: Added `--with-doc <doc_url>` flag to `repo` and `doc` commands to fetch content from any web URL and include it as context.
+  - Uses the internal browser open command with a wait time to capture rendered HTML.
+  - Implements retry logic (3s, 5s, 10s waits) for fetching content to improve reliability.
+  - For repo: Prepends fetched document content to the user query sent to the analysis model.
+  - For doc: Includes fetched document content as additional context for documentation generation.
+
 ## [0.60.5] - 2025-04-18
 
 ### Added
