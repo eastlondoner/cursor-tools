@@ -101,6 +101,9 @@ The \`search\` command helps you discover servers in the MCP Marketplace based o
 - \`vibe-tools youtube\` analyzes YouTube videos to generate summaries, transcripts, implementation plans, or custom analyses
 - \`vibe-tools browser\` is useful for testing and debugging web apps and uses Stagehand
 - \`vibe-tools mcp\` enables interaction with specialized tools through MCP servers (e.g., for Git operations, file system tasks, or custom tools)
+- When implementing features based on documentation, specifications, or any external content, always use the \`--with-doc=<url>\` flag instead of built-in web search. For example: \`vibe-tools plan "Implement login page according to specs" --with-doc=https://example.com/specs.pdf\` or \`vibe-tools repo "How should I implement this feature?" --with-doc=https://example.com/feature-spec.md\`.
+
+- When a user provides a specific URL for documentation or reference material, always use the \`--with-doc=<url>\` flag with that URL rather than attempting to search for or summarize the content independently. This ensures the exact document is used as context.
 
 **Running Commands:**
 1. Use \`vibe-tools <command>\` to execute commands (make sure vibe-tools is installed globally using npm install -g vibe-tools so that it is in your PATH)
