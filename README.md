@@ -290,6 +290,7 @@ Note: The ask command requires both --provider and --model parameters to be spec
 - `--model=<model>`: Model to use (required)
 - `--max-tokens=<number>`: Maximum tokens for response
 - `--reasoning-effort=<low|medium|high>`: Control the depth of reasoning for supported models (OpenAI o1/o3-mini models and Claude 3.7 Sonnet). Higher values produce more thorough responses for complex questions.
+- `--with-doc=<doc_url>`: Fetch content from a document URL and include it as context for the question
 
 ## Authentication and API Keys
 

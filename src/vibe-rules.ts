@@ -22,6 +22,7 @@ Use the following commands to get AI assistance:
 --provider=<provider>: AI provider to use (openai, anthropic, perplexity, gemini, modelbox, openrouter, or xai)
 --model=<model>: Model to use (required for the ask command)
 --reasoning-effort=<low|medium|high>: Control the depth of reasoning for supported models (OpenAI o1/o3-mini models and Claude 3.7 Sonnet). Higher values produce more thorough responses for complex questions.
+--with-doc=<doc_url>: Fetch content from a document URL and include it as context for the question (e.g., \`vibe-tools ask "What does this spec require?" --with-doc=https://example.com/spec.pdf\`)
 
 **Implementation Planning:**
 \`vibe-tools plan "<query>"\` - Generate a focused implementation plan using AI (e.g., \`vibe-tools plan "Add user authentication to the login page"\`)
