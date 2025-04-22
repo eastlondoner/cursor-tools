@@ -13,7 +13,6 @@ import type { CommandOptions, Provider } from './types';
 import { reasoningEffortSchema } from './types';
 import { promises as fsPromises } from 'node:fs';
 import consola from 'consola';
-import { colors } from 'consola/utils';
 import { spawn } from 'node:child_process';
 // Get the directory name of the current module
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -275,132 +274,9 @@ async function performRulesCheck(): Promise<{ ide: string; path: string; reason:
   return filesToUpdate; // Return the list
 }
 
-// Function to generate the help message
-async function generateHelpMessage(showSummaryOnly = false): Promise<void> {
-  const packageJsonPath = join(__dirname, '../package.json');
-  const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
-  const version = packageJson.version;
-
-  consola.log(colors.bold(`vibe-tools version ${version}\n`));
-
-  // Concise summary
-  const summary =
-    'vibe-tools provides a CLI that your AI agent can use to expand its capabilities. It integrates with various AI providers and offers tools for repository analysis, web search, browser automation, and more.';
-  consola.log(`${summary}`);
-  consola.log(
-    colors.italic(
-      'Tip: vibe-tools is designed to be used primarily by AI agents and editors like Cursor.\n'
-    )
-  );
-
-  if (showSummaryOnly) {
-    consola.log('Usage: vibe-tools <command> [options]');
-    consola.log('Run vibe-tools --help for a list of commands and options.\n');
-    return;
-  }
-
-  consola.log(colors.underline('Usage:') + ' vibe-tools <command> "<query>" [options]\n');
-
-  consola.log(colors.underline('Available Commands:'));
-
-  const commandDescriptions: Record<string, string> = {
-    ask: 'Ask any model from any provider a direct question.',
-    browser: 'Automate browser interactions using Stagehand AI.',
-    clickup: 'Get detailed information about ClickUp tasks.',
-    doc: 'Generate comprehensive documentation for a repository.',
-    github: 'Interact with GitHub issues and pull requests.',
-    install: 'Interactive setup for API keys and IDE integration.',
-    mcp: 'Interact with Model Context Protocol (MCP) servers.',
-    plan: 'Generate a focused implementation plan using AI.',
-    repo: 'Get context-aware answers about a repository using AI.',
-    test: 'Run automated feature behavior tests using AI agents.',
-    web: 'Get answers from the web using Perplexity or Gemini.',
-    xcode: 'Automate Xcode tasks (build, run, lint).',
-    youtube: 'Analyze YouTube videos using Gemini.',
-  };
-
-  const commandNames = Object.keys(commands).sort();
-  const maxCmdLength = Math.max(...commandNames.map((cmd) => cmd.length));
-
-  commandNames.forEach((cmd) => {
-    const description = commandDescriptions[cmd] || 'No description available.';
-    consola.log(`  ${colors.cyan(cmd.padEnd(maxCmdLength))}  ${description}`);
-  });
-
-  consola.log(
-    '\nRun vibe-tools <command> --help for more command-specific options (if available).\n'
-  );
-
-  consola.log(colors.underline('General Options (Supported by most commands):'));
-
-  // Define descriptions for options
-  const optionDescriptions: Partial<Record<CLIOptionKey, string>> = {
-    model: 'Specify an alternative AI model to use.',
-    provider: 'AI provider (openai, anthropic, perplexity, gemini, openrouter, etc.).',
-    maxTokens: 'Control response length (max number of tokens).',
-    debug: 'Show detailed logs and error information.',
-    reasoningEffort: 'Control the depth of reasoning (low|medium|high).',
-    saveTo: 'Save command output to a file path.',
-    quiet: 'Suppress stdout logging output (yielded results only).',
-    json: 'Output results as JSON or provide JSON config (install).',
-    hint: 'Provide additional context/hint to the AI.',
-    fromGithub: 'Use a remote GitHub repository URL as context.',
-    subdir: 'Specify a subdirectory within the repository context.',
-    withDoc: 'URL of a documentation page for additional context.',
-    // Add descriptions for other relevant options as needed
-    url: 'URL for browser commands.',
-    connectTo: 'Connect to an existing browser debug port.',
-  };
-
-  const optionEntries = Object.entries(OPTION_KEYS)
-    .map(([_, optionKey]) => optionKey)
-    .sort(); // Sort keys alphabetically
-
-  const maxOptLength = Math.max(
-    ...optionEntries.map((optKey) => {
-      const kebabCaseKey = toKebabCase(optKey);
-      let param = '';
-      if (NUMERIC_OPTIONS.has(optKey as CLINumberOption)) param = '<number>';
-      else if (!BOOLEAN_OPTIONS.has(optKey as CLIBooleanOption)) param = '<value>';
-      return `--${kebabCaseKey}${param ? '=' + param : ''}`.length;
-    })
-  );
-
-  optionEntries.forEach((optionKey) => {
-    const kebabCaseKey = toKebabCase(optionKey);
-    let param = '';
-    if (NUMERIC_OPTIONS.has(optionKey as CLINumberOption)) {
-      param = '<number>';
-    } else if (!BOOLEAN_OPTIONS.has(optionKey as CLIBooleanOption)) {
-      param = '<value>';
-    }
-    const flag = `--${kebabCaseKey}${param ? '=' + param : ''}`;
-    const description = optionDescriptions[optionKey] || ''; // Use empty string if no description
-    consola.log(`  ${flag.padEnd(maxOptLength)}  ${description}`);
-  });
-
-  consola.log(colors.underline('\nExamples:'));
-  consola.log('  # Get help for a specific command');
-  consola.log('  vibe-tools repo --help\n');
-  consola.log('  # Ask about files related to authentication in the current repo');
-  consola.log('  vibe-tools repo "What files handle user authentication?"\n');
-  consola.log('  # Search the web for recent AI news');
-  consola.log(
-    '  vibe-tools web "Latest advancements in large language models" --provider=perplexity\n'
-  );
-  consola.log('  # Generate documentation for a remote repository');
-  consola.log('  vibe-tools doc --from-github=https://github.com/owner/repo');
-}
-
 async function main() {
   const originalArgs = process.argv.slice(2); // Store original args
   const [command, ...args] = originalArgs;
-
-  // Handle help command first
-  if (command === 'help' || command === '-h' || command === '--help') {
-    await generateHelpMessage(); // Call the new function
-    process.exit(0); // Exit after showing help
-  }
 
   // Handle version command next
   if (command === 'version' || command === '-v' || command === '--version') {
@@ -566,7 +442,8 @@ async function main() {
   const query = command === 'install' && queryArgs.length === 0 ? '.' : queryArgs.join(' ');
 
   if (!command) {
-    await generateHelpMessage(true); // Show summary and basic usage
+    consola.error('Error: No command provided.');
+    consola.error(`Available commands: ${Object.keys(commands).join(', ')}`);
     process.exit(1);
   }
 

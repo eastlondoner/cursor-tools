@@ -522,7 +522,7 @@ export class InstallCommand implements Command {
           // Write the rules file directly to the new location
           cursorPath = join(rulesDir, 'vibe-tools.mdc');
           try {
-            writeFileSync(cursorPath, generateRules('cursor', true));
+            writeFileSync(cursorPath, generateRules('cursor'));
             consola.success(`Rules written to ${colors.cyan(cursorPath)}`);
           } catch (error) {
             consola.error(`${colors.red('Error writing rules for cursor:')}`, error);
