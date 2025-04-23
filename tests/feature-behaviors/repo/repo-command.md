@@ -337,7 +337,30 @@ Use vibe-tools to analyze the facebook/react GitHub repository, which is a very 
 - The error handling is graceful with no stack traces unless --debug is used
 - The command output does not include any security tokens or API keys
 
-### Scenario 17: Repository Analysis with a Configured Provider 1) (Happy Path)
+### Scenario 17: Combining Document and Repository Context
+
+**Tags:** context-augmentation
+**Task Description:**
+Analyze the `src/utils/fetch-doc.ts` file in the current repository _and_ the document at `https://www.notion.so/1d0939cee1fa8058b002ef08412bc907?pvs=4`. Using `vibe-tools repo`, explain how the retry mechanism in `fetch-doc.ts` helps achieve the goals mentioned in the RAG document (like fetching up-to-date information reliably).
+
+**Expected Behavior:**
+
+- The AI agent should use `repo --with-doc` with the correct URL and a query referencing both the file and the document context.
+- The command should fetch document content and analyze the specified file.
+- The response should correctly identify the retry logic in `fetch-doc.ts` (e.g., multiple attempts with increasing wait times).
+- The response should connect this retry logic to the goal of reliably fetching potentially dynamic external information, as relevant to the RAG concept described in the document.
+- The command should complete without errors.
+
+**Success Criteria:**
+
+- AI agent correctly identifies and uses `vibe-tools repo --with-doc "https://www.notion.so/1d0939cee1fa8058b002ef08412bc907?pvs=4" "Explain how the retry mechanism in src/utils/fetch-doc.ts helps achieve the goals mentioned in the RAG document provided."` (or similar).
+- Document content is fetched successfully.
+- Response correctly identifies retry logic in `src/utils/fetch-doc.ts`.
+- Response makes a logical connection between the retry logic and the RAG concepts from the document.
+- No unexpected error messages are displayed.
+- Command completes within a reasonable time.
+
+### Scenario 18: Repository Analysis with a Configured Provider 1) (Happy Path)
 
 **Task Description:**
 Attempt to use vibe-tools to analyze the repository using a configured provider.
@@ -353,7 +376,7 @@ After completing the test, please clean up by deleting the vibe-tools.config.jso
 **Success Criteria:**
 - The first instance of "Trying provider: (provider)" in the command output shows the name of the configured provider.
 
-### Scenario 18: Repository Analysis with a Configured Provider 2) (Happy Path)
+### Scenario 19: Repository Analysis with a Configured Provider 2) (Happy Path)
 
 **Task Description:**
 Attempt to use vibe-tools to analyze the repository using a configured provider.

@@ -4,6 +4,7 @@ import { createProvider } from '../providers/base';
 import { ProviderError, ModelNotFoundError } from '../errors';
 import { getAllProviders } from '../utils/providerAvailability';
 import type { ModelOptions } from '../providers/base';
+import { fetchDocContent } from '../utils/fetch-doc.ts';
 
 export class AskCommand implements Command {
   private config;
@@ -62,11 +63,48 @@ export class AskCommand implements Command {
       console.log(`No model specified, using default model for ${providerName}: ${model}`);
     }
 
-    // Set maxTokens from provided options or fallback to the default
-    const maxTokens = options?.maxTokens || defaultMaxTokens;
-
     // Create the provider instance
     const provider = createProvider(providerName);
+    const maxTokens = options?.maxTokens || defaultMaxTokens;
+
+    let finalQuery = query;
+
+    // Check if the --with-doc flag is used
+    if (options?.withDoc) {
+      if (typeof options.withDoc !== 'string' || !options.withDoc.trim()) {
+        console.error(
+          'Warning: --with-doc flag used but no valid URL was provided. Proceeding without document context.'
+        );
+      } else {
+        try {
+          // FetchDocContent now returns cleaned text directly
+          console.log(`Fetching and extracting text from document: ${options.withDoc}`);
+          const cleanedText = await fetchDocContent(options.withDoc, options.debug ?? false);
+          // Log statement for successful fetch/extraction is now inside fetchDocContent
+
+          // Check if the extraction returned any significant text
+          if (cleanedText && cleanedText.trim().length > 0) {
+            // Prepend the cleaned document content to the original query
+            // Ensure backticks in the text are escaped if the text is wrapped in backticks in the prompt
+            const escapedCleanedText = cleanedText.replace(/`/g, '\\\\`');
+            finalQuery = `Document Content:\\n\`\`\`\\n${escapedCleanedText}\\n\`\`\`\\n\\nQuestion:\\n${query}`;
+          } else {
+            console.warn(
+              'fetchDocContent returned empty or whitespace-only text. Proceeding without document context.'
+            );
+            // finalQuery remains the original query
+          }
+        } catch (fetchExtractError) {
+          // Error message from fetchDocContent should indicate if it was fetch or extraction
+          console.error(
+            `Error during document fetch/extraction: ${fetchExtractError instanceof Error ? fetchExtractError.message : String(fetchExtractError)}`
+          );
+          console.error('Proceeding with original query due to error processing document.');
+          // Fallback: finalQuery remains the original query
+        }
+      }
+    }
+
     let answer: string;
     try {
       // Build the model options
@@ -79,8 +117,8 @@ export class AskCommand implements Command {
         reasoningEffort: options?.reasoningEffort ?? this.config.reasoningEffort,
       };
 
-      // Execute the prompt with the provider
-      answer = await provider.executePrompt(query, modelOptions);
+      // Execute the prompt with the provider using the potentially modified query
+      answer = await provider.executePrompt(finalQuery, modelOptions);
     } catch (error) {
       throw new ProviderError(
         error instanceof Error ? error.message : 'Unknown error during ask command execution',

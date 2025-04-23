@@ -346,17 +346,17 @@ export class InstallCommand implements Command {
           type: 'select',
           options: [
             {
-              value: 'gemini:gemini-2.5-pro-preview-03-25',
-              label: 'Gemini Pro 2.5',
+              value: 'gemini:gemini-2.5-flash-preview-04-17',
+              label: 'Gemini Flash 2.5',
               hint: 'recommended',
             },
             {
-              value: 'anthropic:claude-3-7-sonnet',
+              value: 'anthropic:claude-3-7-sonnet-20250219',
               label: 'Claude 3.7 Sonnet',
               hint: 'recommended',
             },
-            { value: 'perplexity:sonar', label: 'Perplexity Sonar' },
-            { value: 'openai:gpt-4o', label: 'GPT-4o' },
+            { value: 'perplexity:sonar-pro', label: 'Perplexity Sonar Pro' },
+            { value: 'openai:gpt-4.1-2025-04-14', label: 'GPT-4.1' },
             {
               value: 'openrouter:anthropic/claude-3.7-sonnet',
               label: 'OpenRouter - Claude 3.7 Sonnet',
@@ -370,7 +370,7 @@ export class InstallCommand implements Command {
               label: 'OpenRouter - Grok 3 Mini',
             },
           ],
-          initial: 'gemini:gemini-2.5-pro-preview-03-25',
+          initial: 'gemini:gemini-2.5-flash-preview-04-17',
         });
 
         // Web search (web command)

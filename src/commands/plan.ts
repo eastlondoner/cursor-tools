@@ -1,4 +1,4 @@
-import type { Command, CommandGenerator, CommandOptions, Config } from '../types';
+import type { Command, CommandGenerator, CommandOptions, Config, Provider } from '../types';
 import { defaultMaxTokens, loadConfig, loadEnv } from '../config';
 import { pack } from 'repomix';
 import { readFileSync } from 'node:fs';
@@ -6,6 +6,10 @@ import type { ModelOptions, BaseModelProvider } from '../providers/base';
 import { createProvider } from '../providers/base';
 import { FileError, ProviderError } from '../errors';
 import { loadFileConfigWithOverrides } from '../repomix/repomixConfig';
+import { fetchDocContent } from '../utils/fetch-doc.ts';
+
+const FIVE_MINUTES = 300000;
+const TEN_MINUTES = 600000;
 
 type FileProvider = 'gemini' | 'openai' | 'openrouter' | 'perplexity' | 'modelbox' | 'anthropic';
 type ThinkingProvider =
@@ -22,6 +26,7 @@ interface PlanCommandOptions extends CommandOptions {
   thinkingProvider?: ThinkingProvider;
   fileModel?: string;
   thinkingModel?: string;
+  withDoc?: string;
 }
 
 const DEFAULT_FILE_MODELS: Record<FileProvider, string> = {
@@ -109,6 +114,8 @@ export class PlanCommand implements Command {
   }
 
   async *execute(query: string, options: PlanCommandOptions): CommandGenerator {
+    yield `Executing plan command with query: ${query}`;
+
     try {
       // Check for conflicting model options
       if (options?.model && options?.thinkingModel) {
@@ -219,6 +226,24 @@ export class PlanCommand implements Command {
         throw new FileError('Failed to get file listing', error);
       }
 
+      // Fetch document content if the flag is provided
+      let docContent = '';
+      if (options?.withDoc) {
+        if (typeof options.withDoc !== 'string') {
+          // Should theoretically not happen due to yargs validation, but keep as a safeguard
+          throw new Error('Invalid value provided for --with-doc. Must be a URL string.');
+        }
+        try {
+          yield `Fetching document content from ${options.withDoc}...\\n`;
+          docContent = await fetchDocContent(options.withDoc, options.debug ?? false);
+          yield `Successfully fetched document content.\\n`;
+        } catch (error) {
+          console.error('Error fetching document content:', error);
+          // Let the user know fetching failed but continue without it
+          yield `Warning: Failed to fetch document content from ${options.withDoc}. Continuing analysis without it. Error: ${error instanceof Error ? error.message : String(error)}\\n`;
+        }
+      }
+
       // Get relevant files
       let filePaths: string[];
       try {
@@ -227,7 +252,22 @@ export class PlanCommand implements Command {
           this.config.plan?.fileMaxTokens ||
           (this.config as Record<string, any>)[fileProviderName]?.maxTokens ||
           defaultMaxTokens;
-        yield `Asking ${fileProviderName} to identify relevant files using model: ${fileModel} with max tokens: ${maxTokens}...\n`;
+
+        const effectiveFileMaxTokens = maxTokens ?? defaultMaxTokens; // Ensure maxTokens is a number
+
+        // Explicitly create a full ModelOptions object
+        const fileModelOptions: ModelOptions = {
+          model: fileModel,
+          maxTokens: effectiveFileMaxTokens,
+          debug: options?.debug,
+          // Initialize other potential optional ModelOptions fields if necessary
+          // e.g., webSearch: options?.webSearch,
+          // timeout: options?.timeout,
+          // reasoningEffort: options?.reasoningEffort,
+          // tokenCount: options?.tokenCount,
+        };
+
+        yield `Asking ${fileProviderName} to identify relevant files using model: ${fileModel} with max tokens: ${effectiveFileMaxTokens}...\n`;
 
         if (options?.debug) {
           yield 'Provider configuration:\n';
@@ -236,11 +276,13 @@ export class PlanCommand implements Command {
           yield `Max tokens: ${options?.maxTokens || this.config.plan?.fileMaxTokens}\n\n`;
         }
 
-        filePaths = await getRelevantFiles(fileProvider, query, packedRepo, {
-          model: fileModel,
-          maxTokens,
-          debug: options?.debug,
-        });
+        filePaths = await getRelevantFiles(
+          fileProvider,
+          query,
+          packedRepo,
+          fileModelOptions, // Pass the fully typed object
+          docContent
+        );
 
         if (options?.debug) {
           yield 'AI response received.\n';
@@ -287,19 +329,32 @@ export class PlanCommand implements Command {
         throw new FileError('Failed to extract content', error);
       }
 
-      const maxTokens =
+      const thinkingMaxTokens =
         options?.maxTokens ||
         this.config.plan?.thinkingMaxTokens ||
         (this.config as Record<string, any>)[thinkingProviderName]?.maxTokens ||
         defaultMaxTokens;
-      yield `Generating implementation plan using ${thinkingProviderName} with max tokens: ${maxTokens}...\n`;
+
+      const effectiveThinkingMaxTokens = thinkingMaxTokens ?? defaultMaxTokens; // Ensure maxTokens is a number
+
+      // Explicitly create a full ModelOptions object
+      const thinkingModelOptions: ModelOptions = {
+        model: thinkingModel,
+        maxTokens: effectiveThinkingMaxTokens,
+        debug: options?.debug,
+        // Initialize other potential optional ModelOptions fields if necessary
+      };
+
+      yield `Generating plan using ${thinkingProviderName} with max tokens: ${effectiveThinkingMaxTokens}...\n`;
       let plan: string;
       try {
-        plan = await generatePlan(thinkingProvider, query, filteredContent, {
-          model: thinkingModel,
-          maxTokens: maxTokens,
-          debug: options?.debug,
-        });
+        plan = await generatePlan(
+          thinkingProvider,
+          query,
+          filteredContent,
+          thinkingModelOptions, // Pass the fully typed object
+          docContent
+        );
       } catch (error) {
         console.error('Error in generatePlan', error);
         throw new ProviderError('Failed to generate implementation plan', error);
@@ -344,74 +399,71 @@ function parseFileList(fileListText: string): string[] {
   return matches.filter((f) => f.length > 0);
 }
 
-const FIVE_MINUTES = 300000;
-
 // Pure functions for plan operations
 async function getRelevantFiles(
   provider: BaseModelProvider,
   query: string,
-  fileListing: string,
-  options: Omit<ModelOptions, 'systemPrompt'>
+  packedRepo: string,
+  options: ModelOptions, // Expect full ModelOptions
+  docContent: string
 ): Promise<string[]> {
-  const timeoutMs = FIVE_MINUTES;
-  const response = await provider.executePrompt(
-    `Identify files that are relevant to the following query:
+  console.log('Getting relevant files using:', options.model);
+  const prompt = `
+User Query: ${query}
 
-Query: ${query}
+${docContent ? `Additional Context Document:\\n${docContent}\\n\\n---\\n` : ''}
 
-Below are the details of all files in the repository. Return ONLY a comma-separated list of file paths that are relevant to the query.
-Do not include any other text, explanations, or markdown formatting. Just the file paths separated by commas.
+Available Files (only include files from this list):
+${packedRepo}
 
-Files:
-${fileListing}`,
-    {
-      ...options,
-      timeout: timeoutMs,
-      systemPrompt:
-        'You are an expert software developer. You must return ONLY a comma-separated list of file paths. No other text or formatting.',
-    }
-  );
+Based on the user query${docContent ? ' and the additional context document' : ''}, which files from the list above are most relevant to implement the request?
+Return ONLY a comma-separated list of the relevant file paths. Do not include any other text, explanation, or formatting.
+Example: src/index.ts,src/utils/helper.ts
+Relevant Files:`;
+
+  // Override timeout specifically for this step
+  const specificOptions: ModelOptions = {
+    ...options,
+    timeout: FIVE_MINUTES,
+  };
+
+  // Use executePrompt and ensure options is the full ModelOptions type
+  const response = await provider.executePrompt(prompt, specificOptions);
   return parseFileList(response);
 }
 
-const TEN_MINUTES = 600000;
-
+/**
+ * Generates an implementation plan using the thinking provider.
+ */
 async function generatePlan(
   provider: BaseModelProvider,
   query: string,
-  repoContext: string,
-  options: Omit<ModelOptions, 'systemPrompt'>
+  filteredContent: string,
+  options: ModelOptions, // Expect full ModelOptions
+  docContent: string
 ): Promise<string> {
-  const timeoutMs = TEN_MINUTES;
-  const startTime = Date.now();
-  console.log(
-    `[${new Date().toLocaleTimeString()}] Generating plan using ${provider.constructor.name} with timeout: ${timeoutMs}ms...`
-  );
+  console.log('Generating plan using:', options.model);
+  const prompt = `
+User Query: ${query}
 
-  try {
-    // Create model options with all required parameters
-    const modelOptions: ModelOptions = {
-      ...options,
-      systemPrompt:
-        'You are an expert software engineer who generates step-by-step implementation plans for software development tasks. Given a query and a repository context, generate a detailed plan that is consistent with the existing code. Include specific file paths, code snippets, and any necessary commands. Identify assumptions and provide multiple possible options where appropriate.',
-      timeout: timeoutMs,
-    };
+${docContent ? `Additional Context Document:\\n${docContent}\\n\\n---\\n` : ''}
 
-    const result = await provider.executePrompt(
-      `Query: ${query}\n\nRepository Context:\n${repoContext}`,
-      modelOptions
-    );
+Relevant Code Context:
+\`\`\`
+${filteredContent}
+\`\`\`
 
-    const endTime = Date.now();
-    console.log(
-      `[${new Date().toLocaleTimeString()}] Plan generation completed in ${((endTime - startTime) / 1000).toFixed(2)} seconds.`
-    );
-    return result;
-  } catch (error) {
-    const endTime = Date.now();
-    console.error(
-      `[${new Date().toLocaleTimeString()}] Plan generation failed after ${((endTime - startTime) / 1000).toFixed(2)} seconds.`
-    );
-    throw error;
-  }
+Based *only* on the user query${docContent ? ', the additional context document,' : ''} and the provided relevant code context, generate a detailed, step-by-step implementation plan to address the user query.
+Focus on actionable steps and code modifications where appropriate.
+Implementation Plan:`;
+
+  // Override timeout specifically for this step
+  const specificOptions: ModelOptions = {
+    ...options,
+    timeout: TEN_MINUTES,
+  };
+
+  // Use executePrompt and ensure options includes the required systemPrompt
+  const plan = await provider.executePrompt(prompt, specificOptions);
+  return plan;
 }

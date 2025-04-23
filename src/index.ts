@@ -2,7 +2,7 @@ import { commands } from './commands/index.ts';
 import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { checkCursorRules } from './cursorrules.ts';
+import { checkCursorRules } from './vibe-rules';
 import type { CommandOptions, Provider } from './types';
 import { reasoningEffortSchema } from './types';
 import { promises as fsPromises } from 'node:fs';
@@ -34,6 +34,7 @@ type CLIStringOption =
   | 'hint'
   | 'fromGithub'
   | 'subdir'
+  | 'withDoc'
   // Browser options
   | 'url'
   | 'screenshot'
@@ -93,6 +94,7 @@ interface CLIOptions {
   hint?: string;
   fromGithub?: string;
   subdir?: string;
+  withDoc?: string;
 
   // Browser options
   url?: string;
@@ -146,6 +148,7 @@ const OPTION_KEYS: Record<string, CLIOptionKey> = {
   hint: 'hint',
   fromgithub: 'fromGithub',
   subdir: 'subdir',
+  withdoc: 'withDoc',
 
   // Browser options
   url: 'url',
@@ -243,6 +246,8 @@ async function main() {
     quiet: undefined,
     json: undefined,
     reasoningEffort: undefined,
+    subdir: undefined,
+    withDoc: undefined,
   };
   const queryArgs: string[] = [];
 
@@ -360,8 +365,7 @@ async function main() {
     console.error(
       'Usage: vibe-tools <command> "<query>" [--provider=<provider>] [--model=<model>] [--save-to=<filepath>] [--from-github=<github_url>] [--quiet] [--debug] [...other command-specific parameters]\n' +
         '       Note: Options can be specified in kebab-case (--max-tokens) or camelCase (--maxTokens)\n' +
-        '       Both --key=value and --key value formats are supported\n' +
-        "       Run 'vibe-tools <command> --help' for command-specific options"
+        '       Both --key=value and --key value formats are supported\n'
     );
     process.exit(1);
   }
