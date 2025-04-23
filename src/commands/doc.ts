@@ -236,6 +236,7 @@ export class DocCommand implements Command {
     repoContext: { text: string; tokenCount: number },
     options: DocCommandOptions
   ): CommandGenerator {
+    console.log(`Trying provider: ${provider}`);
     const modelProvider = createProvider(provider);
     const model =
       options?.model ||
