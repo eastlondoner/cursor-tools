@@ -200,6 +200,7 @@ export class RepoCommand implements Command {
     cursorRules: string,
     options: CommandOptions & Partial<ModelOptions>
   ): CommandGenerator {
+    console.log(`Trying provider: ${provider}`);
     const modelProvider = createProvider(provider);
     const modelName =
       options?.model ||

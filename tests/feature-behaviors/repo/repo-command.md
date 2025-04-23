@@ -336,3 +336,35 @@ Use vibe-tools to analyze the facebook/react GitHub repository, which is a very 
 - Command does not perform more than one or two retries before failing
 - The error handling is graceful with no stack traces unless --debug is used
 - The command output does not include any security tokens or API keys
+
+### Scenario 17: Repository Analysis with a Configured Provider 1) (Happy Path)
+
+**Task Description:**
+Attempt to use vibe-tools to analyze the repository using a configured provider.
+
+First, create a vibe-tools.config.json file using the content from {{path:repo-vibe-tools.config1.json}} in the repository root. Then, use vibe-tools to analyze the repository. Verify that the first instance of "Trying provider: (provider)" in the command output references the configured provider. The test passes ONLY if the very FIRST instance of "Trying provider:" contains the configured provider, if it does not then you should report the test as failing EVEN IF subsequent occurences of "Trying provider:" contain the configured provider.
+
+After completing the test, please clean up by deleting the vibe-tools.config.json file that you created.
+
+**Expected Behavior:**
+- The command should detect and use the custom vibe-tools.config.json file
+- The command should try to use the configured provider in the first attempt at analyzing the repository
+
+**Success Criteria:**
+- The first instance of "Trying provider: (provider)" in the command output shows the name of the configured provider.
+
+### Scenario 18: Repository Analysis with a Configured Provider 2) (Happy Path)
+
+**Task Description:**
+Attempt to use vibe-tools to analyze the repository using a configured provider.
+
+First, create a vibe-tools.config.json file using the content from {{path:repo-vibe-tools.config2.json}} in the repository root. Then, use vibe-tools to analyze the repository. Verify that the first instance of "Trying provider: (provider)" in the command output references the configured provider. The test passes ONLY if the very FIRST instance of "Trying provider:" contains the configured provider, if it does not then you should report the test as failing EVEN IF subsequent occurences of "Trying provider:" contain the configured provider.
+
+After completing the test, please clean up by deleting the vibe-tools.config.json file that you created.
+
+**Expected Behavior:**
+- The command should detect and use the custom vibe-tools.config.json file
+- The command should try to use the configured provider in the first attempt at analyzing the repository
+
+**Success Criteria:**
+- The first instance of "Trying provider: (provider)" in the command output shows the name of the configured provider.

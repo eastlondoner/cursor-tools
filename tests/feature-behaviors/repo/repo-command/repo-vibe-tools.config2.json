@@ -1,0 +1,6 @@
+{
+  "repo": {
+    "provider": "openrouter",
+    "model": "google/gemini-2.5-flash-preview"
+  }
+}
