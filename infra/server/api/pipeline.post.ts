@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { env } from 'cloudflare:workers';
 
 export default defineEventHandler(async (event) => {
   try {
@@ -6,7 +6,7 @@ export default defineEventHandler(async (event) => {
     const pipeline = env.PIPELINE;
 
     if (!pipeline) {
-      throw new Error("Pipeline binding not found in Cloudflare environment.");
+      throw new Error('Pipeline binding not found in Cloudflare environment.');
     }
 
     const data = body.data;
@@ -18,12 +18,12 @@ export default defineEventHandler(async (event) => {
     // Always send data wrapped in an array
     await pipeline.send([data]);
 
-    return { success: true, message: "Data sent to pipeline." };
+    return { success: true, message: 'Data sent to pipeline.' };
   } catch (error) {
-    console.error("Error sending data to pipeline:", error);
+    console.error('Error sending data to pipeline:', error);
     throw createError({
       statusCode: 500,
-      statusMessage: error instanceof Error ? error.message : "Pipeline error",
+      statusMessage: error instanceof Error ? error.message : 'Pipeline error',
     });
   }
 });
