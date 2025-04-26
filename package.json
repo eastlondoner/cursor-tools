@@ -8,7 +8,7 @@
     "ai",
     "assistant"
   ],
-  "version": "0.60.6",
+  "version": "0.60.7",
   "type": "module",
   "main": "./dist/index.mjs",
   "bin": {

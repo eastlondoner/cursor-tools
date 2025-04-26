@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+## [0.60.7] - 2025-04-26
+
+### Added
+
+- **Auto-update**:
+  - Automatically updates vibe-tools CLI to the latest version
+  - Runs automatically on either of the commands
+  - Automatically detects available IDEs and updates rules (if vibe-tools Integration detected)
+  - For vibe-tools install it prompts user if they wanna continue with installation
+
+### Improved
+
+- **Doc & Browser Commands Provider Improvements**:
+  - Doc and repo commands are now properly using their configured providers.
+
+- **CTA improvement**:
+  - Improved CTA for vibe-tools install to prompt user if they wanna continue with installationto do stuff. Removed misleading mention of --help flag.
+  - Documented ask --with-doc command
+
 ## [0.60.6] - 2025-04-22
 
 ### Added
