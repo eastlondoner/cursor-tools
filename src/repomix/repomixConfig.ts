@@ -39,6 +39,7 @@ export const outputOptions = {
   },
   compress: false,
   style: 'xml',
+  files: true,
   fileSummary: true,
   directoryStructure: true,
   removeComments: false,
@@ -62,6 +63,9 @@ function getGlobalConfigPath() {
 }
 
 const defaultConfig = {
+  input: {
+    maxFileSize: 1_000_000,
+  },
   output: outputOptions,
   include: includePatterns,
   ignore: {
@@ -135,17 +139,28 @@ const loadAndValidateConfig = async (filePath: string): Promise<RepomixConfig> =
  * @returns Merged configuration with all defaults applied
  */
 function mergeRepomixConfigs(
-  configs: Partial<RepomixConfig>[],
+  configs: Array<Partial<RepomixConfig>>,
   baseDirectory: string
 ): RepomixConfigMerged {
   // Start with empty config
-  let mergedConfig: Partial<RepomixConfig> = {};
+  let mergedConfig: Partial<RepomixConfig> & { input: { maxFileSize: number } } = {
+    input: {
+      maxFileSize: defaultConfig.input.maxFileSize,
+    },
+    output: {
+      files: defaultConfig.output.files,
+    },
+  };
 
   // Merge all provided configs in order (later configs override earlier ones)
   configs.forEach((config) => {
     mergedConfig = {
       ...mergedConfig,
       ...config,
+      input: {
+        ...mergedConfig.input,
+        ...config.input,
+      },
       output: {
         ...mergedConfig.output,
         ...config.output,
@@ -169,6 +184,9 @@ function mergeRepomixConfigs(
   // Apply defaults and structure similar to doc.ts implementation
   const finalConfig = {
     ...mergedConfig,
+    input: {
+      ...mergedConfig.input,
+    },
     output: {
       ...outputOptions,
       ...mergedConfig.output,

@@ -214,9 +214,9 @@ export function outputMessages(
  */
 export async function setupVideoRecording(
   options: SharedBrowserCommandOptions
-): Promise<string | null> {
+): Promise<string | undefined> {
   if (!options.video) {
-    return null;
+    return undefined;
   }
 
   try {
@@ -231,7 +231,7 @@ export async function setupVideoRecording(
     return videoDir;
   } catch (error) {
     console.error('Failed to setup video directory:', error);
-    return null;
+    return undefined;
   }
 }
 

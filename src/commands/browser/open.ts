@@ -108,7 +108,7 @@ export class OpenCommand implements Command {
       let page: Page | null = null;
       let consoleMessages: string[] = [];
       let networkMessages: string[] = [];
-      let videoPath: string | null = null;
+      let videoPath: string | undefined;
 
       try {
         if (options.connectTo) {

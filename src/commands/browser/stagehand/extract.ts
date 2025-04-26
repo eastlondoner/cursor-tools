@@ -49,11 +49,19 @@ export class ExtractCommand implements Command {
     let networkMessages: string[] = [];
 
     try {
+      const videoDir = await setupVideoRecording(options);
       const config = {
         env: 'LOCAL',
-        headless: options?.headless ?? stagehandConfig.headless,
+        localBrowserLaunchOptions: {
+          headless: options?.headless ?? stagehandConfig.headless,
+          recordVideo:
+            options?.video && videoDir
+              ? {
+                  dir: videoDir,
+                }
+              : undefined,
+        },
         verbose: options?.debug || stagehandConfig.verbose ? 1 : 0,
-        debugDom: options?.debug ?? stagehandConfig.debugDom,
         modelName: getStagehandModel(stagehandConfig, {
           model: options?.model,
         }) as 'claude-3-7-sonnet-20250219',
@@ -89,15 +97,7 @@ export class ExtractCommand implements Command {
       };
 
       // Initialize with timeout
-      const initPromise = stagehand.init({
-        ...options,
-        //@ts-ignore
-        recordVideo: options.video
-          ? {
-              dir: await setupVideoRecording(options),
-            }
-          : undefined,
-      });
+      const initPromise = stagehand.init();
       const initTimeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Initialization timeout')), 30000)
       );

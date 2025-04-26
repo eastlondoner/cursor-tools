@@ -269,8 +269,9 @@ export const patchStagehand = once(async () => {
     env: 'LOCAL',
     apiKey: 'test',
     verbose: 0,
-    debugDom: false,
-    headless: true,
+    localBrowserLaunchOptions: {
+      headless: true,
+    },
     logger: () => {},
   });
   await oldInit.call(tempStagehand);
@@ -317,7 +318,6 @@ export function overrideStagehandInit() {
         );
       });
 
-      this['intEnv'] = browserResult.env;
       this['contextPath'] = browserResult.contextPath;
 
       if (!browserResult.context) {

@@ -186,8 +186,18 @@ If people say "ask Gemini" or "ask Perplexity" or "ask Stagehand" they mean to u
 
 // Generate rules for different IDEs
 export function generateRules(ide: string): string {
+  let header = '';
+  if (ide === 'cursor') {
+    header += `---
+description: Global Rule. This rule should ALWAYS be loaded
+globs: *,**/*
+alwaysApply: true
+---
+`;
+  }
+
   // Common intro text for all IDEs
-  const introText = `vibe-tools is a CLI tool that allows you to interact with AI models and other tools.
+  const introText = `${header}vibe-tools is a CLI tool that allows you to interact with AI models and other tools.
 vibe-tools is installed on this machine and it is available to you to execute. You're encouraged to use it.`;
 
   // All IDEs currently use the same core content structure

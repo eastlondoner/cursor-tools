@@ -91,9 +91,11 @@ export class DocCommand implements Command {
               tokenCount: packResult.totalTokens,
             };
           } catch (error) {
+            console.error('Error reading repository context:', error);
             throw new FileError('Failed to read repository context', error);
           }
         } catch (error) {
+          console.error('Error packing repository:', error);
           throw new FileError('Failed to pack repository', error);
         }
       }
