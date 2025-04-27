@@ -1,6 +1,6 @@
 import { commands } from './commands/index.ts';
-import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { writeFileSync, mkdirSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   isRulesContentUpToDate,
@@ -8,7 +8,7 @@ import {
   updateProjectRulesFile,
   getConfiguredIde,
 } from './vibe-rules';
-import { checkPackageVersion } from './utils/versionUtils';
+import { checkPackageVersion, getCurrentVersion } from './utils/versionUtils';
 import type { CommandOptions, Provider } from './types';
 import { reasoningEffortSchema } from './types';
 import { promises as fsPromises } from 'node:fs';
@@ -281,12 +281,18 @@ async function main() {
   // Handle version command next
   if (command === 'version' || command === '-v' || command === '--version') {
     try {
-      const packageJsonPath = join(__dirname, '../package.json');
-      const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
-      console.log(`vibe-tools version ${packageJson.version}`);
+      const currentVersion = getCurrentVersion();
+      if (currentVersion === '0.0.0') {
+        console.error('Error: Could not determine package version using versionUtils.');
+        process.exit(1);
+      }
+      console.log(`vibe-tools version ${currentVersion}`);
       process.exit(0);
-    } catch {
-      console.error('Error: Could not read package version');
+    } catch (error) {
+      console.error(
+        'Error retrieving package version:',
+        error instanceof Error ? error.message : error
+      );
       process.exit(1);
     }
   }
