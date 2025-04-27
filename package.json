@@ -14,6 +14,10 @@
   "bin": {
     "vibe-tools": "dist/index.mjs"
   },
+  "exports": {
+    ".": "./dist/index.mjs",
+    "./llms": "./llms.txt"
+  },
   "scripts": {
     "compile": "tsc -build",
     "build": "node build.js",
@@ -28,7 +32,8 @@
   "files": [
     "package.json",
     "dist",
-    "README.md"
+    "README.md",
+    "llms.txt"
   ],
   "author": "eastlondoner",
   "license": "MIT",
