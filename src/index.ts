@@ -102,7 +102,7 @@ interface CLIOptions {
   hint?: string;
   fromGithub?: string;
   subdir?: string;
-  withDoc?: string;
+  withDoc?: string[];
 
   // Browser options
   url?: string;
@@ -201,7 +201,7 @@ const BOOLEAN_OPTIONS = new Set<CLIBooleanOption>([
 ]);
 
 // Set of option keys that require numeric values
-const NUMERIC_OPTIONS = new Set<CLINumberOption>(['maxTokens', 'timeout', 'connectTo', 'parallel']);
+const NUMBER_OPTIONS = new Set<CLINumberOption>(['maxTokens', 'timeout', 'connectTo', 'parallel']);
 
 // --- CORRECTED HELPER FUNCTION for Rules Check ---
 async function performRulesCheck(): Promise<{ ide: string; path: string; reason: string }[]> {
@@ -276,195 +276,90 @@ async function performRulesCheck(): Promise<{ ide: string; path: string; reason:
 
 async function main() {
   const originalArgs = process.argv.slice(2); // Store original args
-  const [command, ...args] = originalArgs;
+  const args = process.argv.slice(2);
+  const options: CLIOptions = {};
+  let commandName = '';
+  let query = '';
+  const queryParts: string[] = [];
 
-  // Handle version command next
-  if (command === 'version' || command === '-v' || command === '--version') {
-    try {
-      const currentVersion = getCurrentVersion();
-      if (currentVersion === '0.0.0') {
-        console.error('Error: Could not determine package version using versionUtils.');
-        process.exit(1);
-      }
-      console.log(`vibe-tools version ${currentVersion}`);
-      process.exit(0);
-    } catch (error) {
-      console.error(
-        'Error retrieving package version:',
-        error instanceof Error ? error.message : error
-      );
-      process.exit(1);
-    }
-  }
-
-  // Parse options from args
-  const options: CLIOptions = {
-    // String options
-    model: undefined,
-    fromGithub: undefined,
-    output: undefined,
-    saveTo: undefined,
-    hint: undefined,
-    url: undefined,
-    screenshot: undefined,
-    viewport: undefined,
-    selector: undefined,
-    wait: undefined,
-    video: undefined,
-    evaluate: undefined,
-    // Plan command options
-    fileProvider: undefined,
-    thinkingProvider: undefined,
-    fileModel: undefined,
-    thinkingModel: undefined,
-    // Number options
-    maxTokens: undefined,
-    timeout: undefined,
-    connectTo: undefined,
-    parallel: undefined,
-    // Boolean options
-    console: undefined,
-    html: undefined,
-    network: undefined,
-    headless: undefined,
-    text: undefined,
-    debug: undefined,
-    quiet: undefined,
-    json: undefined,
-    reasoningEffort: undefined,
-    subdir: undefined,
-    withDoc: undefined,
-  };
-  const queryArgs: string[] = [];
-
+  // Simplified argument parsing loop
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
+
     if (arg.startsWith('--')) {
-      // Handle both --key=value and --key value formats
-      let key: string;
-      let value: string | undefined;
-
-      const equalIndex = arg.indexOf('=');
-      if (equalIndex !== -1) {
-        // --key=value format
-        key = arg.slice(2, equalIndex);
-        value = arg.slice(equalIndex + 1);
-      } else {
-        let isNoPrefix = false;
-        // Check for --no- prefix
-        if (arg.startsWith('--no-')) {
-          // --no-key format for boolean options
-          key = arg.slice(5); // Remove --no- prefix
-          const normalizedKey = normalizeArgKey(key.toLowerCase());
-          const optionKey = OPTION_KEYS[normalizedKey];
-          if (BOOLEAN_OPTIONS.has(optionKey as CLIBooleanOption)) {
-            value = 'false'; // Implicitly set boolean flag to false
-            isNoPrefix = true;
-          } else {
-            key = arg.slice(2); // Treat as normal key if not a boolean option
-          }
-        } else {
-          // --key value format
-          key = arg.slice(2);
-        }
-
-        // For boolean flags without --no- prefix, check next argument for explicit true/false
-        const normalizedKey = normalizeArgKey(key.toLowerCase());
-        const optionKey = OPTION_KEYS[normalizedKey];
-        if (!isNoPrefix && BOOLEAN_OPTIONS.has(optionKey as CLIBooleanOption)) {
-          // Check if next argument is 'true' or 'false'
-          if (i + 1 < args.length && ['true', 'false'].includes(args[i + 1].toLowerCase())) {
-            value = args[i + 1].toLowerCase();
-            i++; // Skip the next argument since we've used it as the value
-          } else {
-            value = 'true'; // Default to true if no explicit value
-          }
-        } else if (!isNoPrefix) {
-          // For non-boolean options, look for a value
-          if (i + 1 < args.length && !args[i + 1].startsWith('--')) {
-            value = args[i + 1];
-            i++; // Skip the next argument since we've used it as the value
-          }
-        }
-      }
-
-      // Normalize and validate the key
-      const normalizedKey = normalizeArgKey(key.toLowerCase());
+      const [keyPart, ...valueParts] = arg.substring(2).split('=');
+      const value = valueParts.join('='); // Handle values containing '='
+      const normalizedKey = normalizeArgKey(keyPart);
       const optionKey = OPTION_KEYS[normalizedKey];
 
-      if (!optionKey) {
-        console.error(`Error: Unknown option '--${key}'`);
-        console.error(
-          'Available options:',
-          Array.from(new Set(Object.values(OPTION_KEYS)))
-            .map((k) => `--${toKebabCase(k)}`)
-            .join(', ')
-        );
-        process.exit(1);
-      }
-
-      // Special handling for --json option for install command
-      if (
-        optionKey === 'json' &&
-        command === 'install' &&
-        value !== 'true' &&
-        value !== 'false' &&
-        value !== undefined
-      ) {
-        options[optionKey] = value;
-        continue;
-      }
-
-      if (value === undefined && !BOOLEAN_OPTIONS.has(optionKey as CLIBooleanOption)) {
-        console.error(`Error: No value provided for option '--${key}'`);
-        process.exit(1);
-      }
-
-      if (NUMERIC_OPTIONS.has(optionKey as CLINumberOption)) {
-        const num = Number.parseInt(value || '', 10);
-        if (Number.isNaN(num)) {
-          console.error(`Error: ${optionKey} must be a number`);
+      if (optionKey) {
+        if (BOOLEAN_OPTIONS.has(optionKey as CLIBooleanOption)) {
+          // Handle boolean flags (e.g., --debug, --quiet)
+          (options as any)[optionKey] = value !== 'false'; // Treat --flag=false as false
+        } else if (optionKey === 'withDoc') {
+          // Handle multiple --with-doc arguments
+          if (!options.withDoc) {
+            options.withDoc = [];
+          }
+          if (value) {
+            options.withDoc.push(value);
+          } else if (i + 1 < args.length && !args[i + 1].startsWith('--')) {
+            // Handle cases like --with-doc value
+            options.withDoc.push(args[i + 1]);
+            i++; // Skip the next argument as it's the value
+          } else {
+            consola.error('Missing value for --with-doc option');
+            process.exit(1);
+          }
+        } else if (value) {
+          // Handle options with values provided via '=' (e.g., --model=gpt-4)
+          (options as any)[optionKey] = NUMBER_OPTIONS.has(optionKey as CLINumberOption)
+            ? Number(value)
+            : value;
+        } else if (i + 1 < args.length && !args[i + 1].startsWith('--')) {
+          // Handle options with values provided as the next argument (e.g., --model gpt-4)
+          const nextValue = args[i + 1];
+          (options as any)[optionKey] = NUMBER_OPTIONS.has(optionKey as CLINumberOption)
+            ? Number(nextValue)
+            : nextValue;
+          i++; // Skip the next argument as it's the value
+        } else {
+          // Option likely expects a value but none was provided correctly
+          consola.error(`Missing value for --${keyPart} option`);
           process.exit(1);
         }
-        // Special validation for parallel option
-        if (optionKey === 'parallel' && num < 1) {
-          console.error(`Error: parallel must be a positive number`);
-          process.exit(1);
-        }
-        options[optionKey as CLINumberOption] = num;
-        continue;
+      } else {
+        consola.warn(`Unknown option: ${arg}`);
       }
-
-      if (BOOLEAN_OPTIONS.has(optionKey as CLIBooleanOption)) {
-        options[optionKey as CLIBooleanOption] = value === 'true';
-      } else if (value !== undefined && optionKey) {
-        options[optionKey as CLIStringOption] = value;
-      }
+    } else if (!commandName) {
+      // First non-option argument is the command name
+      commandName = arg;
     } else {
-      queryArgs.push(arg);
+      // Subsequent non-option arguments are part of the query
+      queryParts.push(arg);
     }
   }
 
-  const query = command === 'install' && queryArgs.length === 0 ? '.' : queryArgs.join(' ');
+  query = queryParts.join(' ');
 
-  if (!command) {
+  if (!commandName) {
     consola.error('Error: No command provided.');
     consola.error(`Available commands: ${Object.keys(commands).join(', ')}`);
     process.exit(1);
   }
 
   if (!query) {
-    if (command === 'doc') {
+    if (commandName === 'doc') {
       // no query for doc command is ok
     } else {
-      consola.error(`Error: No query provided for command: ${command}`);
+      consola.error(`Error: No query provided for command: ${commandName}`);
       process.exit(1);
     }
   }
 
-  const commandHandler = commands[command];
+  const commandHandler = commands[commandName];
   if (!commandHandler) {
-    consola.error(`Unknown command: ${command}`);
+    consola.error(`Unknown command: ${commandName}`);
     consola.error(`Available commands: ${Object.keys(commands).join(', ')}`);
     process.exit(1);
   }
@@ -559,7 +454,7 @@ async function main() {
           // --- MOVED Rules Check / Auto Update END ---
 
           // Special handling for 'install' command
-          if (command === 'install') {
+          if (commandName === 'install') {
             // Adjusted prompt message since we removed the automatic update attempt
             const promptText = `vibe-tools update complete. Still proceed with install (config setup, etc.)?`;
             const proceedWithInstall = await consola.prompt(promptText, {

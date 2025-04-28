@@ -68,41 +68,34 @@ export class AskCommand implements Command {
     const maxTokens = options?.maxTokens || defaultMaxTokens;
 
     let finalQuery = query;
+    let docContent = ''; // Variable to store fetched document content
 
-    // Check if the --with-doc flag is used
-    if (options?.withDoc) {
-      if (typeof options.withDoc !== 'string' || !options.withDoc.trim()) {
-        console.error(
-          'Warning: --with-doc flag used but no valid URL was provided. Proceeding without document context.'
-        );
-      } else {
-        try {
-          // FetchDocContent now returns cleaned text directly
-          console.log(`Fetching and extracting text from document: ${options.withDoc}`);
-          const cleanedText = await fetchDocContent(options.withDoc, options.debug ?? false);
-          // Log statement for successful fetch/extraction is now inside fetchDocContent
+    // Check if the --with-doc flag is used and is an array with elements
+    if (options?.withDoc && Array.isArray(options.withDoc) && options.withDoc.length > 0) {
+      try {
+        console.log(`Fetching and extracting text from documents: ${options.withDoc.join(', ')}`);
+        docContent = await fetchDocContent(options.withDoc, options.debug ?? false);
 
-          // Check if the extraction returned any significant text
-          if (cleanedText && cleanedText.trim().length > 0) {
-            // Prepend the cleaned document content to the original query
-            // Ensure backticks in the text are escaped if the text is wrapped in backticks in the prompt
-            const escapedCleanedText = cleanedText.replace(/`/g, '\\\\`');
-            finalQuery = `Document Content:\\n\`\`\`\\n${escapedCleanedText}\\n\`\`\`\\n\\nQuestion:\\n${query}`;
-          } else {
-            console.warn(
-              'fetchDocContent returned empty or whitespace-only text. Proceeding without document context.'
-            );
-            // finalQuery remains the original query
-          }
-        } catch (fetchExtractError) {
-          // Error message from fetchDocContent should indicate if it was fetch or extraction
-          console.error(
-            `Error during document fetch/extraction: ${fetchExtractError instanceof Error ? fetchExtractError.message : String(fetchExtractError)}`
+        if (docContent && docContent.trim().length > 0) {
+          // Prepend the combined document content to the original query
+          const escapedDocContent = docContent.replace(/`/g, '\\\\`');
+          finalQuery = `--- Document Context ---\n${escapedDocContent}\n--- End Document Context ---\n\nQuestion:\n${query}`;
+        } else {
+          console.warn(
+            'fetchDocContent returned empty or whitespace-only text. Proceeding without document context.'
           );
-          console.error('Proceeding with original query due to error processing document.');
-          // Fallback: finalQuery remains the original query
         }
+      } catch (fetchExtractError) {
+        console.error(
+          `Error during document fetch/extraction: ${fetchExtractError instanceof Error ? fetchExtractError.message : String(fetchExtractError)}`
+        );
+        console.error('Proceeding with original query due to error processing document.');
       }
+    } else if (options?.withDoc) {
+      // Handle case where --with-doc might still be a string or empty array due to parsing fallback/edge cases
+      console.warn(
+        '--with-doc was provided but not as a non-empty array of URLs. Proceeding without document context.'
+      );
     }
 
     let answer: string;

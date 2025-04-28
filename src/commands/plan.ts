@@ -26,7 +26,7 @@ interface PlanCommandOptions extends CommandOptions {
   thinkingProvider?: ThinkingProvider;
   fileModel?: string;
   thinkingModel?: string;
-  withDoc?: string;
+  withDoc?: string[];
 }
 
 const DEFAULT_FILE_MODELS: Record<FileProvider, string> = {
@@ -191,12 +191,12 @@ export class PlanCommand implements Command {
       yield `Using thinking provider: ${thinkingProviderName}\n`;
       yield `Using thinking model: ${thinkingModel}\n`;
 
-      yield 'Finding relevant files...\n';
+      yield 'Finding relevant files...\\n';
 
       // Get file listing
       let packedRepo: string;
       try {
-        yield 'Running repomix to get file listing...\n';
+        yield 'Running repomix to get file listing...\\n';
 
         const repomixDirectory = process.cwd();
         const tempFile = '.repomix-plan-files.txt';
@@ -208,19 +208,19 @@ export class PlanCommand implements Command {
         const repomixResult = await pack([repomixDirectory], repomixConfig);
 
         if (options?.debug) {
-          yield 'Repomix completed successfully.\n';
+          yield 'Repomix completed successfully.\\n';
         }
 
         // TODO: this seems like an expensive way to get a list of files
         packedRepo = readFileSync(tempFile, 'utf-8');
 
-        yield `Found ${repomixResult.totalFiles} files, approx ${repomixResult.totalTokens} tokens.\n`;
+        yield `Found ${repomixResult.totalFiles} files, approx ${repomixResult.totalTokens} tokens.\\n`;
         if (options?.debug) {
-          yield 'First few files:\n';
-          yield `${packedRepo.split('\n').slice(0, 5).join('\n')}\n\n`;
-          yield 'File listing format check:\n';
-          yield `First 200 characters: ${JSON.stringify(packedRepo.slice(0, 200))}\n`;
-          yield `Last 200 characters: ${JSON.stringify(packedRepo.slice(-200))}\n\n`;
+          yield 'First few files:\\n';
+          yield `${packedRepo.split('\\n').slice(0, 5).join('\\n')}\\n\\n`;
+          yield 'File listing format check:\\n';
+          yield `First 200 characters: ${JSON.stringify(packedRepo.slice(0, 200))}\\n`;
+          yield `Last 200 characters: ${JSON.stringify(packedRepo.slice(-200))}\\n\\n`;
         }
       } catch (error) {
         throw new FileError('Failed to get file listing', error);
@@ -228,20 +228,24 @@ export class PlanCommand implements Command {
 
       // Fetch document content if the flag is provided
       let docContent = '';
-      if (options?.withDoc) {
-        if (typeof options.withDoc !== 'string') {
-          // Should theoretically not happen due to yargs validation, but keep as a safeguard
-          throw new Error('Invalid value provided for --with-doc. Must be a URL string.');
-        }
+      if (options?.withDoc && Array.isArray(options.withDoc) && options.withDoc.length > 0) {
         try {
-          yield `Fetching document content from ${options.withDoc}...\\n`;
-          docContent = await fetchDocContent(options.withDoc, options.debug ?? false);
-          yield `Successfully fetched document content.\\n`;
+          const urls = options.withDoc;
+          yield `Fetching document content from ${urls.length} URLs: ${urls.join(', ')}...\\n`;
+          docContent = await fetchDocContent(urls, options.debug ?? false);
+          yield `Successfully fetched combined document content.\\n`;
         } catch (error) {
-          console.error('Error fetching document content:', error);
-          // Let the user know fetching failed but continue without it
-          yield `Warning: Failed to fetch document content from ${options.withDoc}. Continuing analysis without it. Error: ${error instanceof Error ? error.message : String(error)}\\n`;
+          const urls = options.withDoc;
+          console.error(
+            `Error fetching document content from one or more URLs: ${urls.join(', ')}`,
+            error
+          );
+          yield `Warning: Failed to fetch document content from one or more URLs (${urls.join(', ')}). Continuing analysis without it. Error: ${error instanceof Error ? error.message : String(error)}\\n`;
         }
+      } else if (options?.withDoc) {
+        console.warn(
+          '--with-doc was provided but not as a non-empty array of URLs. Proceeding without document context.'
+        );
       }
 
       // Get relevant files
@@ -249,64 +253,36 @@ export class PlanCommand implements Command {
       try {
         const maxTokens =
           options?.maxTokens ||
-          this.config.plan?.fileMaxTokens ||
           (this.config as Record<string, any>)[fileProviderName]?.maxTokens ||
           defaultMaxTokens;
 
-        const effectiveFileMaxTokens = maxTokens ?? defaultMaxTokens; // Ensure maxTokens is a number
-
-        // Explicitly create a full ModelOptions object
-        const fileModelOptions: ModelOptions = {
-          model: fileModel,
-          maxTokens: effectiveFileMaxTokens,
-          debug: options?.debug,
-          // Initialize other potential optional ModelOptions fields if necessary
-          // e.g., webSearch: options?.webSearch,
-          // timeout: options?.timeout,
-          // reasoningEffort: options?.reasoningEffort,
-          // tokenCount: options?.tokenCount,
-        };
-
-        yield `Asking ${fileProviderName} to identify relevant files using model: ${fileModel} with max tokens: ${effectiveFileMaxTokens}...\n`;
-
-        if (options?.debug) {
-          yield 'Provider configuration:\n';
-          yield `Provider: ${fileProviderName}\n`;
-          yield `Model: ${fileModel}\n`;
-          yield `Max tokens: ${options?.maxTokens || this.config.plan?.fileMaxTokens}\n\n`;
-        }
-
+        // Pass docContent to getRelevantFiles
         filePaths = await getRelevantFiles(
           fileProvider,
           query,
           packedRepo,
-          fileModelOptions, // Pass the fully typed object
-          docContent
+          {
+            model: fileModel,
+            maxTokens,
+            debug: options?.debug,
+            reasoningEffort: options?.reasoningEffort ?? this.config.reasoningEffort,
+          },
+          docContent // Pass fetched content here
         );
 
-        if (options?.debug) {
-          yield 'AI response received.\n';
-          yield `Number of files identified: ${filePaths?.length || 0}\n`;
-          if (filePaths?.length > 0) {
-            yield 'First few identified files:\n';
-            yield `${filePaths.slice(0, 5).join('\n')}\n\n`;
-          } else {
-            yield 'No files were identified.\n\n';
-          }
-        }
+        yield `Relevant files identified: ${filePaths.join(', ')}\\n`;
       } catch (error) {
-        console.error('Error in getRelevantFiles', error);
-        throw new ProviderError('Failed to identify relevant files', error);
+        throw new ProviderError('Failed to get relevant files', error);
       }
 
       if (filePaths.length === 0) {
-        yield 'No relevant files found. Please refine your query.\n';
+        yield 'No relevant files found. Please refine your query.\\n';
         return;
       }
 
-      yield `Found ${filePaths.length} relevant files:\n${filePaths.join('\n')}\n\n`;
+      yield `Found ${filePaths.length} relevant files:\\n${filePaths.join('\\n')}\\n\\n`;
 
-      yield 'Extracting content from relevant files...\n';
+      yield 'Extracting content from relevant files...\\n';
       let filteredContent: string;
       try {
         const tempFile = '.repomix-plan-filtered.txt';
@@ -320,8 +296,8 @@ export class PlanCommand implements Command {
         const filteredResult = await pack([repomixDirectory], repomixConfig);
 
         if (options?.debug) {
-          yield 'Content extraction completed.\n';
-          yield `Extracted content size: ${filteredResult.totalTokens} tokens\n`;
+          yield 'Content extraction completed.\\n';
+          yield `Extracted content size: ${filteredResult.totalTokens} tokens\\n`;
         }
 
         filteredContent = readFileSync(tempFile, 'utf-8');
@@ -345,7 +321,7 @@ export class PlanCommand implements Command {
         // Initialize other potential optional ModelOptions fields if necessary
       };
 
-      yield `Generating plan using ${thinkingProviderName} with max tokens: ${effectiveThinkingMaxTokens}...\n`;
+      yield `Generating plan using ${thinkingProviderName} with max tokens: ${effectiveThinkingMaxTokens}...\\n`;
       let plan: string;
       try {
         plan = await generatePlan(
@@ -407,29 +383,16 @@ async function getRelevantFiles(
   options: ModelOptions, // Expect full ModelOptions
   docContent: string
 ): Promise<string[]> {
-  console.log('Getting relevant files using:', options.model);
-  const prompt = `
-User Query: ${query}
+  let systemPrompt = `You are an AI assistant helping a developer find relevant files in a codebase based on their request. Your task is to identify the most relevant files from the provided list based on the user's query.\nReturn ONLY a comma-separated list of the full file paths. Do not include any other text, explanation, or formatting.`;
 
-${docContent ? `Additional Context Document:\\n${docContent}\\n\\n---\\n` : ''}
+  if (docContent) {
+    systemPrompt += `\n\nConsider the following external document context when identifying relevant files:\n\n--- Document Context ---\n${docContent}\n--- End Document Context ---`;
+  }
 
-Available Files (only include files from this list):
-${packedRepo}
+  const prompt = `User Query: ${query}\n\nFull list of files in the repository:\n\`\`\`\n${packedRepo}\n\`\`\`\n\nPlease return the comma-separated list of file paths most relevant to the user query.`;
 
-Based on the user query${docContent ? ' and the additional context document' : ''}, which files from the list above are most relevant to implement the request?
-Return ONLY a comma-separated list of the relevant file paths. Do not include any other text, explanation, or formatting.
-Example: src/index.ts,src/utils/helper.ts
-Relevant Files:`;
-
-  // Override timeout specifically for this step
-  const specificOptions: ModelOptions = {
-    ...options,
-    timeout: FIVE_MINUTES,
-  };
-
-  // Use executePrompt and ensure options is the full ModelOptions type
-  const response = await provider.executePrompt(prompt, specificOptions);
-  return parseFileList(response);
+  const result = await provider.executePrompt(prompt, { ...options, systemPrompt });
+  return parseFileList(result);
 }
 
 /**
@@ -442,28 +405,13 @@ async function generatePlan(
   options: ModelOptions, // Expect full ModelOptions
   docContent: string
 ): Promise<string> {
-  console.log('Generating plan using:', options.model);
-  const prompt = `
-User Query: ${query}
+  let systemPrompt = `You are an AI assistant tasked with creating a detailed, step-by-step implementation plan based on a user's request and relevant code context.\nThe plan should be clear, actionable, and formatted in Markdown.\nFocus on providing specific file modifications, code snippets (where appropriate), and necessary commands.\nAssume the user is an experienced developer.\nReturn ONLY the Markdown plan.`;
 
-${docContent ? `Additional Context Document:\\n${docContent}\\n\\n---\\n` : ''}
+  if (docContent) {
+    systemPrompt += `\n\nConsider the following external document context when generating the plan:\n\n--- Document Context ---\n${docContent}\n--- End Document Context ---`;
+  }
 
-Relevant Code Context:
-\`\`\`
-${filteredContent}
-\`\`\`
+  const prompt = `User Query: ${query}\n\nRelevant Code Context:\n\`\`\`\n${filteredContent}\n\`\`\`\n\nPlease generate the implementation plan.`;
 
-Based *only* on the user query${docContent ? ', the additional context document,' : ''} and the provided relevant code context, generate a detailed, step-by-step implementation plan to address the user query.
-Focus on actionable steps and code modifications where appropriate.
-Implementation Plan:`;
-
-  // Override timeout specifically for this step
-  const specificOptions: ModelOptions = {
-    ...options,
-    timeout: TEN_MINUTES,
-  };
-
-  // Use executePrompt and ensure options includes the required systemPrompt
-  const plan = await provider.executePrompt(prompt, specificOptions);
-  return plan;
+  return provider.executePrompt(prompt, { ...options, systemPrompt });
 }

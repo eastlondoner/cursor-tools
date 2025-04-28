@@ -4,103 +4,111 @@ import type { CommandGenerator, CommandOptions } from '../types';
 import { Writable } from 'stream';
 
 /**
- * Fetches the HTML content of a given URL using the browser open command,
- * extracts the text content, and performs validation.
- * @param url The document URL.
- * @param debug Whether to enable debug logging (passed to OpenCommand).
- * @returns A promise that resolves with the extracted text content of the page.
- * @throws If fetching fails after retries or if content validation fails.
+ * Fetches the HTML content of given URLs using the browser open command,
+ * extracts the text content, performs validation, and combines the results.
+ * @param urls An array of document URLs.
+ * @param debug Whether to enable debug logging.
+ * @returns A promise that resolves with the combined extracted text content of all pages.
+ * @throws If fetching fails for any URL after retries or if content validation fails.
  */
-export async function fetchDocContent(url: string, debug: boolean): Promise<string> {
-  console.log(`Attempting to fetch document content from: ${url}`);
+export async function fetchDocContent(urls: string[], debug: boolean): Promise<string> {
+  const allExtractedTexts: string[] = [];
 
-  // No URL validation needed here, browser command handles it
+  for (const url of urls) {
+    console.log(`Attempting to fetch document content from: ${url}`);
 
-  const openCommand = new OpenCommand();
-  const waitTimes = ['3s', '5s', '10s']; // Wait times for retries
+    const openCommand = new OpenCommand();
+    const waitTimes = ['3s', '5s', '10s']; // Wait times for retries
+    let fetched = false;
 
-  for (let i = 0; i < waitTimes.length; i++) {
-    const waitTime = waitTimes[i];
-    console.log(`Attempt ${i + 1}/${waitTimes.length}: Fetching with ${waitTime} wait...`);
+    for (let i = 0; i < waitTimes.length; i++) {
+      const waitTime = waitTimes[i];
+      console.log(`Attempt ${i + 1}/${waitTimes.length}: Fetching ${url} with ${waitTime} wait...`);
 
-    let htmlContent = '';
-    // Ensure headless is true for programmatic use, wait for JS, get HTML
-    const options: any = {
-      wait: `time:${waitTime}`,
-      headless: true,
-      console: false,
-      network: false,
-      html: true,
-      debug: debug,
-    };
+      let htmlContent = '';
+      const options: any = {
+        wait: `time:${waitTime}`,
+        headless: true,
+        console: false,
+        network: false,
+        html: true,
+        debug: debug,
+      };
 
-    try {
-      // The execute method returns an async generator
-      const generator: CommandGenerator = openCommand.execute(url, options);
-
-      // Collect the HTML output from the generator
-      for await (const output of generator) {
-        if (typeof output === 'string') {
-          htmlContent += output;
-        }
-      }
-
-      // Clean up potential extra newlines (less critical for HTML, but keep for consistency)
-      htmlContent = htmlContent.trim();
-
-      // Check if significant content was fetched (using original threshold)
-      if (htmlContent && htmlContent.length > 500) {
-        console.log(
-          `Successfully fetched document content (length: ${htmlContent.length}) on attempt ${i + 1}`
-        );
-
-        if (debug) {
-          // save the extracted text to a file
-          writeFileSync('.vibe-tools-fetched-doc.html', htmlContent);
+      try {
+        const generator: CommandGenerator = openCommand.execute(url, options);
+        for await (const output of generator) {
+          if (typeof output === 'string') {
+            htmlContent += output;
+          }
         }
 
-        // Extract text from the HTML content
-        const extractedText = extractTextFromHtml(htmlContent, debug);
+        htmlContent = htmlContent.trim();
 
-        // Check if extracted text exceeds 200k characters
-        if (extractedText.length > 200000) {
-          console.error(
-            `WARNING: Extracted text exceeds 200,000 characters (actual: ${extractedText.length})`
-          );
-        }
-
-        const debugFile = '.vibe-tools-fetched-doc.txt';
-        if (debug) {
-          // save the extracted text to a file
-          writeFileSync(debugFile, extractedText);
+        if (htmlContent && htmlContent.length > 500) {
           console.log(
-            `[DEBUG] Original HTML attributes have been filtered to keep only: html, src, alt, title, cite, value, label, kind, type`
+            `Successfully fetched document content (length: ${htmlContent.length}) from ${url} on attempt ${i + 1}`
           );
+
+          if (debug) {
+            // save the extracted text to a file, appending the URL
+            writeFileSync(`.vibe-tools-fetched-doc-${encodeURIComponent(url)}.html`, htmlContent);
+          }
+
+          const extractedText = extractTextFromHtml(htmlContent, debug);
+
+          if (extractedText.length > 200000) {
+            console.error(
+              `WARNING: Extracted text from ${url} exceeds 200,000 characters (actual: ${extractedText.length})`
+            );
+          }
+
+          const debugFileName = `.vibe-tools-fetched-doc-${encodeURIComponent(url)}.txt`;
+          if (debug) {
+            writeFileSync(debugFileName, extractedText);
+            console.log(
+              `[DEBUG] Original HTML attributes have been filtered to keep only: html, src, alt, title, cite, value, label, kind, type`
+            );
+          }
+
+          console.log(
+            `Using extracted text (length: ${extractedText.length}) from ${url} as document context.${
+              debug ? `\n[DEBUG] Copy of extracted text saved to ${debugFileName}` : ''
+            }`
+          );
+
+          allExtractedTexts.push(
+            `--- Document Context from ${url} ---\n${extractedText}\n--- End Document Context ---`
+          );
+          fetched = true;
+          break; // Move to the next URL once fetched successfully
         }
 
-        // Log the extracted text length
         console.log(
-          `Using extracted text (length: ${extractedText.length}) as document context.${
-            debug ? `\n[DEBUG] Copy of extracted text saved to ${debugFile}` : ''
-          }`
+          `Attempt ${i + 1} for ${url} failed or yielded insufficient content (length: ${htmlContent.length}).`
         );
-
-        return extractedText;
+      } catch (error) {
+        console.error(
+          `Error during document fetch attempt ${i + 1} for ${url} with ${waitTime} wait:`,
+          error
+        );
       }
+    }
 
-      console.log(
-        `Attempt ${i + 1} failed or yielded insufficient content (length: ${htmlContent.length}).`
+    if (!fetched) {
+      throw new Error(
+        `Failed to fetch sufficient HTML content from document URL: ${url} after ${waitTimes.length} attempts.`
       );
-    } catch (error) {
-      console.error(`Error during document fetch attempt ${i + 1} with ${waitTime} wait:`, error);
-      // Don't re-throw immediately, let the loop try the next wait time
     }
   }
 
-  // If all attempts failed
-  throw new Error(
-    `Failed to fetch sufficient HTML content from document URL: ${url} after ${waitTimes.length} attempts.`
+  // Combine all extracted texts
+  const combinedText = allExtractedTexts.join('\n\n');
+  console.log(
+    `Combined extracted text from ${urls.length} documents (total length: ${combinedText.length})`
   );
+
+  return combinedText;
 }
 
 /**

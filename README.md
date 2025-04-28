@@ -242,19 +242,21 @@ Note: in most cases you can say "ask Perplexity" instead of "use vibe-tools web"
 
 ### Use repo search
 
-"Let's refactor our User class to allow multiple email aliases per user. Use vibe-tools repo to ask for a plan including a list of all files that need to be changed."
+"Let\'s refactor our User class to allow multiple email aliases per user. Use vibe-tools repo to ask for a plan including a list of all files that need to be changed."
 
 "Use vibe-tools repo to analyze how authentication is implemented in the Next.js repository. Use --from-github=vercel/next.js."
 
-"Use vibe-tools repo to explain this React component with documentation from the official React docs. Use --with-doc=https://react.dev/reference/react/useState"
+"Use vibe-tools repo to explain this React component, using documentation from the official React docs and a related blog post. Use --with-doc=https://react.dev/reference/react/useState --with-doc=https://example.com/react-hooks-deep-dive"
 
-Note: in most cases you can say "ask Gemini" instead of "use vibe-tools repo" and it will work the same.
+**Note:** The `--with-doc` flag can be used multiple times to include content from several URLs.
 
 ### Use doc generation
 
-"Use vibe-tools to generate documentation for the Github repo https://github.com/kait-http/kaito" and write it to docs/kaito.md"
+"Generate comprehensive documentation for our authentication system. Use vibe-tools doc and save the output to `docs/AUTH.md`."
 
-Note: in most cases you can say "generate documentation" instead of "use vibe-tools doc" and it will work the same.
+"Generate documentation for the Redux library, incorporating details from the official tutorial. Use vibe-tools doc --from-github=reduxjs/redux --with-doc=https://redux.js.org/tutorials/fundamentals/part-1-overview --save-to=local-docs/redux.md"
+
+**Note:** The `--with-doc` flag can be used multiple times to include content from several URLs.
 
 ### Use github integration
 
@@ -276,13 +278,11 @@ Note: in most cases you can say "Use Stagehand" instead of "use vibe-tools" and 
 
 ### Use direct model queries
 
-"Use vibe-tools ask to compare how different models answer this question: 'What are the key differences between REST and GraphQL?'"
+"Ask Claude Haiku what the capital of France is. Use vibe-tools ask --provider anthropic --model claude-3-haiku-20240307"
 
-"Ask OpenAI's o3-mini model to explain the concept of dependency injection."
+"Ask o3-mini to explain this concept, using context from these two specification documents. Use vibe-tools ask --provider openai --model o3-mini --with-doc=https://example.com/spec1.pdf --with-doc=https://example.com/spec2.md"
 
-"Use vibe-tools ask to analyze this complex algorithm with high reasoning effort: 'Explain the time and space complexity of the Boyer-Moore string search algorithm' --provider openai --model o3-mini --reasoning-effort high"
-
-Note: The ask command requires both --provider and --model parameters to be specified. This command is generally less useful than other commands like `repo` or `plan` because it does not include any context from your codebase or repository.
+**Note:** The `--with-doc` flag can be used multiple times to include content from several URLs.
 
 **Ask Command Options:**
 
@@ -631,6 +631,14 @@ With authentication:
 
 - Public repositories: 5,000 requests per hour
 - Private repositories: Full access (with appropriate token scopes)
+
+vibe-tools will automatically try these authentication methods in order:
+
+1. `GITHUB_TOKEN` environment variable
+2. GitHub CLI token (if `gh` is installed and logged in)
+3. Git credentials (stored token or Basic Auth)
+
+If no authentication is available, it will fall back to unauthenticated access with rate limits.
 
 ### Xcode Tools
 
