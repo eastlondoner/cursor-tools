@@ -10,7 +10,7 @@
     "thinkingModel": "google/gemini-2.5-flash-preview"
   },
   "repo": {
-    "provider": "openai",
+    "provider": "gemini",
     "model": "gemini-2.5-flash-preview"
   },
   "doc": {

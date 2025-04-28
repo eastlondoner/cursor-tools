@@ -68,41 +68,54 @@ export class AskCommand implements Command {
     const maxTokens = options?.maxTokens || defaultMaxTokens;
 
     let finalQuery = query;
+    let docContent = '';
 
-    // Check if the --with-doc flag is used
-    if (options?.withDoc) {
-      if (typeof options.withDoc !== 'string' || !options.withDoc.trim()) {
-        console.error(
-          'Warning: --with-doc flag used but no valid URL was provided. Proceeding without document context.'
-        );
-      } else {
+    // Check if the --with-doc flag is used and is an array
+    if (options?.withDoc && Array.isArray(options.withDoc) && options.withDoc.length > 0) {
+      const docContents: string[] = [];
+      console.log(`Fetching and extracting text from ${options.withDoc.length} document(s)...`);
+      for (const docUrl of options.withDoc) {
+        if (typeof docUrl !== 'string' || !docUrl.trim()) {
+          console.error(`Warning: Invalid URL provided in --with-doc: "${docUrl}". Skipping.`);
+          continue;
+        }
         try {
-          // FetchDocContent now returns cleaned text directly
-          console.log(`Fetching and extracting text from document: ${options.withDoc}`);
-          const cleanedText = await fetchDocContent(options.withDoc, options.debug ?? false);
-          // Log statement for successful fetch/extraction is now inside fetchDocContent
-
-          // Check if the extraction returned any significant text
+          console.log(`Fetching from: ${docUrl}`);
+          const cleanedText = await fetchDocContent(docUrl, options.debug ?? false);
           if (cleanedText && cleanedText.trim().length > 0) {
-            // Prepend the cleaned document content to the original query
-            // Ensure backticks in the text are escaped if the text is wrapped in backticks in the prompt
-            const escapedCleanedText = cleanedText.replace(/`/g, '\\\\`');
-            finalQuery = `Document Content:\\n\`\`\`\\n${escapedCleanedText}\\n\`\`\`\\n\\nQuestion:\\n${query}`;
+            docContents.push(cleanedText);
+            console.log(`Successfully extracted content from: ${docUrl}`);
           } else {
             console.warn(
-              'fetchDocContent returned empty or whitespace-only text. Proceeding without document context.'
+              `fetchDocContent returned empty or whitespace-only text for ${docUrl}. Skipping.`
             );
-            // finalQuery remains the original query
           }
         } catch (fetchExtractError) {
-          // Error message from fetchDocContent should indicate if it was fetch or extraction
           console.error(
-            `Error during document fetch/extraction: ${fetchExtractError instanceof Error ? fetchExtractError.message : String(fetchExtractError)}`
+            `Error during document fetch/extraction for ${docUrl}: ${fetchExtractError instanceof Error ? fetchExtractError.message : String(fetchExtractError)}`
           );
-          console.error('Proceeding with original query due to error processing document.');
-          // Fallback: finalQuery remains the original query
+          console.error('Skipping this document due to error.');
         }
       }
+
+      if (docContents.length > 0) {
+        // Combine content from all documents
+        docContent = docContents.join('\\n\\n---\\n\\n'); // Separator between documents
+        const escapedDocContent = docContent.replace(/`/g, '\\\\`'); // Escape backticks
+        finalQuery = `Document Content:\\n\`\`\`\\n${escapedDocContent}\\n\`\`\`\\n\\nQuestion:\\n${query}`;
+        console.log(
+          `Successfully added content from ${docContents.length} document(s) to the query.`
+        );
+      } else {
+        console.warn(
+          'No content successfully extracted from any provided --with-doc URLs. Proceeding without document context.'
+        );
+      }
+    } else if (options?.withDoc) {
+      // Handle case where --with-doc might be provided but not as a valid array (e.g., empty array, wrong type)
+      console.error(
+        'Warning: --with-doc provided but not in the expected format (array of URLs). Proceeding without document context.'
+      );
     }
 
     let answer: string;

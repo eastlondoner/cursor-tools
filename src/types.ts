@@ -35,7 +35,7 @@ export interface CommandOptions {
   // Context options
   hint?: string; // Additional context or hint for the AI
   subdir?: string; // Subdirectory to analyze (for repo command)
-  withDoc?: string; // URL of a page containing additional context information to use
+  withDoc?: string[]; // URL of a page containing additional context information to use
   fromGithub?: string; // GitHub repository to analyze (for repo and doc commands)
 
   // Plan command specific options

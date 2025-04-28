@@ -4,23 +4,30 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Support multiple `--with-doc` URLs for `ask`, `repo`, `plan`, and `doc` commands, allowing users to provide context from several documents simultaneously.
+
 ## [0.60.8] - 2026-04-27
 
 ### Added
- - Fix for auto-update logic under different package managers
+
+- Fix for auto-update logic under different package managers
 
 ## [0.60.7] - 2025-04-26
 
 ### Added
- - **Auto-update**:
-   - Automatically updates vibe-tools CLI to the latest version
-   - Runs automatically on either of the commands
-   - Automatically detects available IDEs and updates rules (if vibe-tools Integration detected)
-   - For vibe-tools install it prompts user if they wanna continue with installation
+
+- **Auto-update**:
+  - Automatically updates vibe-tools CLI to the latest version
+  - Runs automatically on either of the commands
+  - Automatically detects available IDEs and updates rules (if vibe-tools Integration detected)
+  - For vibe-tools install it prompts user if they wanna continue with installation
 
 ### Improved
 
 - **Doc & Browser Commands Provider Improvements**:
+
   - Doc and repo commands are now properly using their configured providers.
 
 - **CTA improvement**:

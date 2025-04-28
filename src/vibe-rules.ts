@@ -22,7 +22,7 @@ Use the following commands to get AI assistance:
 --provider=<provider>: AI provider to use (openai, anthropic, perplexity, gemini, modelbox, openrouter, or xai)
 --model=<model>: Model to use (required for the ask command)
 --reasoning-effort=<low|medium|high>: Control the depth of reasoning for supported models (OpenAI o1/o3-mini models and Claude 3.7 Sonnet). Higher values produce more thorough responses for complex questions.
---with-doc=<doc_url>: Fetch content from a document URL and include it as context for the question (e.g., \`vibe-tools ask "What does this spec require?" --with-doc=https://example.com/spec.pdf\`)
+--with-doc=<doc_url>: Fetch content from one or more document URLs and include it as context. Can be specified multiple times (e.g., \`--with-doc=<url1> --with-doc=<url2>\`).
 
 **Implementation Planning:**
 \`vibe-tools plan "<query>"\` - Generate a focused implementation plan using AI (e.g., \`vibe-tools plan "Add user authentication to the login page"\`)
@@ -36,7 +36,7 @@ The plan command uses multiple AI models to:
 --thinkingProvider=<provider>: Provider for plan generation (gemini, openai, anthropic, perplexity, modelbox, openrouter, or xai)
 --fileModel=<model>: Model to use for file identification
 --thinkingModel=<model>: Model to use for plan generation
---with-doc=<doc_url>: Fetch content from a document URL and include it as context for both file identification and planning (e.g., \`vibe-tools plan "implement feature X following the spec" --with-doc=https://example.com/feature-spec\`)
+--with-doc=<doc_url>: Fetch content from one or more document URLs and include it as context for both file identification and planning. Can be specified multiple times (e.g., \`--with-doc=<url1> --with-doc=<url2>\`).
 
 **Web Search:**
 \`vibe-tools web "<your question>"\` - Get answers from the web using a provider that supports web search (e.g., Perplexity models and Gemini Models either directly or from OpenRouter or ModelBox) (e.g., \`vibe-tools web "latest shadcn/ui installation instructions"\`)
@@ -47,10 +47,11 @@ when using web for complex queries suggest writing the output to a file somewher
 --provider=<provider>: AI provider to use (perplexity, gemini, modelbox, or openrouter)
 
 **Repository Context:**
-\`vibe-tools repo "<your question>" [--subdir=<path>] [--from-github=<username/repo>] [--with-doc=<doc_url>]\` - Get context-aware answers about this repository using Google Gemini (e.g., \`vibe-tools repo "explain authentication flow"\`). Use the optional \`--subdir\` parameter to analyze a specific subdirectory instead of the entire repository (e.g., \`vibe-tools repo "explain the code structure" --subdir=src/components\`). Use the optional \`--from-github\` parameter to analyze a remote GitHub repository without cloning it locally (e.g., \`vibe-tools repo "explain the authentication system" --from-github=username/repo-name\`). Use the optional \`--with-doc\` parameter to include content from a URL as additional context (e.g., \`vibe-tools repo "implement feature X following the design spec" --with-doc=https://example.com/design-spec\`).
+\`vibe-tools repo "<your question>" [--subdir=<path>] [--from-github=<username/repo>] [--with-doc=<doc_url>...]\` - Get context-aware answers about this repository using Google Gemini (e.g., \`vibe-tools repo "explain authentication flow"\`)
+Use the optional \`--subdir\` parameter to analyze a specific subdirectory instead of the entire repository (e.g., \`vibe-tools repo "explain the code structure" --subdir=src/components\`). Use the optional \`--from-github\` parameter to analyze a remote GitHub repository without cloning it locally (e.g., \`vibe-tools repo "explain the authentication system" --from-github=username/repo-name\`). Use the optional \`--with-doc\` parameter multiple times to include content from several URLs as additional context (e.g., \`vibe-tools repo "summarize findings" --with-doc=https://example.com/spec1 --with-doc=https://example.com/spec2\`).
 
 **Documentation Generation:**
-\`vibe-tools doc [options] [--with-doc=<doc_url>]\` - Generate comprehensive documentation for this repository (e.g., \`vibe-tools doc --output docs.md\`). Can incorporate document context from a URL (e.g., \`vibe-tools doc --with-doc=https://example.com/existing-docs\`).
+\`vibe-tools doc [options] [--with-doc=<doc_url>...]\` - Generate comprehensive documentation for this repository (e.g., \`vibe-tools doc --output docs.md\`). Can incorporate document context from multiple URLs (e.g., \`vibe-tools doc --with-doc=https://example.com/existing-docs --with-doc=https://example.com/new-spec\`).
 
 **YouTube Video Analysis:**
 \`vibe-tools youtube "<youtube-url>" [question] [--type=<summary|transcript|plan|review|custom>]\` - Analyze YouTube videos and generate detailed reports (e.g., \`vibe-tools youtube "https://youtu.be/43c-Sm5GMbc" --type=summary\`)
@@ -121,14 +122,14 @@ The \`search\` command helps you discover servers in the MCP Marketplace based o
 --max-tokens=<number>: Maximum tokens for response
 --from-github=<GitHub username>/<repository name>[@<branch>]: Analyze a remote GitHub repository without cloning it locally
 --subdir=<path>: Analyze a specific subdirectory instead of the entire repository
---with-doc=<doc_url>: Fetch content from a document URL and include it as context
+--with-doc=<doc_url>: Fetch content from one or more document URLs and include it as context. Can be specified multiple times.
 
 **Documentation Command Options:**
 --from-github=<GitHub username>/<repository name>[@<branch>]: Generate documentation for a remote GitHub repository
 --provider=<provider>: AI provider to use (gemini, openai, openrouter, perplexity, modelbox, anthropic, or xai)
 --model=<model>: Model to use for documentation generation
 --max-tokens=<number>: Maximum tokens for response
---with-doc=<doc_url>: Fetch content from a document URL and include it as context
+--with-doc=<doc_url>: Fetch content from one or more document URLs and include it as context. Can be specified multiple times.
 
 **YouTube Command Options:**
 --type=<summary|transcript|plan|review|custom>: Type of analysis to perform (default: summary)

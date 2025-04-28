@@ -49,18 +49,40 @@ export class DocCommand implements Command {
       let finalQuery = options.hint || '';
 
       let docContent = '';
-      if (options?.withDoc) {
-        if (typeof options.withDoc !== 'string') {
-          throw new Error('Invalid value provided for --with-doc. Must be a URL string.');
+      if (options?.withDoc && Array.isArray(options.withDoc) && options.withDoc.length > 0) {
+        const docContents: string[] = [];
+        yield `Fetching and extracting text from ${options.withDoc.length} document(s)...\n`;
+        for (const docUrl of options.withDoc) {
+          if (typeof docUrl !== 'string' || !docUrl.trim()) {
+            yield `Warning: Invalid URL provided in --with-doc: "${docUrl}". Skipping.\n`;
+            continue;
+          }
+          try {
+            yield `Fetching from: ${docUrl}...\n`;
+            const cleanedText = await fetchDocContent(docUrl, options.debug ?? false);
+            if (cleanedText && cleanedText.trim().length > 0) {
+              docContents.push(cleanedText);
+              yield `Successfully extracted content from: ${docUrl}\n`;
+            } else {
+              yield `Warning: fetchDocContent returned empty or whitespace-only text for ${docUrl}. Skipping.\n`;
+            }
+          } catch (fetchExtractError) {
+            const errorMessage =
+              fetchExtractError instanceof Error
+                ? fetchExtractError.message
+                : String(fetchExtractError);
+            yield `Error during document fetch/extraction for ${docUrl}: ${errorMessage}. Skipping this document.\n`;
+          }
         }
-        try {
-          yield `Fetching document content from ${options.withDoc}...\n`;
-          docContent = await fetchDocContent(options.withDoc, options.debug ?? false);
-          yield `Successfully fetched document content.\n`;
-        } catch (error) {
-          console.error('Error fetching document content:', error);
-          yield `Warning: Failed to fetch document content from ${options.withDoc}. Continuing documentation generation without it. Error: ${error instanceof Error ? error.message : String(error)}\n`;
+
+        if (docContents.length > 0) {
+          docContent = docContents.join('\n\n---\\n\n'); // Separator
+          yield `Successfully added content from ${docContents.length} document(s) to the context.\n`;
+        } else {
+          yield `Warning: No content successfully extracted from any provided --with-doc URLs. Proceeding without document context.\n`;
         }
+      } else if (options?.withDoc) {
+        yield `Warning: --with-doc provided but not in the expected format (array of URLs). Proceeding without document context.\n`;
       }
 
       if (options?.fromGithub) {
