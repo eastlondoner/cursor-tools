@@ -149,9 +149,8 @@ export class RepoCommand implements Command {
         }
       }
 
-      // Temporarily lower threshold for testing large repo handling
-      const LARGE_REPO_THRESHOLD_TESTING = 100_000; // Original value: 200_000
-      if (tokenCount > LARGE_REPO_THRESHOLD_TESTING) {
+      const LARGE_REPO_THRESHOLD = 200_000;
+      if (tokenCount > LARGE_REPO_THRESHOLD) {
         options.tokenCount = tokenCount;
       }
 
