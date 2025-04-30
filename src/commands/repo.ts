@@ -3,6 +3,17 @@ import type { Config } from '../types';
 import type { AsyncReturnType } from '../utils/AsyncReturnType';
 import type { ModelOptions } from '../providers/base';
 
+// Interface for Repomix pack result with flexible file information structure
+interface RepomixPackResult {
+  includedFiles?: Array<{ path: string; tokens?: number; size?: number }>;
+  fileDetails?: Array<{ path: string; tokens?: number; size?: number }>;
+  totalFiles: number;
+  totalTokens: number;
+  totalSize?: number;
+  fileTokenCounts?: Record<string, number>;
+  fileCharCounts?: Record<string, number>;
+}
+
 import { defaultMaxTokens, loadConfig, loadEnv } from '../config';
 import { pack } from 'repomix';
 import { readFileSync, existsSync, writeFileSync } from 'node:fs';
@@ -31,6 +42,8 @@ export class RepoCommand implements Command {
 
   async *execute(query: string, options: CommandOptions): CommandGenerator {
     try {
+      let packResult: AsyncReturnType<typeof pack> | undefined;
+
       // Handle query as GitHub repo if it looks like one and --from-github is not set
       if (query && !options?.fromGithub && looksLikeGithubRepo(query)) {
         options = { ...options, fromGithub: query };
@@ -88,13 +101,17 @@ export class RepoCommand implements Command {
           },
         });
 
-        let packResult: AsyncReturnType<typeof pack> | undefined;
         try {
           packResult = await pack([targetDirectory], repomixConfig);
           console.log(
             `Packed repository. ${packResult.totalFiles} files. Approximate size ${packResult.totalTokens} tokens.`
           );
           tokenCount = packResult.totalTokens;
+
+          // Show top files by token count when debug is enabled
+          if (options?.debug && packResult) {
+            this.logLargestFilesByTokenCount(packResult);
+          }
         } catch (error) {
           throw new FileError('Failed to pack repository', error);
         }
@@ -132,7 +149,9 @@ export class RepoCommand implements Command {
         }
       }
 
-      if (tokenCount > 200_000) {
+      // Temporarily lower threshold for testing large repo handling
+      const LARGE_REPO_THRESHOLD_TESTING = 100_000; // Original value: 200_000
+      if (tokenCount > LARGE_REPO_THRESHOLD_TESTING) {
         options.tokenCount = tokenCount;
       }
 
@@ -199,6 +218,18 @@ export class RepoCommand implements Command {
           );
           return; // If successful, we're done
         } catch (error) {
+          // Log detailed error for token limit issues
+          if (
+            packResult && // Only possible for local repos where we have details
+            error instanceof ProviderError &&
+            error.message.includes('too large') &&
+            error.message.includes('tokens')
+          ) {
+            console.error('\n--- Repository Token Limit Exceeded ---');
+            this.logLargestFilesByTokenCount(packResult);
+          }
+
+          // Original error logging and provider switching logic
           console.error(
             `Provider ${currentProvider} failed:`,
             error instanceof Error ? error.message : error
@@ -274,6 +305,62 @@ export class RepoCommand implements Command {
         error
       );
     }
+  }
+
+  private logLargestFilesByTokenCount(packResult: AsyncReturnType<typeof pack>): void {
+    console.error('\n--- Largest Files by Token Count ---');
+    const topN = 10;
+
+    try {
+      // Get files with token counts from packResult
+      let filesWithTokens: Array<{ path: string; tokens: number }> = [];
+      const packResultWithTypes = packResult as unknown as RepomixPackResult;
+
+      // Convert fileTokenCounts object to array of objects
+      if (
+        packResultWithTypes.fileTokenCounts &&
+        typeof packResultWithTypes.fileTokenCounts === 'object'
+      ) {
+        filesWithTokens = Object.entries(packResultWithTypes.fileTokenCounts).map(
+          ([path, tokens]) => ({ path, tokens })
+        );
+      }
+      // Try standard includedFiles property if available
+      else if (
+        packResultWithTypes.includedFiles &&
+        Array.isArray(packResultWithTypes.includedFiles)
+      ) {
+        filesWithTokens = packResultWithTypes.includedFiles
+          .filter((file) => file.tokens !== undefined)
+          .map((file) => ({ path: file.path, tokens: file.tokens || 0 }));
+      }
+      // Fallback to fileDetails if includedFiles is not available
+      else if (packResultWithTypes.fileDetails && Array.isArray(packResultWithTypes.fileDetails)) {
+        filesWithTokens = packResultWithTypes.fileDetails
+          .filter((file) => file.tokens !== undefined)
+          .map((file) => ({ path: file.path, tokens: file.tokens || 0 }));
+      }
+
+      if (filesWithTokens.length > 0) {
+        // Sort files by token count (highest first)
+        const sortedFiles = [...filesWithTokens].sort((a, b) => b.tokens - a.tokens);
+
+        // Display only top N files
+        sortedFiles.slice(0, topN).forEach((file) => {
+          console.error(`  - ${file.path} (~${file.tokens} tokens)`);
+        });
+
+        if (sortedFiles.length > topN) {
+          console.error(`  ... and ${sortedFiles.length - topN} more files`);
+        }
+      } else {
+        console.error('  Could not retrieve file token counts from Repomix result.');
+      }
+    } catch (err) {
+      console.error('  Error processing file information:', err);
+    }
+
+    console.error('------------------------------------------------------------------\n');
   }
 }
 

@@ -177,5 +177,5 @@ If people say "ask Gemini" or "ask Perplexity" or "ask Stagehand" they mean to u
 - **Remember:** You're part of a team of superhuman expert AIs. Work together to solve complex problems.
 - **Repomix Configuration:** You can customize which files are included/excluded during repository analysis by creating a `repomix.config.json` file in your project root. This file will be automatically detected by `repo`, `plan`, and `doc` commands.
 
-<!-- vibe-tools-version: 0.60.6 -->
+<!-- vibe-tools-version: 0.60.8 -->
 </vibe-tools Integration>

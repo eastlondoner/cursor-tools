@@ -810,26 +810,20 @@ export class GoogleVertexAIProvider extends BaseProvider {
   }
 
   protected handleLargeTokenCount(tokenCount: number): { model?: string; error?: string } {
-    if (tokenCount > 800_000 && tokenCount < 2_000_000) {
-      // 1M is the limit but token counts are very approximate so play it safe
-      console.error(
-        `Repository content is large (${Math.round(tokenCount / 1000)}K tokens), switching to gemini-1.5-pro model...`
-      );
-      return { model: 'gemini-1.5-pro' }; // correct name for vertex ai
-    }
-
-    if (tokenCount >= 2_000_000) {
+    // Example: Google Vertex AI might have a hard limit or require specific models
+    const limit = 2_000_000; // Adjust this based on actual Vertex AI limits
+    console.log(`Token count: ${tokenCount}`);
+    if (tokenCount >= limit) {
       return {
         error:
-          'Repository content is too large for Vertex AI API.\n' +
-          'Please try:\n' +
-          '1. Using a more specific query to document a particular feature or module\n' +
-          '2. Running the documentation command on a specific directory or file\n' +
-          '3. Cloning the repository locally and using .gitignore to exclude non-essential files',
+          `Repository content (${tokenCount} tokens) is too large for the selected model and exceeds the limit of ${limit} tokens.\n` +
+          `Please reduce the context size by creating a '.repomixignore' file in your repository root and adding patterns for files/directories to exclude.\n` +
+          `You can also try:\n` +
+          `1. Using a more specific query to target a feature or module.\n` +
+          `2. Running the command on a specific subdirectory using the --subdir flag.`,
       };
     }
-
-    return {};
+    return {}; // No changes needed if within limits
   }
 
   private async _getAuthHeaders(): Promise<{ projectId: string; headers: Record<string, string> }> {
@@ -1414,26 +1408,23 @@ export class GoogleGenerativeLanguageProvider extends BaseProvider {
   }
 
   protected handleLargeTokenCount(tokenCount: number): { model?: string; error?: string } {
-    if (tokenCount > 800_000 && tokenCount < 2_000_000) {
-      // 1M is the limit but token counts are very approximate so play it safe
-      console.error(
-        `Repository content is large (${Math.round(tokenCount / 1000)}K tokens), switching to gemini-1.5-pro model...`
-      );
-      return { model: 'gemini-1.5-pro' };
-    }
-
-    if (tokenCount >= 2_000_000) {
+    // Example: Gemini API limit might be 2M tokens
+    const limit = 2_000_000;
+    if (tokenCount >= limit) {
       return {
         error:
-          'Repository content is too large for Vertex AI API.\n' +
-          'Please try:\n' +
-          '1. Using a more specific query to document a particular feature or module\n' +
-          '2. Running the documentation command on a specific directory or file\n' +
-          '3. Cloning the repository locally and using .gitignore to exclude non-essential files',
+          `Repository content (${tokenCount} tokens) is too large for the Gemini API and exceeds the limit of ${limit} tokens.\n` +
+          `Please reduce the context size by creating a '.repomixignore' file in your repository root and adding patterns for files/directories to exclude.\n` +
+          `You can also try:\n` +
+          `1. Using a more specific query to target a feature or module.\n` +
+          `2. Running the command on a specific subdirectory using the --subdir flag.`,
       };
     }
-
-    return {};
+    // Suggest larger model if available and appropriate (example logic)
+    // if (tokenCount > 1_000_000) { // Example threshold
+    //   return { model: 'gemini-1.5-pro-latest' }; // Suggest a larger model if needed
+    // }
+    return {}; // No changes needed if within limits
   }
 }
 
@@ -1576,14 +1567,17 @@ export class OpenRouterProvider extends OpenAIBase {
   }
 
   protected handleLargeTokenCount(tokenCount: number): { model?: string; error?: string } {
-    if (tokenCount > 800_000) {
+    // OpenRouter routes to various models, limits depend on the underlying model.
+    // This is a generic message, assuming a high limit might be exceeded.
+    const limit = 2_000_000; // Assuming a potential high limit across models
+    if (tokenCount >= limit) {
       return {
-        model: 'google/gemini-1.5-pro',
-      };
-    }
-    if (tokenCount > 180_000) {
-      return {
-        model: 'google/gemini-2.5-pro-exp-03-25:free',
+        error:
+          `Repository content (${tokenCount} tokens) may be too large for the selected OpenRouter model (limit depends on underlying model, potentially ~${limit} tokens).\n` +
+          `Please reduce the context size by creating a '.repomixignore' file in your repository root and adding patterns for files/directories to exclude.\n` +
+          `You can also try:\n` +
+          `1. Selecting a model known to support larger contexts via the --model flag.\n` +
+          `2. Using a more specific query or the --subdir flag.`,
       };
     }
     return {};
@@ -1837,14 +1831,17 @@ export class ModelBoxProvider extends OpenAIBase {
   }
 
   protected handleLargeTokenCount(tokenCount: number): { model?: string; error?: string } {
-    if (tokenCount > 800_000) {
+    // ModelBox routes to various models, limits depend on the underlying model.
+    // Generic message similar to OpenRouter.
+    const limit = 2_000_000; // Assuming a potential high limit
+    if (tokenCount >= limit) {
       return {
-        model: 'google/gemini-2.5-pro-exp',
-      };
-    }
-    if (tokenCount > 180_000) {
-      return {
-        model: 'google/gemini-2.0-flash',
+        error:
+          `Repository content (${tokenCount} tokens) may be too large for the selected ModelBox model (limit depends on underlying model, potentially ~${limit} tokens).\n` +
+          `Please reduce the context size by creating a '.repomixignore' file in your repository root and adding patterns for files/directories to exclude.\n` +
+          `You can also try:\n` +
+          `1. Selecting a model known to support larger contexts via the --model flag.\n` +
+          `2. Using a more specific query or the --subdir flag.`,
       };
     }
     return {};
@@ -2038,8 +2035,17 @@ export class AnthropicProvider extends BaseProvider {
   }
 
   protected handleLargeTokenCount(tokenCount: number): { model?: string; error?: string } {
-    if (tokenCount > 200_000) {
-      throw new ProviderError('Token count is too high for Anthropic. Try a different model.');
+    // Example: Claude models might have limits like 200k or higher
+    const limit = 200_000; // Adjust based on typical Claude limits
+    if (tokenCount >= limit) {
+      return {
+        error:
+          `Repository content (${tokenCount} tokens) may be too large for the selected Anthropic model (limit often ~${limit} tokens, but varies by model).\n` +
+          `Please reduce the context size by creating a '.repomixignore' file in your repository root and adding patterns for files/directories to exclude.\n` +
+          `You can also try:\n` +
+          `1. Selecting a model known to support larger contexts (like Claude 3 models) via the --model flag.\n` +
+          `2. Using a more specific query or the --subdir flag.`,
+      };
     }
     return {};
   }
