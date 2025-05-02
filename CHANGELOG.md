@@ -8,6 +8,10 @@ All notable changes to this project will be documented in this file.
 
 - **Repo Command**: Now shows top 10 largest files by token count when using `--debug` flag and during token limit errors.
 
+### Added
+
+- Support multiple `--with-doc` URLs for `ask`, `repo`, `plan`, and `doc` commands, allowing users to provide context from several documents simultaneously.
+
 ## [0.60.8] - 2026-04-27
 
 ### Added

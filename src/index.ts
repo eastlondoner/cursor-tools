@@ -102,7 +102,7 @@ interface CLIOptions {
   hint?: string;
   fromGithub?: string;
   subdir?: string;
-  withDoc?: string;
+  withDoc?: string[];
 
   // Browser options
   url?: string;
@@ -438,7 +438,15 @@ async function main() {
       if (BOOLEAN_OPTIONS.has(optionKey as CLIBooleanOption)) {
         options[optionKey as CLIBooleanOption] = value === 'true';
       } else if (value !== undefined && optionKey) {
-        options[optionKey as CLIStringOption] = value;
+        const stringOptionKey = optionKey as CLIStringOption;
+        if (stringOptionKey === 'withDoc') {
+          if (!options.withDoc) {
+            options.withDoc = [];
+          }
+          options.withDoc.push(value);
+        } else {
+          options[stringOptionKey] = value;
+        }
       }
     } else {
       queryArgs.push(arg);
