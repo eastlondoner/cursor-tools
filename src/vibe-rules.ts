@@ -41,7 +41,9 @@ The plan command uses multiple AI models to:
 **Web Search:**
 \`vibe-tools web "<your question>"\` - Get answers from the web using a provider that supports web search (e.g., Perplexity models and Gemini Models either directly or from OpenRouter or ModelBox) (e.g., \`vibe-tools web "latest shadcn/ui installation instructions"\`)
 Note: web is a smart autonomous agent with access to the internet and an extensive up to date knowledge base. Web is NOT a web search engine. Always ask the agent for what you want using a proper sentence, do not just send it a list of keywords. In your question to web include the context and the goal that you're trying to acheive so that it can help you most effectively.
-when using web for complex queries suggest writing the output to a file somewhere like local-research/<query summary>.md. However if user provides a specific url, you should always use any command with --with-doc instead of web.
+when using web for complex queries suggest writing the output to a file somewhere like local-research/<query summary>.md.
+
+**IMPORTANT: Do NOT use the \`web\` command for specific URLs.** If a user provides a specific URL (documentation link, GitHub repo, article, etc.), you should always use commands that support the \`--with-doc\` parameter instead, such as \`repo\`, \`plan\`, \`doc\`, or \`ask\`. Using \`--with-doc\` ensures the exact content of the URL is processed correctly and completely.
 
 **Web Command Options:**
 --provider=<provider>: AI provider to use (perplexity, gemini, modelbox, or openrouter)
@@ -102,8 +104,8 @@ The \`search\` command helps you discover servers in the MCP Marketplace based o
 - \`vibe-tools youtube\` analyzes YouTube videos to generate summaries, transcripts, implementation plans, or custom analyses
 - \`vibe-tools browser\` is useful for testing and debugging web apps and uses Stagehand
 - \`vibe-tools mcp\` enables interaction with specialized tools through MCP servers (e.g., for Git operations, file system tasks, or custom tools)
+- **URLS:** For any specific URL (documentation, article, reference, spec, GitHub repo, etc.), ALWAYS use a command with the \`--with-doc=<url>\` parameter rather than the \`web\` command. Examples: \`vibe-tools repo "How should I implement this feature based on the spec?" --with-doc=https://example.com/spec.pdf\` or \`vibe-tools ask "What does this document say about authentication?" --with-doc=https://example.com/auth-doc.html\`
 - When implementing features based on documentation, specifications, or any external content, always use the \`--with-doc=<url>\` flag instead of built-in web search. For example: \`vibe-tools plan "Implement login page according to specs" --with-doc=https://example.com/specs.pdf\` or \`vibe-tools repo "How should I implement this feature?" --with-doc=https://example.com/feature-spec.md\`.
-
 - When a user provides a specific URL for documentation or reference material, always use the \`--with-doc=<url>\` flag with that URL rather than attempting to search for or summarize the content independently. This ensures the exact document is used as context.
 
 **Running Commands:**
