@@ -4,18 +4,18 @@
     "model": "sonar-pro"
   },
   "plan": {
-    "fileProvider": "anthropic",
-    "thinkingProvider": "anthropic",
-    "fileModel": "claude-3-7-sonnet",
-    "thinkingModel": "claude-3-7-sonnet"
+    "fileProvider": "gemini",
+    "thinkingProvider": "openai",
+    "fileModel": "gemini-2.5-flash-preview-04-17",
+    "thinkingModel": "o4-mini"
   },
   "repo": {
     "provider": "gemini",
-    "model": "gemini-2.5-flash-preview-04-17"
+    "model": "gemini-2.5-pro-preview"
   },
   "doc": {
     "provider": "gemini",
-    "model": "gemini-2.5-pro-preview-03-25"
+    "model": "gemini-2.5-pro-preview"
   },
   "ide": "cursor"
 }

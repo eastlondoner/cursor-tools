@@ -158,7 +158,9 @@ export class OpenCommand implements Command {
           });
 
           videoPath = await setupVideoRecording(options);
-          console.log('videoPath', videoPath);
+          if (options.video) {
+            console.log('video recording path:', videoPath);
+          }
           context = await browser.newContext({
             recordVideo: options.video
               ? {

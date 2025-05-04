@@ -83,13 +83,35 @@ export async function checkPackageVersion(): Promise<VersionInfo> {
 
     const latest = await getLatestVersion();
 
-    const isOutdated = latest !== null && current !== latest;
+    if (latest) {
+      const [currentMajor, currentMinor, currentPatchish] = current.split('.');
+      const currentPatch = currentPatchish?.split('-')[0];
 
-    return {
-      current,
-      latest,
-      isOutdated,
-    };
+      const [latestMajor, latestMinor, latestPatchish] = latest.split('.');
+      const latestPatch = latestPatchish?.split('-')[0];
+
+      let isOutdated = false;
+      if (parseInt(currentMajor) < parseInt(latestMajor)) {
+        isOutdated = true;
+      }
+
+      if (!isOutdated && parseInt(currentMinor) < parseInt(latestMinor)) {
+        isOutdated = true;
+      }
+
+      if (!isOutdated && parseInt(currentPatch) < parseInt(latestPatch)) {
+        isOutdated = true;
+      }
+
+      return {
+        current,
+        latest,
+        isOutdated,
+      };
+    } else {
+      consola.warn('Could not determine latest package version. Skipping update check.');
+      return { current, latest: null, isOutdated: false };
+    }
   } catch (error) {
     consola.warn('Error checking package version:', error);
     return {
