@@ -96,6 +96,9 @@ export class DocCommand implements Command {
 
         const maxRepoSizeMB = this.config.doc?.maxRepoSizeMB || 100;
         repoContext = await getGithubRepoContext(options.fromGithub, maxRepoSizeMB);
+
+        // Track GitHub repo context token count
+        options?.trackTelemetry?.({ contextTokens: repoContext.tokenCount });
       } else {
         console.error('Packing local repository using repomix...\n');
         const repomixDirectory = process.cwd();
@@ -112,6 +115,9 @@ export class DocCommand implements Command {
               text: readFileSync(tempFile, 'utf-8'),
               tokenCount: packResult.totalTokens,
             };
+
+            // Track local repo context token count
+            options?.trackTelemetry?.({ contextTokens: packResult.totalTokens });
           } catch (error) {
             console.error('Error reading repository context:', error);
             throw new FileError('Failed to read repository context', error);
@@ -254,58 +260,46 @@ export class DocCommand implements Command {
     options: CommandOptions,
     docContent: string
   ): CommandGenerator {
-    console.log(`Trying provider: ${provider}`);
-    const modelProvider = createProvider(provider);
-    const model =
-      options?.model ||
-      this.config.doc?.model ||
-      (this.config as Record<string, any>)[provider]?.model ||
-      getDefaultModel(provider);
+    yield `Trying provider: ${provider}\n`;
+    const providerInstance = createProvider(provider);
 
-    if (!model) {
-      throw new ProviderError(`No model specified for ${provider}`);
+    const model = options?.model || getDefaultModel('doc', provider);
+    const maxTokens = options?.maxTokens || this.config.doc?.maxTokens || defaultMaxTokens;
+
+    // Track provider and model in telemetry
+    options?.trackTelemetry?.({
+      provider,
+      model,
+    });
+
+    const modelOptions: ModelOptions = {
+      model,
+      maxTokens,
+      debug: options?.debug,
+      tokenCount: options?.tokenCount,
+      reasoningEffort: options?.reasoningEffort ?? this.config.reasoningEffort,
+    };
+
+    const documentation = await generateDocumentation(
+      query,
+      providerInstance,
+      repoContext,
+      modelOptions,
+      docContent
+    );
+
+    // Track token usage from the provider
+    if ('tokenUsage' in providerInstance && providerInstance.tokenUsage) {
+      options?.trackTelemetry?.({
+        // Use distinct prompt/completion tokens
+        promptTokens: providerInstance.tokenUsage.promptTokens,
+        completionTokens: providerInstance.tokenUsage.completionTokens,
+      });
+    } else {
+      options?.debug && console.log('[DocCommand] tokenUsage not found on provider instance.');
     }
 
-    console.error(`Generating documentation using ${model}...\n`);
-
-    const maxTokens =
-      options?.maxTokens ||
-      this.config.doc?.maxTokens ||
-      (this.config as Record<string, any>)[provider]?.maxTokens ||
-      defaultMaxTokens;
-
-    try {
-      const modelOptsForGeneration: Omit<ModelOptions, 'systemPrompt'> & { model: string } = {
-        ...options,
-        model,
-        maxTokens,
-        debug: options.debug,
-        tokenCount: options.tokenCount ?? repoContext.tokenCount,
-      };
-
-      const documentation = await generateDocumentation(
-        query,
-        modelProvider,
-        repoContext,
-        modelOptsForGeneration,
-        docContent
-      );
-      yield '\n--- Repository Documentation ---\n\n';
-      yield documentation;
-      yield '\n\n--- End of Documentation ---\n';
-
-      console.error('Documentation generation completed!\n');
-    } catch (error) {
-      if (error instanceof ModelNotFoundError) {
-        yield `Model ${model} not found for provider ${provider}. Please check the model name and your provider configuration.\n`;
-        throw error;
-      } else {
-        throw new ProviderError(
-          error instanceof Error ? error.message : 'Unknown error during documentation generation',
-          error
-        );
-      }
-    }
+    yield documentation;
   }
 }
 

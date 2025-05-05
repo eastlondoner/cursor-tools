@@ -48,6 +48,9 @@ export interface CommandOptions {
   tokenCount?: number; // For handling large token counts (passed down)
   webSearch?: boolean; // Whether web search is enabled (passed down)
   timeout?: number; // Specific timeout for this command (passed down)
+
+  // Telemetry tracking
+  trackTelemetry?: (data: Record<string, any>) => void; // Function to update telemetry data
 }
 
 export interface Command {
