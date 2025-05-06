@@ -14,6 +14,7 @@ import { reasoningEffortSchema } from './types';
 import { promises as fsPromises } from 'node:fs';
 import consola from 'consola';
 import { spawn } from 'node:child_process';
+import { startCommand, updateCommandState, recordError, endCommand } from './telemetry/index';
 // Get the directory name of the current module
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -624,6 +625,9 @@ async function main() {
   // Only proceed if the update process didn't take over AND exit
   if (shouldContinueExecution) {
     try {
+      // Track command start
+      startCommand(command, options);
+
       // If saveTo is specified, ensure the directory exists and clear any existing file
       if (options.saveTo) {
         const dir = dirname(options.saveTo);
@@ -659,6 +663,9 @@ async function main() {
         reasoningEffort: options.reasoningEffort
           ? reasoningEffortSchema.parse(options.reasoningEffort)
           : undefined,
+        trackTelemetry: (data) => {
+          updateCommandState(data);
+        },
       };
       for await (const output of commandHandler.execute(query, commandOptions)) {
         // Only write to stdout if not in quiet mode
@@ -696,7 +703,14 @@ async function main() {
       if (options.saveTo) {
         console.log(`Output saved to: ${options.saveTo}`);
       }
+
+      // Command completed successfully, send telemetry
+      await endCommand(options.debug);
     } catch (error) {
+      // Record the error in telemetry
+      recordError(error);
+      await endCommand(options.debug);
+
       // Use the formatUserMessage method for CursorToolsError instances to display provider errors
       if (
         error &&

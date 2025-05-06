@@ -84,12 +84,26 @@ export interface BaseModelProvider {
   supportsWebSearch(
     modelName: string
   ): Promise<{ supported: boolean; model?: string; error?: string }>;
+  // Add DETAILED token usage tracking
+  tokenUsage?: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
+  // Add this optional method for video analysis
+  executeVideoPrompt?(prompt: string, options: VideoAnalysisOptions): Promise<string>;
 }
 
 // Base provider class with common functionality
 export abstract class BaseProvider implements BaseModelProvider {
   protected config: Config;
   protected availableModels?: Promise<Set<string>>;
+  // Add DETAILED token usage tracking
+  tokenUsage?: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
 
   constructor() {
     loadEnv();
@@ -406,10 +420,27 @@ export abstract class BaseProvider implements BaseModelProvider {
     return openAIModelsSupported || claudeModelsSupported;
   }
 
+  // Set token usage helper method for derived classes
+  protected setTokenUsage(promptTokens: number, completionTokens: number): void {
+    this.tokenUsage = {
+      promptTokens,
+      completionTokens,
+      totalTokens: promptTokens + completionTokens,
+    };
+
+    // Log token usage when debug is enabled
+    // Keep this log for debugging provider implementations
+    console.log(
+      `[${this.constructor.name}] Token usage set: ${promptTokens} prompt + ${completionTokens} completion = ${this.tokenUsage.totalTokens} total`
+    );
+  }
+
   abstract supportsWebSearch(
     modelName: string
   ): Promise<{ supported: boolean; model?: string; error?: string }>;
   abstract executePrompt(prompt: string, options: ModelOptions): Promise<string>;
+  // Add executeVideoPrompt as optional here as well if not already present
+  executeVideoPrompt?(prompt: string, options: VideoAnalysisOptions): Promise<string>;
 }
 
 // Helper function for exponential backoff retry
@@ -531,6 +562,14 @@ abstract class OpenAIBase extends BaseProvider {
       const endTime = Date.now();
       this.debugLog(options, `API call completed in ${endTime - startTime}ms`);
       this.debugLog(options, 'Response:', this.truncateForLogging(response));
+
+      // Track token usage if available
+      if (response.usage) {
+        this.setTokenUsage(
+          response.usage.prompt_tokens ?? 0,
+          response.usage.completion_tokens ?? 0
+        );
+      }
 
       const content = response.choices?.[0].message.content;
       if (!content) {
@@ -1143,6 +1182,11 @@ export class GoogleGenerativeLanguageProvider extends BaseProvider {
           const data = await response.json();
           this.debugLog(options, 'Response:', this.truncateForLogging(data));
 
+          // Track token usage if available
+          if (data.usage) {
+            this.setTokenUsage(data.usage.prompt_tokens ?? 0, data.usage.completion_tokens ?? 0);
+          }
+
           // Sometimes gemini returns something that doesn't have a candidates array
           if (!data.candidates) {
             console.error(
@@ -1206,6 +1250,14 @@ export class GoogleGenerativeLanguageProvider extends BaseProvider {
             }
             // replace the original content with the formatted text
             formattedContent = formattedText.trim();
+          }
+
+          // Track token usage from usageMetadata if available
+          if (data.usageMetadata) {
+            this.setTokenUsage(
+              data.usageMetadata.promptTokenCount ?? 0,
+              data.usageMetadata.candidatesTokenCount ?? 0 // Note: This might include multiple candidates
+            );
           }
 
           if (!formattedContent) {
@@ -1764,6 +1816,11 @@ export class PerplexityProvider extends BaseProvider {
           const data = await response.json();
           this.debugLog(options, 'Response:', this.truncateForLogging(data));
 
+          // Track token usage if available
+          if (data.usage) {
+            this.setTokenUsage(data.usage.prompt_tokens ?? 0, data.usage.completion_tokens ?? 0);
+          }
+
           const content = data.choices[0]?.message?.content;
 
           if (!content) {
@@ -2139,6 +2196,11 @@ export class AnthropicProvider extends BaseProvider {
         this.debugLog(options, `API call completed in ${endTime - startTime}ms`);
         this.debugLog(options, 'Response:', this.truncateForLogging(response));
 
+        // Track token usage (Anthropic specific)
+        if (response.usage) {
+          this.setTokenUsage(response.usage.input_tokens ?? 0, response.usage.output_tokens ?? 0);
+        }
+
         // Handle response with thinking content blocks
         let content;
         if (response.content && Array.isArray(response.content)) {
@@ -2192,6 +2254,11 @@ export class AnthropicProvider extends BaseProvider {
         const endTime = Date.now();
         this.debugLog(options, `API call completed in ${endTime - startTime}ms`);
         this.debugLog(options, 'Response:', this.truncateForLogging(response));
+
+        // Track token usage (Anthropic specific)
+        if (response.usage) {
+          this.setTokenUsage(response.usage.input_tokens ?? 0, response.usage.output_tokens ?? 0);
+        }
 
         // Handle regular response without thinking
         const content = response.content?.[0];

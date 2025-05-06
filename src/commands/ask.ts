@@ -132,6 +132,28 @@ export class AskCommand implements Command {
 
       // Execute the prompt with the provider using the potentially modified query
       answer = await provider.executePrompt(finalQuery, modelOptions);
+
+      // Track token count if provider returns it
+      if ('tokenUsage' in provider && provider.tokenUsage) {
+        const { promptTokens, completionTokens } = provider.tokenUsage;
+        options?.debug &&
+          console.log(
+            `[AskCommand] Attempting to track telemetry with promptTokens: ${promptTokens}, completionTokens: ${completionTokens}`
+          );
+        options?.trackTelemetry?.({
+          promptTokens,
+          completionTokens,
+          provider: providerName,
+          model,
+        });
+      } else {
+        options?.debug && console.log('[AskCommand] tokenUsage not found on provider instance.');
+        // Still track provider and model even if token usage isn't available
+        options?.trackTelemetry?.({
+          provider: providerName,
+          model,
+        });
+      }
     } catch (error) {
       throw new ProviderError(
         error instanceof Error ? error.message : 'Unknown error during ask command execution',

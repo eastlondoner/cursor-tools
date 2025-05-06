@@ -26,6 +26,7 @@ import {
   setupClinerules,
   handleLegacyMigration,
 } from '../utils/installUtils';
+import { setTelemetryStatus, TELEMETRY_DATA_DESCRIPTION, isTelemetryEnabled } from '../telemetry';
 
 interface InstallOptions extends CommandOptions {
   packageManager?: 'npm' | 'yarn' | 'pnpm';
@@ -137,7 +138,6 @@ export class InstallCommand implements Command {
       finalConfig.ide = config.ide.toLowerCase();
     }
 
-    // Map the config from the selections (or potentially pre-filled from existing global)
     if (config.coding) {
       finalConfig.repo = {
         provider: config.coding.provider,
@@ -265,6 +265,49 @@ export class InstallCommand implements Command {
 
       // Handle legacy migration *before* asking for new setup
       yield* handleLegacyMigration();
+
+      // Ask about telemetry/diagnostics only if status is undetermined or disabled
+      const currentTelemetryStatus = isTelemetryEnabled();
+
+      // Only prompt if undetermined (null) or explicitly disabled (false)
+      if (currentTelemetryStatus === null || currentTelemetryStatus === false) {
+        const diagnosticsChoice = await consola.prompt(
+          'Would you like to enable anonymous usage diagnostics to help improve vibe-tools?',
+          {
+            type: 'select',
+            options: [
+              { value: 'yes', label: 'Yes' },
+              { value: 'no', label: 'No' },
+              { value: 'more_info', label: 'What data do you track?' },
+            ],
+            initial: 'yes', // Default to YES
+          }
+        );
+
+        // If they want more info, show the details and re-prompt
+        if (diagnosticsChoice === 'more_info') {
+          consola.info(`\n${colors.bold('Anonymous Diagnostics Details')}`);
+          consola.info(TELEMETRY_DATA_DESCRIPTION.trim().replace(/^\s+/gm, '  ')); // Indent description
+
+          // Re-prompt after showing details
+          const enableAfterDetails = await consola.prompt('Enable anonymous diagnostics?', {
+            type: 'confirm',
+            initial: false, // Default to NO
+          });
+          setTelemetryStatus(!!enableAfterDetails); // Set status based on user choice
+          consola.info(
+            `Anonymous diagnostics ${enableAfterDetails ? colors.green('enabled') : colors.yellow('disabled')}. You can change this later using the VIBE_TOOLS_NO_TELEMETRY environment variable.\n`
+          );
+        } else {
+          // Handle direct yes/no answer
+          const enableTelemetry = diagnosticsChoice === 'yes';
+          setTelemetryStatus(enableTelemetry); // Set status based on user choice
+          consola.info(
+            `Anonymous diagnostics ${enableTelemetry ? colors.green('enabled') : colors.yellow('disabled')}. You can change this later using the VIBE_TOOLS_NO_TELEMETRY environment variable.\n`
+          );
+        }
+      }
+      // Silently continue if telemetry is already enabled
 
       // Check for existing global config before asking for preferences
       const existingGlobalConfig = await this.checkExistingGlobalConfig();

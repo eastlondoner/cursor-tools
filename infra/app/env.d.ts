@@ -1,11 +1,9 @@
-/// <reference types="./env.d.ts" />
+import type { worker } from './alchemy.run';
 
-import type { website } from "../alchemy.run";
+export type WorkerEnv = typeof worker.Env;
 
-export type CloudFlareEnv = typeof website.Env;
-
-declare module "cloudflare:workers" {
+declare module 'cloudflare:workers' {
   namespace Cloudflare {
-    export interface Env extends CloudFlareEnv {}
+    export interface Env extends WorkerEnv {}
   }
 }

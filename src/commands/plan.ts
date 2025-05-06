@@ -26,6 +26,7 @@ interface PlanCommandOptions extends CommandOptions {
   thinkingProvider?: ThinkingProvider;
   fileModel?: string;
   thinkingModel?: string;
+  trackTelemetry?: (data: Record<string, any>) => void;
 }
 
 const DEFAULT_FILE_MODELS: Record<FileProvider, string> = {
@@ -190,6 +191,14 @@ export class PlanCommand implements Command {
       yield `Using thinking provider: ${thinkingProviderName}\n`;
       yield `Using thinking model: ${thinkingModel}\n`;
 
+      // Track the specific providers and models for the plan command
+      options?.trackTelemetry?.({
+        fileProvider: fileProviderName,
+        fileModel: fileModel,
+        thinkingProvider: thinkingProviderName,
+        thinkingModel: thinkingModel,
+      });
+
       yield 'Finding relevant files...\n';
 
       // Get file listing
@@ -214,6 +223,12 @@ export class PlanCommand implements Command {
         packedRepo = readFileSync(tempFile, 'utf-8');
 
         yield `Found ${repomixResult.totalFiles} files, approx ${repomixResult.totalTokens} tokens.\n`;
+
+        // Track total packed repo context tokens
+        options?.trackTelemetry?.({
+          contextTokens: repomixResult.totalTokens,
+        });
+
         if (options?.debug) {
           yield 'First few files:\n';
           yield `${packedRepo.split('\n').slice(0, 5).join('\n')}\n\n`;
@@ -279,11 +294,7 @@ export class PlanCommand implements Command {
           model: fileModel,
           maxTokens: effectiveFileMaxTokens,
           debug: options?.debug,
-          // Initialize other potential optional ModelOptions fields if necessary
-          // e.g., webSearch: options?.webSearch,
-          // timeout: options?.timeout,
-          // reasoningEffort: options?.reasoningEffort,
-          // tokenCount: options?.tokenCount,
+          reasoningEffort: options?.reasoningEffort ?? this.config.reasoningEffort,
         };
 
         yield `Asking ${fileProviderName} to identify relevant files using model: ${fileModel} with max tokens: ${effectiveFileMaxTokens}...\n`;
@@ -312,6 +323,22 @@ export class PlanCommand implements Command {
           } else {
             yield 'No files were identified.\n\n';
           }
+        }
+
+        // Track file provider token usage
+        if ('tokenUsage' in fileProvider && fileProvider.tokenUsage) {
+          options?.trackTelemetry?.({
+            filePromptTokens: fileProvider.tokenUsage.promptTokens,
+            fileCompletionTokens: fileProvider.tokenUsage.completionTokens,
+            fileProvider: fileProviderName,
+            fileModel: fileModel,
+          });
+        } else {
+          // Still track provider and model even if token usage isn't available
+          options?.trackTelemetry?.({
+            fileProvider: fileProviderName,
+            fileModel: fileModel,
+          });
         }
       } catch (error) {
         console.error('Error in getRelevantFiles', error);
@@ -361,7 +388,7 @@ export class PlanCommand implements Command {
         model: thinkingModel,
         maxTokens: effectiveThinkingMaxTokens,
         debug: options?.debug,
-        // Initialize other potential optional ModelOptions fields if necessary
+        reasoningEffort: options?.reasoningEffort ?? this.config.reasoningEffort,
       };
 
       yield `Generating plan using ${thinkingProviderName} with max tokens: ${effectiveThinkingMaxTokens}...\n`;
@@ -374,12 +401,30 @@ export class PlanCommand implements Command {
           thinkingModelOptions, // Pass the fully typed object
           docContent
         );
+
+        // Track thinking provider token usage
+        if ('tokenUsage' in thinkingProvider && thinkingProvider.tokenUsage) {
+          options?.trackTelemetry?.({
+            thinkingPromptTokens: thinkingProvider.tokenUsage.promptTokens,
+            thinkingCompletionTokens: thinkingProvider.tokenUsage.completionTokens,
+            thinkingProvider: thinkingProviderName,
+            thinkingModel: thinkingModel,
+          });
+        } else {
+          // Still track provider and model even if token usage isn't available
+          options?.trackTelemetry?.({
+            thinkingProvider: thinkingProviderName,
+            thinkingModel: thinkingModel,
+          });
+        }
       } catch (error) {
         console.error('Error in generatePlan', error);
         throw new ProviderError('Failed to generate implementation plan', error);
       }
 
+      yield '\n--- Implementation Plan ---\n';
       yield plan;
+      yield '\n--- End Plan ---\n';
     } catch (error) {
       // console.error errors and then throw
       if (error instanceof FileError || error instanceof ProviderError) {

@@ -25,6 +25,7 @@ import {
   setupClinerules,
   handleLegacyMigration,
 } from '../utils/installUtils';
+import { setTelemetryStatus, TELEMETRY_DATA_DESCRIPTION, isTelemetryEnabled } from '../telemetry';
 
 // Helper to parse JSON configuration
 function parseJsonConfig(
@@ -289,39 +290,81 @@ export class JsonInstallCommand implements Command {
   }
 
   async *execute(query: string, options: CommandOptions): CommandGenerator {
-    const targetPath = query || '.';
-    const absolutePath = join(process.cwd(), targetPath);
-
-    if (typeof options.json !== 'string') {
-      throw new Error('JSON configuration is required for this command');
+    if (!options.json) {
+      throw new Error('JSON configuration must be provided using --json.');
     }
+
+    // Ensure options.json is a string
+    const jsonConfig =
+      typeof options.json === 'string'
+        ? parseJsonConfig(options.json)
+        : (() => {
+            throw new Error('JSON configuration must be a string.');
+          })();
 
     try {
       // Clear the screen for a clean start
       clearScreen();
 
-      // Welcome message
+      // Welcome message (simpler for JSON install)
       const logo = getVibeToolsLogo();
-
       consola.box({
-        title: '🚀 Welcome to Vibe-Tools Setup!',
+        title: '🚀 Vibe-Tools JSON Setup',
         titleColor: 'white',
-        borderColor: 'green',
+        borderColor: 'blue',
         style: {
-          padding: 2,
-          borderStyle: 'rounded',
+          padding: 1,
         },
-        message: logo,
+        message: `Configuring vibe-tools using provided JSON.\n${logo}`,
       });
 
-      // Load env AFTER displaying welcome message
-      loadEnv();
+      consola.info('Parsed JSON configuration successfully.');
 
-      // Handle migration first using the shared utility function
+      // Check telemetry status - only prompt if not already set or disabled via env
+      const currentTelemetryStatus = isTelemetryEnabled();
+
+      // Only prompt if undetermined (null) or explicitly disabled (false)
+      if (currentTelemetryStatus === null || currentTelemetryStatus === false) {
+        const diagnosticsChoice = await consola.prompt(
+          'Would you like to enable anonymous usage diagnostics to help improve vibe-tools?',
+          {
+            type: 'select',
+            options: [
+              { value: 'yes', label: 'Yes' },
+              { value: 'no', label: 'No' },
+              { value: 'more_info', label: 'What data do you track?' },
+            ],
+            initial: 'yes', // Default to YES
+          }
+        );
+
+        // If they want more info, show the details and re-prompt
+        if (diagnosticsChoice === 'more_info') {
+          consola.info(`\n${colors.bold('Anonymous Diagnostics Details')}`);
+          consola.info(TELEMETRY_DATA_DESCRIPTION.trim().replace(/^\s+/gm, '  ')); // Indent description
+
+          // Re-prompt after showing details
+          const enableAfterDetails = await consola.prompt('Enable anonymous diagnostics?', {
+            type: 'confirm',
+            initial: false, // Default to NO
+          });
+          setTelemetryStatus(!!enableAfterDetails); // Set status based on user choice
+          consola.info(
+            `Anonymous diagnostics ${enableAfterDetails ? colors.green('enabled') : colors.yellow('disabled')}. You can change this later using the VIBE_TOOLS_NO_TELEMETRY environment variable.\n`
+          );
+        } else {
+          // Handle direct yes/no answer
+          const enableTelemetry = diagnosticsChoice === 'yes';
+          setTelemetryStatus(enableTelemetry); // Set status based on user choice
+          consola.info(
+            `Anonymous diagnostics ${enableTelemetry ? colors.green('enabled') : colors.yellow('disabled')}. You can change this later using the VIBE_TOOLS_NO_TELEMETRY environment variable.\n`
+          );
+        }
+      }
+      // Silently continue if telemetry is already enabled
+
+      // Handle legacy migration *before* processing new config
       yield* handleLegacyMigration();
-
-      // Parse JSON configuration
-      const jsonConfig = parseJsonConfig(options.json);
 
       // Check if the Gemini 2.5 Pro model name needs to be updated (for backward compatibility)
       for (const [key, value] of Object.entries(jsonConfig)) {
@@ -388,7 +431,7 @@ export class JsonInstallCommand implements Command {
       // Re-add the IDE setup code but with simplified output
       if (selectedIde === 'cursor') {
         // Create necessary directories
-        const rulesDir = join(absolutePath, '.cursor', 'rules');
+        const rulesDir = join(process.cwd(), '.cursor', 'rules');
         ensureDirectoryExists(rulesDir);
 
         // Write the rules file directly to the new location
@@ -412,7 +455,7 @@ export class JsonInstallCommand implements Command {
             // Handle both global and local Claude.md files
             if (isLocalConfig) {
               // Local Claude.md
-              rulesPath = join(absolutePath, 'CLAUDE.md');
+              rulesPath = join(process.cwd(), 'CLAUDE.md');
               ensureDirectoryExists(join(rulesPath, '..'));
               updateRulesSection(rulesPath, rulesTemplate);
               consola.success(`Updated local Claude.md rules at ${rulesPath}`);
@@ -431,7 +474,7 @@ export class JsonInstallCommand implements Command {
             // Handle both global and local codex.md files
             if (isLocalConfig) {
               // Local codex.md
-              rulesPath = join(absolutePath, CODEX_LOCAL_INSTRUCTIONS_FILENAME);
+              rulesPath = join(process.cwd(), CODEX_LOCAL_INSTRUCTIONS_FILENAME);
               ensureDirectoryExists(join(rulesPath, '..'));
               updateRulesSection(rulesPath, rulesTemplate);
               consola.success(
@@ -447,7 +490,7 @@ export class JsonInstallCommand implements Command {
             break;
           }
           case 'windsurf': {
-            rulesPath = join(absolutePath, '.windsurfrules');
+            rulesPath = join(process.cwd(), '.windsurfrules');
             rulesTemplate = generateRules('windsurf');
             ensureDirectoryExists(join(rulesPath, '..'));
             updateRulesSection(rulesPath, rulesTemplate);
@@ -455,16 +498,16 @@ export class JsonInstallCommand implements Command {
             break;
           }
           case 'cline': {
-            await setupClinerules(absolutePath, 'cline', generateRules);
+            await setupClinerules(process.cwd(), 'cline', generateRules);
             break;
           }
           case 'roo': {
             // Roo uses the same .clinerules directory/file as cline
-            await setupClinerules(absolutePath, 'roo', generateRules);
+            await setupClinerules(process.cwd(), 'roo', generateRules);
             break;
           }
           default: {
-            rulesPath = join(absolutePath, '.cursor', 'rules', 'vibe-tools.mdc');
+            rulesPath = join(process.cwd(), '.cursor', 'rules', 'vibe-tools.mdc');
             rulesTemplate = generateRules('cursor');
             ensureDirectoryExists(join(rulesPath, '..'));
             writeFileSync(rulesPath, rulesTemplate.trim());

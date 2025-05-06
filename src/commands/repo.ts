@@ -74,6 +74,9 @@ export class RepoCommand implements Command {
           repoContext = text;
           tokenCount = repoTokenCount;
           console.log(`Successfully got GitHub repo context with ${tokenCount} tokens`);
+
+          // Track GitHub repo context token count
+          options?.trackTelemetry?.({ contextTokens: tokenCount });
         } catch (error) {
           console.error('Error getting GitHub repo context:', error);
           throw error;
@@ -107,6 +110,9 @@ export class RepoCommand implements Command {
             `Packed repository. ${packResult.totalFiles} files. Approximate size ${packResult.totalTokens} tokens.`
           );
           tokenCount = packResult.totalTokens;
+
+          // Track local repo context token count
+          options?.trackTelemetry?.({ contextTokens: tokenCount });
 
           // Show top files by token count when debug is enabled
           if (options?.debug && packResult) {
@@ -317,6 +323,24 @@ export class RepoCommand implements Command {
         },
         modelOptsForAnalysis // Pass the simplified options
       );
+
+      // Track prompt/completion tokens
+      if ('tokenUsage' in modelProvider && modelProvider.tokenUsage) {
+        options?.trackTelemetry?.({
+          promptTokens: modelProvider.tokenUsage.promptTokens,
+          completionTokens: modelProvider.tokenUsage.completionTokens,
+          provider,
+          model: modelName,
+        });
+      } else {
+        options?.debug && console.log('[RepoCommand] tokenUsage not found on provider instance.');
+        // Still track provider and model even if token usage isn't available
+        options?.trackTelemetry?.({
+          provider,
+          model: modelName,
+        });
+      }
+
       yield response;
     } catch (error) {
       throw new ProviderError(
