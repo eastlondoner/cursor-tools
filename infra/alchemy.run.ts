@@ -8,7 +8,7 @@ const STATIC_ASSETS_PATH = './.output/public/';
 const R2_BUCKET_NAME = 'vibe-tools-telemetry';
 const PIPELINE_NAME = 'vibe-tools-telemetry';
 const WORKER_NAME = 'vibe-tools-infra';
-const TELEMETRY_FILE_PATH = path.resolve(__dirname, '../src/telemetry.ts'); // Use absolute path
+const TELEMETRY_FILE_PATH = path.resolve(__dirname, '../src/telemetry/index.ts'); // Use absolute path
 
 const app = await alchemy('vibe-tools-infra', {
   stage: 'dev',
@@ -85,7 +85,7 @@ if (website.url) {
     console.error('Error updating telemetry file:', err);
   }
 } else {
-  console.warn('Worker URL not available, skipping update of src/telemetry.ts');
+  console.warn('Worker URL not available, skipping update of src/telemetry/index.ts');
 }
 
 await app.finalize();
