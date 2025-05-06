@@ -138,7 +138,6 @@ export class InstallCommand implements Command {
       finalConfig.ide = config.ide.toLowerCase();
     }
 
-    // Map the config from the selections (or potentially pre-filled from existing global)
     if (config.coding) {
       finalConfig.repo = {
         provider: config.coding.provider,

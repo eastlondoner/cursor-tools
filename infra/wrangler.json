@@ -1,0 +1,9 @@
+{
+  "name": "vibe-tools-infra",
+  "main": "./app/index.ts",
+  "compatibility_date": "2022-04-05",
+  "assets": { "directory": "./.output/public/", "binding": "ASSETS" },
+  "r2_buckets": [
+    { "binding": "R2_BUCKET", "bucket_name": "vibe-tools-telemetry" }
+  ]
+}

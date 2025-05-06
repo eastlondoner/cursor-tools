@@ -1,7 +1,8 @@
 import alchemy from 'alchemy';
 import { Exec } from 'alchemy/os';
-import { Assets, Worker, Pipeline, R2Bucket } from 'alchemy/cloudflare';
+import { Assets, Worker, Pipeline, R2Bucket, WranglerJson } from 'alchemy/cloudflare';
 import fs from 'fs/promises';
+import fsSync from 'fs';
 import path from 'path';
 
 const STATIC_ASSETS_PATH = './.output/public/';
@@ -29,7 +30,6 @@ const bucket = await R2Bucket('bucket', {
   name: R2_BUCKET_NAME,
 });
 
-await new Promise((resolve) => setTimeout(resolve, 10000));
 const pipeline = await Pipeline('pipeline', {
   name: PIPELINE_NAME,
   source: [{ type: 'binding', format: 'json' }],
@@ -51,7 +51,7 @@ const pipeline = await Pipeline('pipeline', {
   },
 });
 
-export const website = await Worker('worker', {
+export const worker = await Worker('worker', {
   name: WORKER_NAME,
   entrypoint: './app/index.ts',
   url: true,
@@ -63,11 +63,11 @@ export const website = await Worker('worker', {
 });
 
 console.log({
-  url: website.url,
+  url: worker.url,
 });
 
-if (website.url) {
-  const newEndpoint = `${website.url}/api/pipeline`;
+if (worker.url) {
+  const newEndpoint = `${worker.url}/api/pipeline`;
   try {
     // Read the telemetry file
     let telemetryContent = await fs.readFile(TELEMETRY_FILE_PATH, 'utf-8');
@@ -87,5 +87,9 @@ if (website.url) {
 } else {
   console.warn('Worker URL not available, skipping update of src/telemetry/index.ts');
 }
+
+await WranglerJson('config', {
+  worker,
+});
 
 await app.finalize();
