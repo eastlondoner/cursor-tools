@@ -263,14 +263,8 @@ export class DocCommand implements Command {
     yield `Trying provider: ${provider}\n`;
     const providerInstance = createProvider(provider);
 
-    const model = options?.model || getDefaultModel('doc', provider);
+    const model = options?.model || getDefaultModel(provider);
     const maxTokens = options?.maxTokens || this.config.doc?.maxTokens || defaultMaxTokens;
-
-    // Track provider and model in telemetry
-    options?.trackTelemetry?.({
-      provider,
-      model,
-    });
 
     const modelOptions: ModelOptions = {
       model,
@@ -294,9 +288,16 @@ export class DocCommand implements Command {
         // Use distinct prompt/completion tokens
         promptTokens: providerInstance.tokenUsage.promptTokens,
         completionTokens: providerInstance.tokenUsage.completionTokens,
+        provider,
+        model,
       });
     } else {
       options?.debug && console.log('[DocCommand] tokenUsage not found on provider instance.');
+      // Still track provider and model even if token usage isn't available
+      options?.trackTelemetry?.({
+        provider,
+        model,
+      });
     }
 
     yield documentation;

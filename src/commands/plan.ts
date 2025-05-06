@@ -191,12 +191,12 @@ export class PlanCommand implements Command {
       yield `Using thinking provider: ${thinkingProviderName}\n`;
       yield `Using thinking model: ${thinkingModel}\n`;
 
-      // Track providers and models in telemetry
+      // Track the specific providers and models for the plan command
       options?.trackTelemetry?.({
         fileProvider: fileProviderName,
-        fileModel,
+        fileModel: fileModel,
         thinkingProvider: thinkingProviderName,
-        thinkingModel,
+        thinkingModel: thinkingModel,
       });
 
       yield 'Finding relevant files...\n';
@@ -330,6 +330,14 @@ export class PlanCommand implements Command {
           options?.trackTelemetry?.({
             filePromptTokens: fileProvider.tokenUsage.promptTokens,
             fileCompletionTokens: fileProvider.tokenUsage.completionTokens,
+            fileProvider: fileProviderName,
+            fileModel: fileModel,
+          });
+        } else {
+          // Still track provider and model even if token usage isn't available
+          options?.trackTelemetry?.({
+            fileProvider: fileProviderName,
+            fileModel: fileModel,
           });
         }
       } catch (error) {
@@ -399,6 +407,14 @@ export class PlanCommand implements Command {
           options?.trackTelemetry?.({
             thinkingPromptTokens: thinkingProvider.tokenUsage.promptTokens,
             thinkingCompletionTokens: thinkingProvider.tokenUsage.completionTokens,
+            thinkingProvider: thinkingProviderName,
+            thinkingModel: thinkingModel,
+          });
+        } else {
+          // Still track provider and model even if token usage isn't available
+          options?.trackTelemetry?.({
+            thinkingProvider: thinkingProviderName,
+            thinkingModel: thinkingModel,
           });
         }
       } catch (error) {

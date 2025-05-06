@@ -143,9 +143,16 @@ export class AskCommand implements Command {
         options?.trackTelemetry?.({
           promptTokens,
           completionTokens,
+          provider: providerName,
+          model,
         });
       } else {
         options?.debug && console.log('[AskCommand] tokenUsage not found on provider instance.');
+        // Still track provider and model even if token usage isn't available
+        options?.trackTelemetry?.({
+          provider: providerName,
+          model,
+        });
       }
     } catch (error) {
       throw new ProviderError(

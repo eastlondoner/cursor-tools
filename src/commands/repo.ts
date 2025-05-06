@@ -329,9 +329,16 @@ export class RepoCommand implements Command {
         options?.trackTelemetry?.({
           promptTokens: modelProvider.tokenUsage.promptTokens,
           completionTokens: modelProvider.tokenUsage.completionTokens,
+          provider,
+          model: modelName,
         });
       } else {
         options?.debug && console.log('[RepoCommand] tokenUsage not found on provider instance.');
+        // Still track provider and model even if token usage isn't available
+        options?.trackTelemetry?.({
+          provider,
+          model: modelName,
+        });
       }
 
       yield response;

@@ -22,6 +22,13 @@ interface CommandState {
   tokenCount?: number;
   promptTokens?: number;
   completionTokens?: number;
+  provider?: string;
+  model?: string;
+  // Plan command specific fields
+  fileProvider?: string;
+  fileModel?: string;
+  thinkingProvider?: string;
+  thinkingModel?: string;
   options?: Record<string, any>;
   error?: any;
 }
@@ -139,10 +146,19 @@ readDiagnosticsFile();
 
 // Start tracking a new command execution
 export function startCommand(command: string, options?: Record<string, any>): void {
+  // Extract provider and model from options
+  const provider = options?.provider;
+  const model = options?.model;
+
+  // Create sanitized options (removing provider and model which will be tracked separately)
+  const sanitizedOptions = options ? sanitizeOptions(options) : undefined;
+
   currentCommandState = {
     command,
     startTime: Date.now(),
-    options: options ? sanitizeOptions(options) : undefined,
+    provider,
+    model,
+    options: sanitizedOptions,
   };
 }
 
@@ -184,6 +200,14 @@ export async function endCommand(debug?: boolean): Promise<void> {
     contextTokens: currentCommandState.tokenCount, // Use the original name from state
     promptTokens: currentCommandState.promptTokens,
     completionTokens: currentCommandState.completionTokens,
+    // Add provider and model as separate properties
+    provider: currentCommandState.provider,
+    model: currentCommandState.model,
+    // Add plan-specific provider and model fields
+    fileProvider: currentCommandState.fileProvider,
+    fileModel: currentCommandState.fileModel,
+    thinkingProvider: currentCommandState.thinkingProvider,
+    thinkingModel: currentCommandState.thinkingModel,
     options: currentCommandState.options,
     hasError: !!currentCommandState.error,
     errorType: currentCommandState.error?.type,
@@ -193,6 +217,12 @@ export async function endCommand(debug?: boolean): Promise<void> {
   if (eventProperties.contextTokens === undefined) delete eventProperties.contextTokens;
   if (eventProperties.promptTokens === undefined) delete eventProperties.promptTokens;
   if (eventProperties.completionTokens === undefined) delete eventProperties.completionTokens;
+  if (eventProperties.provider === undefined) delete eventProperties.provider;
+  if (eventProperties.model === undefined) delete eventProperties.model;
+  if (eventProperties.fileProvider === undefined) delete eventProperties.fileProvider;
+  if (eventProperties.fileModel === undefined) delete eventProperties.fileModel;
+  if (eventProperties.thinkingProvider === undefined) delete eventProperties.thinkingProvider;
+  if (eventProperties.thinkingModel === undefined) delete eventProperties.thinkingModel;
 
   // Log the state and final properties just before sending
   debug && console.log(`[Telemetry] State before sending command_executed:`, currentCommandState);
@@ -227,7 +257,6 @@ function sanitizeOptions(options: Record<string, any>): Record<string, any> {
   const safeOptions = [
     'debug',
     'maxTokens',
-    'provider',
     'saveTo',
     'quiet',
     'html',
