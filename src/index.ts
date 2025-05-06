@@ -665,7 +665,7 @@ async function main() {
           : undefined,
         trackTelemetry: (data) => {
           updateCommandState(data);
-        }
+        },
       };
       for await (const output of commandHandler.execute(query, commandOptions)) {
         // Only write to stdout if not in quiet mode
