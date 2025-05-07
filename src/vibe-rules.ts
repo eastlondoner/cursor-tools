@@ -1,15 +1,11 @@
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { homedir } from 'node:os';
 import type { Config } from './types';
 import { promises as fs } from 'node:fs';
+import { getCurrentVersion } from './utils/versionUtils';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const packageJson = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf-8'));
-
-export const VIBE_TOOLS_RULES_VERSION = packageJson.version;
+export const VIBE_TOOLS_RULES_VERSION = getCurrentVersion();
 
 // The core vibe-tools content to be included in all templates
 export const VIBE_TOOLS_CORE_CONTENT = `# Instructions

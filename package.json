@@ -30,6 +30,10 @@
     "dist",
     "README.md"
   ],
+  "exports": {
+    ".": "./dist/index.mjs",
+    "./llms": "./dist/llms/index.mjs"
+  },
   "author": "eastlondoner",
   "license": "MIT",
   "repository": {
@@ -52,6 +56,7 @@
     "prettier": "^3.5.3",
     "tsx": "^4.19.3",
     "typescript": "^5.8.3",
+    "vibe-rules": "^0.2.31",
     "vitest": "^3.1.2"
   },
   "dependencies": {

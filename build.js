@@ -27,21 +27,13 @@ const nodeBuiltinsPlugin = {
   }
 };
 
-const buildOptions = {
-  entryPoints: ['./src/index.ts'],
+const commonBuildOptions = {
   bundle: true,
   minify: true,
   treeShaking: true,
   platform: 'node',
   format: 'esm',
   target: 'node20',
-  outfile: './dist/index.mjs',
-  banner: {
-    js: `#!/usr/bin/env node
-import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
-`
-  },
   resolveExtensions: ['.ts', '.js'],
   external: [
     // Node built-ins
@@ -75,17 +67,45 @@ const require = createRequire(import.meta.url);
   plugins: [nodeBuiltinsPlugin]
 };
 
+const mainBuildOptions = {
+  ...commonBuildOptions,
+  entryPoints: ['./src/index.ts'],
+  outfile: './dist/index.mjs',
+  banner: {
+    js: `#!/usr/bin/env node
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+`
+  },
+};
+
+const llmsBuildOptions = {
+  ...commonBuildOptions,
+  entryPoints: ['./src/llms/index.ts'],
+  outfile: './dist/llms/index.mjs',
+  banner: {
+    js: `
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+`
+  },
+};
+
 if (watch) {
-  const context = await esbuild.context(buildOptions);
+  const mainContext = await esbuild.context(mainBuildOptions);
+  const llmsContext = await esbuild.context(llmsBuildOptions);
   // eslint-disable-next-line no-undef
   console.log('Watching for changes...');
-  await context.watch();
+  await mainContext.watch();
+  await llmsContext.watch();
 } else {
-  await esbuild.build(buildOptions);
+  await esbuild.build(mainBuildOptions);
+  await esbuild.build(llmsBuildOptions);
   
   // Make the output file executable on Unix-like systems
   if (platform() !== 'win32') {
     await chmod('./dist/index.mjs', 0o755);
+    // No need to chmod llms/index.mjs as it's likely a library, not an executable
   }
    
   // eslint-disable-next-line no-undef
