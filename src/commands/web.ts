@@ -13,7 +13,7 @@ const DEFAULT_WEB_MODELS: Record<Provider, string> = {
   gemini: 'gemini-2.5-pro-exp',
   openai: 'NO WEB SUPPORT',
   perplexity: 'sonar-pro',
-  openrouter: 'google/gemini-2.5-pro-exp-03-25:free',
+  openrouter: 'google/gemini-2.5-pro-exp-03-25',
   modelbox: 'google/gemini-2.5-pro-exp',
   xai: 'NO WEB SUPPORT',
   anthropic: 'NO WEB SUPPORT',

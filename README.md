@@ -717,7 +717,7 @@ Here is an example of a typical vibe-tools.config.json file, showing some of the
   // Commands
   "repo": {
     "provider": "openrouter",
-    "model": "google/gemini-2.5-pro-exp-03-25:free"
+    "model": "google/gemini-2.5-pro-exp-03-25"
   },
   "doc": {
     "provider": "openrouter",
