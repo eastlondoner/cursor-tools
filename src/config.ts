@@ -53,7 +53,7 @@ export const defaultConfig: Config = {
   //     maxTokens: 8192,
   //  },
   //  openrouter: {
-  //   model: 'google/gemini-2.5-pro-exp-03-25:free'
+  //   model: 'google/gemini-2.5-pro-exp-03-25'
   //   }
   //
   //  or
