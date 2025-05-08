@@ -77,7 +77,7 @@ export function getGitHubToken(): string | undefined {
   if (isGitHubCliAvailable()) {
     try {
       // Generate a token with necessary scopes for PR/Issue operations
-      const token = execSync('gh auth token --scopes repo,read:user', {
+      const token = execSync('gh auth token', {
         encoding: 'utf8',
         stdio: ['ignore', 'pipe', 'ignore'], // Ignore stderr to prevent warning messages
       }).trim();
